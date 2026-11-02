@@ -6,3 +6,5 @@ node_modules/
 # Your own installations (config, compose, preview scripts); see CLAUDE.md rule 11.
 /deploy/
 /VERSION
+# local Claude Code settings
+/.claude/
