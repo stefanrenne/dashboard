@@ -32,9 +32,10 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
   ```
 
   To decide: the key. As a dashboard key on a widget entry (next to `fields`, `refresh`,
-  `hide_errors`) it shadows a widget's own option of that name, and `search` has one
-  (`filter: false`, a header widget); limit it to service widgets, or name it otherwise
-  (`showIf:`, `hideWhen:`). Further: a hidden widget keeps
+  `hide_errors`) it shadows a widget's own option of that name. Only `search` had one; it is
+  `filterServices` in the collection now, but `filter: false` still works there for older
+  configs, and `search` is a header widget: limit the key to service widgets. Further: a hidden
+  widget keeps
   polling, since other filters may read it; it stays hidden until the widgets it reads have
   answered and shows when one fails, as a card does; a card whose widgets are all hidden keeps
   its header. Bound and checked in `src/layout.js` like the service filter, evaluated in
