@@ -32,7 +32,19 @@ jobs:
           cache: npm
       - run: npm ci --omit=dev --no-audit --no-fund
       # for the widget images (scripts/widget-images.mjs); not in package.json on purpose
-      - run: npm install --no-save --no-audit --no-fund playwright && npx playwright install --with-deps chromium
+      - run: npm install --no-save --no-audit --no-fund playwright
+      # Chromium is cached per Playwright version; the system libraries it needs come from apt
+      - id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - id: browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - name: Newest release of the widgets collection
         id: collection
         env:
