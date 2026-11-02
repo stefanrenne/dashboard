@@ -5,6 +5,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- `filter:` on a service widget hides that widget instead of the card, such as an update button
+  that only shows while there are updates. It reads the same attributes as the service's filter,
+  and the footer's "hidden" counts it.
 - While filters hide cards, the footer says how many ("3 hidden"); a click shows them, dimmed,
   and a search finds them then too.
 

@@ -880,6 +880,32 @@ test('filter: container.healthy reads the container: status check, not a widget'
   }
 });
 
+test('filter on a widget: hides that widget, not the card; shown on updates or a failure; counted', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.messages = { errors: [], warnings: [] };
+  layout.widgetTypes.wud = { name: 'WUD', client: null, i18n: {} };
+  const noUpdates = { op: '==', a: { ref: { indexes: [0], attr: 'updates' } }, b: { lit: 0 } };
+  const svc = (id) => ({ id, name: id, href: null, target: '_blank', icon: null, description: null, discovered: null, statuses: [],
+    widgets: [
+      { instanceId: `${id}0`, type: 'wud', options: {}, known: true, server: true, refreshMs: 60000 },
+      { instanceId: `${id}1`, type: 'custom-api', options: {}, known: true, server: true, refreshMs: 60000, filter: noUpdates },
+    ] });
+  layout.groups = [{ name: 'G', layout: {}, services: [svc('a'), svc('b'), svc('c')] }];
+  const wud = (updates) => ({ ok: true, data: { blocks: [], attributes: { updates } } });
+  const button = { ok: true, data: { blocks: [] } };
+  const w = await page({ '/api/layout': layout, '/api/widgets/a0': wud(0), '/api/widgets/a1': button, '/api/widgets/b0': wud(5), '/api/widgets/b1': button,
+    '/api/widgets/c0': { ok: false, error: 'WUD answered 401' }, '/api/widgets/c1': button });
+  const doc = w.document;
+  const boxes = (id) => [...doc.querySelectorAll(`[data-service="${id}"] > .widget`)];
+  assert.deepEqual(['a', 'b', 'c'].map((id) => boxes(id).map((b) => b.classList.contains('filtered'))), [[false, true], [false, false], [false, false]],
+    'hidden while there are no updates; shown with updates, and when the widget it reads fails');
+  assert.ok(!doc.querySelector('[data-service="a"]').classList.contains('filtered'), 'the card stays');
+  const btn = doc.getElementById('filtered-btn');
+  assert.deepEqual([btn.hidden, btn.textContent], [false, '1 verborgen'], 'the footer counts a hidden widget');
+  btn.click();
+  assert.ok(doc.body.classList.contains('show-filtered'));
+});
+
 test('filter: a widget without a server.js is evaluated at once, its group and the count follow', async () => {
   const layout = structuredClone(LAYOUT);
   layout.messages = { errors: [], warnings: [] };

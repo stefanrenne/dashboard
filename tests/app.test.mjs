@@ -1051,3 +1051,46 @@ test('filter: bound to the service\'s widgets in /api/layout; mistakes and secre
     await t.close();
   }
 });
+
+test('a widget\'s own filter: bound like the service\'s, taken out of its options, mistakes are messages', async () => {
+  const root = tmpDir('hd-wfilter-');
+  const attr = path.join(root, 'attr');
+  const own = path.join(root, 'own');
+  fs.mkdirSync(attr, { recursive: true });
+  fs.mkdirSync(own, { recursive: true });
+  fs.writeFileSync(path.join(attr, 'widget.yaml'), 'id: attr\nname: Attr\nversion: 1.0.0\napiVersion: 1\nattributes:\n  updates: { type: number }\n');
+  fs.writeFileSync(path.join(attr, 'server.js'), 'export default { async fetch() { return { blocks: [], attributes: { updates: 2 } } } }');
+  // a widget with an option named filter keeps it
+  fs.writeFileSync(path.join(own, 'widget.yaml'), 'id: own\nname: Own\nversion: 1.0.0\napiVersion: 1\noptions:\n  filter: { type: boolean }\n');
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${attr}\n  - path: ${own}\n`,
+    'services.yaml': [
+      '- G:',
+      '    - Wud:',
+      '        widgets:',
+      '          - { type: attr }',
+      '          - { type: datetime, filter: "widgets.attr.updates == 0" }',
+      '    - Bad: { widgets: [{ type: attr }, { type: datetime, filter: "widgets.radarr.x == 0" }] }',
+      '    - Broken: { widgets: [{ type: datetime, filter: "widgets.attr ==" }] }',
+      '    - Own: { widgets: [{ type: own, filter: false }] }',
+    ].join('\n') + '\n',
+  });
+  try {
+    const layout = await t.json('/api/layout');
+    const [wud, bad, broken, mine] = layout.groups[0].services;
+    assert.deepEqual(wud.widgets[1].filter, { op: '==', a: { ref: { indexes: [0], attr: 'updates' } }, b: { lit: 0 } });
+    assert.equal(wud.widgets[1].options.filter, undefined, 'not an option of the widget');
+    assert.equal(wud.widgets[0].filter, undefined);
+    assert.equal(wud.filter, undefined, 'the card itself has no filter');
+    assert.equal(bad.widgets[1].filter, undefined);
+    assert.equal(broken.widgets[0].filter, undefined);
+    assert.equal(mine.widgets[0].filter, undefined);
+    assert.equal(mine.widgets[0].options.filter, false, 'its own option');
+    const errors = layout.messages.errors.map((m) => `${m.path}: ${m.message}`);
+    assert.ok(errors.some((m) => /G\[1\]\.Bad\.widgets\[1\]\.filter: no "radarr" widget on this service; the widget is shown unfiltered/.test(m)), errors.join('\n'));
+    assert.ok(errors.some((m) => /G\[2\]\.Broken\.widgets\[0\]\.filter: .*the widget is shown unfiltered/.test(m)), errors.join('\n'));
+    assert.ok(!layout.messages.warnings.some((m) => /unknown option.*filter|filter.*unknown/i.test(m.message)), JSON.stringify(layout.messages.warnings));
+  } finally {
+    await t.close();
+  }
+});

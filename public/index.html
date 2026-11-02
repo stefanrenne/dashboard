@@ -146,9 +146,10 @@
 
   /* service card */
   /* a service's filter: (hidden while true), and a group left with no card to show */
-  body:not(.show-filtered) .card.filtered, body:not(.show-filtered) .group.filtered-empty { display: none; }
+  body:not(.show-filtered) .card.filtered, body:not(.show-filtered) .group.filtered-empty,
+  body:not(.show-filtered) .card .widget.filtered { display: none; }
   /* the footer's "3 hidden" shows them, dimmed */
-  .show-filtered .card.filtered { opacity: .55; }
+  .show-filtered .card.filtered, .show-filtered .card .widget.filtered { opacity: .55; }
   .card { position: relative; margin-bottom: 8px; padding: 4px; border-radius: 6px; background: var(--hd-card); transition: background .15s; min-width: 0;
     border: 1px solid var(--hd-card-border, transparent); }
   .card .names { padding-inline-end: calc(var(--tag-count, 0) * 68px + 8px); } /* keep long names clear of the status labels */
@@ -277,7 +278,7 @@
   .icon-btn:hover { opacity: 1; }
   .icon-btn svg { width: 18px; height: 18px; }
   .text-btn { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--hd-block); color: var(--hd-text);
-    font: inherit; font-size: .75rem; cursor: pointer; }
+    font: inherit; font-size: .75rem; white-space: nowrap; cursor: pointer; }
   .text-btn:hover, .text-btn[aria-pressed="true"] { background: var(--hd-card-hover); }
   .appearance { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--hd-block); }
   .appearance .icon-btn[aria-pressed="true"] { opacity: 1; background: var(--hd-card-hover); }
@@ -1171,20 +1172,27 @@ function renderService(service) {
   head.append(el('div', { class: 'names' }, name, service.description ? el('div', { class: 'desc', text: service.description }) : null));
   const card = el('article', { class: 'card shadow', 'data-service': service.id, 'data-name': service.name }, head);
   card.dataset.search = [service.name, service.description || ''].join(' ').toLowerCase();
-  // results by filter position: the widgets, then the status checks (container.<attr>)
+  // results by filter position: the widgets, then the status checks (container.<attr>); the
+  // card's filter and each widget's own filter read them
   const results = [];
-  const filterResult = (i) => service.filter ? (result) => {
+  const filters = service.filter || service.widgets.some((w) => w.filter);
+  const boxes = [];
+  const filterResult = (i) => filters ? (result) => {
     results[i] = result;
-    applyFilter(card, service, results);
+    applyFilter(card, service, results, boxes);
   } : null;
   if (service.filter) card.classList.add('filtered'); // until the widgets it reads have answered
   if (service.statuses.length) {
     const tags = service.statuses.map((s, j) => statusTag(s, card, service.statusStyle, service.showStats, filterResult(service.widgets.length + j)));
     card.append(el('div', { class: 'tags' }, ...tags));
   }
-  service.widgets.forEach((w, i) => card.append(mountWidget(w, null, service.name, filterResult(i))));
+  service.widgets.forEach((w, i) => {
+    boxes[i] = mountWidget(w, null, service.name, filterResult(i));
+    if (w.filter) boxes[i].classList.add('filtered'); // until the widgets it reads have answered
+    card.append(boxes[i]);
+  });
   // once the card is on the page: widgets without a server.js never answer, so evaluate now
-  if (service.filter) queueMicrotask(() => applyFilter(card, service, results));
+  if (filters) queueMicrotask(() => applyFilter(card, service, results, boxes));
   card.style.setProperty('--tag-count', String(service.statuses.length));
   return card;
 }
@@ -1227,17 +1235,21 @@ function filterIndexes(tree, out = new Set()) {
 }
 
 /**
- * Hides the card while its filter is true. Until every widget it reads (with a server.js) has
- * answered, it stays hidden; a widget that fails shows it, so a problem is not hidden away.
+ * Hides the card while its filter is true, and each widget while its own filter is true. Until
+ * every widget a filter reads (with a server.js) has answered, it stays hidden; a widget that
+ * fails shows it, so a problem is not hidden away.
  */
-function applyFilter(card, service, results) {
-  let hide;
+function applyFilter(card, service, results, boxes = []) {
   const sources = [...service.widgets, ...service.statuses];
-  const read = [...filterIndexes(service.filter)].map((i) => ({ w: sources[i], r: results[i] }));
-  if (read.some(({ r }) => r && !r.ok)) hide = false;
-  else if (read.some(({ w, r }) => w?.server && !r)) hide = true;
-  else hide = evalFilter(service.filter, (i, attr) => results[i]?.data?.attributes?.[attr]);
-  card.classList.toggle('filtered', hide);
+  const hides = (tree) => {
+    const read = [...filterIndexes(tree)].map((i) => ({ w: sources[i], r: results[i] }));
+    if (read.some(({ r }) => r && !r.ok)) return false;
+    if (read.some(({ w, r }) => w?.server && !r)) return true;
+    return evalFilter(tree, (i, attr) => results[i]?.data?.attributes?.[attr]);
+  };
+  if (service.filter) card.classList.toggle('filtered', hides(service.filter));
+  // a widget's own filter hides that widget; it keeps polling, since filters may read it
+  service.widgets.forEach((w, i) => { if (w.filter && boxes[i]) boxes[i].classList.toggle('filtered', hides(w.filter)); });
   updateFilteredGroups(card);
   updateFilteredCount();
 }
@@ -1245,7 +1257,8 @@ function applyFilter(card, service, results) {
 /** The footer's "3 hidden": how many cards a filter hides, a toggle that shows them dimmed. */
 function updateFilteredCount() {
   const btn = document.getElementById('filtered-btn');
-  const count = document.querySelectorAll('#groups .card.filtered').length;
+  // hidden cards, and the hidden widgets of the cards that are shown
+  const count = document.querySelectorAll('#groups .card.filtered, #groups .card:not(.filtered) > .widget.filtered').length;
   btn.hidden = count === 0;
   btn.textContent = translate('filteredCount', { count });
   btn.title = translate('filteredShow');

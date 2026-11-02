@@ -164,6 +164,36 @@ something is wrong with it:
 containers without a healthcheck (in quotes: YAML reads a leading `!` as a tag). Discovered Docker
 services have `container:` already, so the label `homelab.filter=container.healthy` works there.
 
+### A widget's filter
+
+`filter:` on one entry of `widgets:` hides that widget instead of the card, in the same language
+and reading the same attributes. For example a button that only shows while there is something to
+update:
+
+```yaml
+- Docker:
+    - Wud:
+        widgets:
+          - type: whatsupdocker
+            url: http://wud:3000
+          - type: button
+            text: Update containers
+            filter: widgets.whatsupdocker.updates == 0   # hidden while there is nothing to update
+            timeout: 900
+            command: >-
+              curl -fsS http://wud:3000/api/containers
+              | jq -r '.[] | select(.updateAvailable) | .id'
+              | while read -r id; do
+                  curl -fsS -X POST "http://wud:3000/api/containers/$id/triggers/docker/update" >/dev/null || exit 1;
+                done
+```
+
+The widget behaves as a filtered card: hidden until the widgets its filter reads have answered,
+shown when one of them fails, and counted in the footer's "hidden". A hidden widget keeps
+refreshing, since other filters may read it. It works on service widgets only (a header widget
+such as `search` keeps its own options), and a widget that has an option named `filter` itself
+keeps that option. As a Docker label: `homelab.widgets[1].filter=widgets.whatsupdocker.updates == 0`.
+
 ### Recipes
 
 A filter hides a card while all is well, so the dashboard shows what needs a look:

@@ -8,7 +8,7 @@ import { DEFAULT_REFRESH_MS } from './plugins/loader.js';
 import { CORE_WIDGETS } from './plugins/installer.js';
 import { stableId, parseDuration, isPlainObject } from './util.js';
 import { DEFAULT_LEVELS } from './highlight.js';
-import { bindFilter, filterRefs } from './filter.js';
+import { parseFilter, bindFilter, filterRefs } from './filter.js';
 import { k8sConnection } from './discovery/kubeconfig.js';
 
 /**
@@ -278,12 +278,12 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     };
   };
 
-  // `filter:` bound to the service's widgets and status checks (container.<attr>); the page
-  // evaluates it on their attributes. Its literals go to the browser, so a secret (a filled-in
-  // {{HD_VAR_*}}) is refused (hard rule 1).
-  const serviceFilter = (service, statuses, where) => {
-    if (!service.filter) return {};
-    const at = { ...where, path: `${where.path}.filter` };
+  // A `filter:` (a parsed tree, of the service or of one of its widgets) bound to the service's
+  // widgets and status checks (container.<attr>); the page evaluates it on their attributes. Its
+  // literals go to the browser, so a secret (a filled-in {{HD_VAR_*}}) is refused (hard rule 1).
+  // `what` (service or widget) is shown unfiltered after an error.
+  const bindFilterFor = (tree, service, statuses, at, what) => {
+    if (!tree) return {};
     const declared = (type) => {
       const widget = registry.get(type);
       return { id: widget?.id, attributes: widget ? widget.manifest.attributes ?? {} : undefined };
@@ -297,19 +297,39 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       walk(n.a);
       walk(n.b);
     };
-    walk(service.filter);
+    walk(tree);
     if (literals.some((l) => [...secrets].some((s) => s && s.length >= 3 && l.includes(s)))) {
-      errors.push({ ...at, message: 'a filter cannot hold a secret ({{HD_VAR_*}} or {{HD_FILE_*}}); the service is shown unfiltered' });
+      errors.push({ ...at, message: `a filter cannot hold a secret ({{HD_VAR_*}} or {{HD_FILE_*}}); the ${what} is shown unfiltered` });
       return {};
     }
-    const bound = bindFilter(service.filter, widgets, checks);
+    const bound = bindFilter(tree, widgets, checks);
     for (const message of bound.warnings) warnings.push({ ...at, message });
     if (bound.errors.length) {
-      for (const message of bound.errors) errors.push({ ...at, message: `${message}; the service is shown unfiltered` });
+      for (const message of bound.errors) errors.push({ ...at, message: `${message}; the ${what} is shown unfiltered` });
       return {};
     }
     if (!filterRefs(bound.tree).length) warnings.push({ ...at, message: 'the filter names no widget attribute, so it is always true or always false' });
     return { filter: bound.tree };
+  };
+  const serviceFilter = (service, statuses, where) =>
+    bindFilterFor(service.filter, service, statuses, { ...where, path: `${where.path}.filter` }, 'service');
+
+  /**
+   * A service widget's own `filter:` (hides that widget while true), taken out of its options
+   * unless the widget declares an option of that name. Returns { options, filter? }.
+   */
+  const widgetFilter = (w, service, statuses, at) => {
+    const declares = registry.get(w.type)?.manifest.options?.filter !== undefined;
+    if (declares || w.options?.filter === undefined || w.options.filter === null) return { options: w.options };
+    const { filter: text, ...options } = w.options;
+    let tree;
+    try {
+      tree = parseFilter(typeof text === 'string' ? text : undefined);
+    } catch (err) {
+      errors.push({ ...at, message: `${err.message}; the widget is shown unfiltered` });
+      return { options };
+    }
+    return { options, ...bindFilterFor(tree, service, statuses, at, 'widget') };
   };
 
   const layoutServices = (group) =>
@@ -332,12 +352,11 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         statusStyle: service.statusStyle ?? config.settings.statusStyle ?? null,
         showStats: service.showStats ?? config.settings.showStats ?? false,
         statuses,
-        widgets: service.widgets.map((w, i) =>
-          addInstance(stableId('w', group.name, service.name, String(i)), w.type, w.options, {
-            file: where.file,
-            path: w.path ?? where.path,
-          }),
-        ),
+        widgets: service.widgets.map((w, i) => {
+          const at = { file: where.file, path: w.path ?? where.path };
+          const { options, filter } = widgetFilter(w, service, statuses, { ...at, path: `${at.path}.filter` });
+          return { ...addInstance(stableId('w', group.name, service.name, String(i)), w.type, options, at), ...(filter ? { filter } : {}) };
+        }),
       };
     });
 
