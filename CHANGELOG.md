@@ -15,6 +15,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Changed
 - CI tests against the newest release of the widgets collection; the Pages build checks every
   code block with Rouge, the site's highlighter.
+- The widget images on the docs site are photographed in the light appearance, as the site is.
 
 ## [0.14.0] - 2026-11-02
 

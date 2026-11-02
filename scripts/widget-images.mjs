@@ -180,7 +180,7 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hd-widget-images-'));
   const write = (file, data) => fs.writeFileSync(path.join(configDir, file), YAML.stringify(data));
   const writeConfig = () => {
-    write('settings.yaml', { title: 'Widgets', theme: 'dark', color: 'slate', language: 'en', hideVersion: true, disableUpdateCheck: true, layout: { Widgets: { header: false } }, providers });
+    write('settings.yaml', { title: 'Widgets', theme: 'light', color: 'slate', language: 'en', hideVersion: true, disableUpdateCheck: true, layout: { Widgets: { header: false } }, providers });
     write('services.yaml', [{ Widgets: [...services.values()].map(({ name, ...s }) => ({ [name]: s })) }]);
     write('widgets.yaml', [...header.values()]);
   };
@@ -222,7 +222,7 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   fs.mkdirSync(out, { recursive: true });
   const written = [];
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 460, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
+  const ctx = await browser.newContext({ viewport: { width: 460, height: 900 }, deviceScaleFactor: 2, colorScheme: 'light', locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
   // a fixed day in October 2026, the month of the fixtures' calendar events
   await ctx.addInitScript(() => {
     const fixed = new Date('2026-10-23T09:41:00+02:00').getTime();

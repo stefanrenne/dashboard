@@ -84,3 +84,4 @@ Finished work, newest first.
 - 2026-11-02: Filter recipes in the docs: Radarr, What's up Docker, Proxmox, Speedtest, Uptime Kuma and container health.
 - 2026-11-02: The footer counts the cards filters hide ("3 hidden") and shows them dimmed on a click; a filter on a widget without a server.js is evaluated at once.
 - 2026-11-02: The Pages workflow caches Chromium per Playwright version.
+- 2026-11-02: Widget images on the docs site in the light appearance, as the docs theme.
