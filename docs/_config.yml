@@ -1,4 +1,4 @@
-# GitHub Pages site for these docs: https://stefanrenne.github.io/homelab-dashboard/
+# GitHub Pages site for these docs: https://getdashboard.dev/
 # Built by .github/workflows/pages.yml after scripts/pages.sh staged docs/ and the widget pages.
 # Titles, the menu order and the redirects from old addresses live here, so the Markdown files
 # stay clean on GitHub.

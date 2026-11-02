@@ -1,6 +1,6 @@
 name: Pages
 
-# The documentation site (https://stefanrenne.github.io/homelab-dashboard/): docs/ and a page
+# The documentation site (https://getdashboard.dev/): docs/ and a page
 # per widget, with an example image (of the widgets collection at its newest release), built with
 # Jekyll and the just-the-docs theme (docs/_config.yml).
 on:

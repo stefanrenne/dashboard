@@ -92,7 +92,7 @@ the image and smoke-tests it.
   picks up a new collection release only once a day, so **every collection release is followed by
   a rebuild of the site**: `gh workflow run pages.yml --repo stefanrenne/homelab-dashboard`, then
   check that the page of each new or changed widget is there
-  (`https://stefanrenne.github.io/homelab-dashboard/widgets/collection/<id>.html`).
+  (`https://getdashboard.dev/widgets/collection/<id>.html`).
 - **No version requirements in the docs before 1.0**: no "(dashboard 0.12.0 or newer)", "since
   0.8.0" or "needs collection 0.4.0". Versions belong in `CHANGELOG.md`, the Migration section of
   `docs/configuration/README.md` and the Changes table of the API reference. Versions of the

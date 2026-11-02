@@ -10,9 +10,9 @@ with 170+ widgets and room for the ones <strong>you</strong> publish.</p>
   <img alt="The dashboard: a header with a greeting, the time, system meters, the weather and search; cards with live numbers from Plex, Radarr, Sonarr, SABnzbd, Seerr, Proxmox, Unraid, Pi-hole, What's up Docker, Traefik, Immich, Paperless-ngx, Nextcloud, Uptime Kuma and Speedtest, and buttons such as Reboot node, Stop the array, Pause downloads and Update all containers" src="docs/images/screenshot-dark.png">
 </picture>
 
-[Documentation](https://stefanrenne.github.io/homelab-dashboard/) ·
-[Widgets](https://stefanrenne.github.io/homelab-dashboard/widgets/) ·
-[Write a widget](https://stefanrenne.github.io/homelab-dashboard/extend/)
+[Documentation](https://getdashboard.dev/) ·
+[Widgets](https://getdashboard.dev/widgets/) ·
+[Write a widget](https://getdashboard.dev/extend/)
 
 </div>
 
@@ -57,10 +57,10 @@ Open `http://localhost:3000`, then edit the YAML files in `config`: the page fol
 
 ## Documentation
 
-Everything else is on **[stefanrenne.github.io/homelab-dashboard](https://stefanrenne.github.io/homelab-dashboard/)**:
-[configuration](https://stefanrenne.github.io/homelab-dashboard/configuration/),
-[every widget](https://stefanrenne.github.io/homelab-dashboard/widgets/) and how to
-[write your own](https://stefanrenne.github.io/homelab-dashboard/extend/).
+Everything else is on **[getdashboard.dev](https://getdashboard.dev/)**:
+[configuration](https://getdashboard.dev/configuration/),
+[every widget](https://getdashboard.dev/widgets/) and how to
+[write your own](https://getdashboard.dev/extend/).
 The same pages are in [docs/](docs/README.md).
 
 ## License

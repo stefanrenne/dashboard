@@ -29,9 +29,12 @@ A change to the widget API is a release note of its own: say which `apiVersion` 
 ## Documentation site
 
 `.github/workflows/pages.yml` publishes `docs/` as
-[stefanrenne.github.io/homelab-dashboard](https://stefanrenne.github.io/homelab-dashboard/) on
-every push to `main` that touches it. Jekyll builds it with the just-the-docs theme; the
-Markdown stays plain (no front matter), titles, the menu order and redirects from old addresses
+[getdashboard.dev](https://getdashboard.dev/) on every push to `main` that touches it. The
+domain is set under the repository's Settings > Pages, not in a `CNAME` file; the build takes
+the site's base path from there, so after a change of domain run the workflow once by hand,
+or every link still points at the old path (the old `stefanrenne.github.io/homelab-dashboard/`
+addresses redirect to the domain). Jekyll builds it with the just-the-docs theme; the Markdown
+stays plain (no front matter), titles, the menu order and redirects from old addresses
 are in `docs/_config.yml`. The menu has four parts: Home (`docs/README.md`), Configuration
 (`docs/configuration/`, a page per file as in homepage), Widgets and Extend (`docs/extend/`).
 
