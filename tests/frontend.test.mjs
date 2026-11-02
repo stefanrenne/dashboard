@@ -1,5 +1,5 @@
 // The dashboard page in jsdom, with fetch stubbed.
-import { test } from 'node:test';
+import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -73,6 +73,14 @@ const RESULTS = {
   '/api/widgets/w-5': { ok: false, error: 'connect ECONNREFUSED' },
 };
 
+// Every window a test opens is closed after it, also when the test fails or forgets: an open
+// page keeps its pollers and the offline retry running, and node with them.
+const opened = new Set();
+afterEach(() => {
+  for (const w of opened) w.close();
+  opened.clear();
+});
+
 async function page(results = RESULTS, calls = []) {
   const dom = new JSDOM(HTML, {
     runScripts: 'dangerously',
@@ -85,6 +93,7 @@ async function page(results = RESULTS, calls = []) {
       };
     },
   });
+  opened.add(dom.window);
   await new Promise((r) => setTimeout(r, 30));
   return dom.window;
 }
@@ -771,6 +780,7 @@ test('a status label shows a spinner until its first result', async () => {
       };
     },
   });
+  opened.add(dom.window);
   await new Promise((r) => setTimeout(r, 30));
   const tag = dom.window.document.querySelector('[data-service="svc-1"] .tag');
   assert.ok(tag.querySelector('.tag-spinner'), 'no dot: a spinner');
@@ -871,6 +881,7 @@ test('filter: before its widget answers, a card is hidden', async () => {
         : new Promise(() => {});
     },
   });
+  opened.add(dom.window);
   await new Promise((r) => setTimeout(r, 30));
   try {
     assert.ok(dom.window.document.querySelector('[data-service="f"]').classList.contains('filtered'));

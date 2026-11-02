@@ -5,11 +5,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Tests and CI
 
-- [ ] **`tests/frontend.test.mjs` leaves timers running.** Run on its own
-  (`node --test tests/frontend.test.mjs`) the process stays alive for minutes after the last
-  test; `npm test` hides it with `--test-force-exit`. Find what jsdom keeps alive after
-  `window.close()` (the toast timer, the offline retry `setTimeout(load, 5000)`, the pollers) and
-  clear it, so a failing test cannot hang a run either.
 - [ ] **Check the docs' code blocks with Rouge in the Pages workflow.** The site's highlighter
   marks some valid YAML red (keys with `[ ]` or `'`); `tests/pages.test.mjs` catches the known
   cases with a regex. The Pages build has Ruby: run `rougify` on every code block of `docs/` and
