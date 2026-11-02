@@ -79,3 +79,4 @@ Finished work, newest first.
 - 2026-11-02: CI tests against the newest release of the widgets collection, as installations get it.
 - 2026-11-02: CLAUDE.md hard rule 11 names the folders this repository has.
 - 2026-11-02: `tests/frontend.test.mjs` closes every page it opens after each test; run on its own it ends in seconds instead of hanging.
+- 2026-11-02: A test for the Kubernetes annotation `homelab.dev/filter` (and `gethomepage.dev/filter`).

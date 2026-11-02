@@ -9,8 +9,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
   marks some valid YAML red (keys with `[ ]` or `'`); `tests/pages.test.mjs` catches the known
   cases with a regex. The Pages build has Ruby: run `rougify` on every code block of `docs/` and
   the widget pages and fail on a highlighter error.
-- [ ] **A test for the Kubernetes annotation `homelab.dev/filter`.** Only the Docker label
-  `homelab.filter` is tested (`tests/discovery.test.mjs`).
 
 ## Filters
 

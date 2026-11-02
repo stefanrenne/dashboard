@@ -259,6 +259,13 @@ test('kubernetes: app, pod-selector and external annotations, as in homepage', (
   assert.deepEqual(servicesFromIngresses(ing({ 'gethomepage.dev/external': 'true' }))[0].def, { external: true });
 });
 
+test('kubernetes: a service filter from the homelab.dev/filter annotation', () => {
+  const ing = (annotations) => servicesFromIngresses({ items: [{ metadata: { name: 'shelly', namespace: 'iot', annotations }, spec: {} }] })[0];
+  assert.equal(ing({ 'homelab.dev/enabled': 'true', 'homelab.dev/filter': 'widget.update == false' }).def.filter, 'widget.update == false');
+  assert.equal(ing({ 'gethomepage.dev/enabled': 'true', 'gethomepage.dev/filter': 'widget.update' }).def.filter, 'widget.update', 'the homepage prefix too');
+  assert.equal(ing({ 'homelab.dev/enabled': 'true' }).def.filter, undefined);
+});
+
 test('kubernetes: gethomepage.dev annotations work too', () => {
   const out = servicesFromIngresses({ items: [{
     metadata: { name: 'x', namespace: 'n', annotations: { 'gethomepage.dev/enabled': 'true', 'gethomepage.dev/name': 'X', 'gethomepage.dev/group': 'G' } },
