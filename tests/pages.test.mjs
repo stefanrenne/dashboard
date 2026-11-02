@@ -17,6 +17,7 @@ options:
   url: { type: url, required: true }      # e.g. http://x:1
   key: { type: string, secret: true }
   mode: { type: enum, values: [a, b], default: a }
+  old: { type: string, deprecated: url }   # the old name of url
 `);
   assert.deepEqual(rows, [
     { name: 'url', type: 'url', required: true, default: undefined, secret: false, description: 'E.g. http://x:1' },

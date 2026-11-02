@@ -149,6 +149,12 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const { own, options: widgetOptions } = splitInstanceKeys(widget.manifest.options, withConnection(widget.id, rawOptions, where));
     if (own.provider !== undefined) applyProvider(widget.manifest.options, String(own.provider), widgetOptions, where, type);
     const { options, publicOptions, errors: optionErrors } = validateOptions(widget.manifest.options, widgetOptions, secrets);
+    // an option's old name (widget.yaml `deprecated: <new name>`) keeps working, with a warning
+    for (const [name, def] of Object.entries(widget.manifest.options)) {
+      if (def.deprecated && widgetOptions[name] !== undefined) {
+        warnings.push({ ...where, message: `${type}: ${name} is an old name${typeof def.deprecated === 'string' ? `, renamed to ${def.deprecated}` : ''}; it still works` });
+      }
+    }
     // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #hd-mask)
     for (const [name, def] of Object.entries(widget.manifest.options)) {
       if (def.type !== 'icon' || options[name] === undefined) continue;

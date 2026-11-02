@@ -43,7 +43,8 @@ export function attributeRows(yamlText) {
 export function optionRows(yamlText) {
   const manifest = YAML.parse(yamlText);
   const comments = lineComments(yamlText, 'options');
-  return Object.entries(manifest.options ?? {}).map(([name, def]) => ({
+  // an old name (`deprecated:`) still works but is not documented
+  return Object.entries(manifest.options ?? {}).filter(([, def]) => !def?.deprecated).map(([name, def]) => ({
     name,
     type: def.type === 'enum' ? def.values.join(' / ') : def.type,
     required: def.required === true,
