@@ -832,6 +832,18 @@ test('filter: a card hides while its filter is true, shows on a failure, and an 
     assert.ok(!doc.querySelector('[data-group="Devices"]').classList.contains('filtered-empty'));
     assert.deepEqual(Array.from(w.HD.filterServices(''), (c) => c.dataset.service).sort(), ['b', 'c', 'f'], 'search hits leave the hidden cards out');
     assert.equal(w.HD.filterServices('bureau').length, 0, 'a hidden card is no search hit');
+    // the footer counts them, and shows them on a click
+    const btn = doc.getElementById('filtered-btn');
+    assert.deepEqual([btn.hidden, btn.textContent, btn.getAttribute('aria-pressed')], [false, '4 verborgen', 'false']);
+    w.HD.filterServices('bureau');
+    btn.click();
+    assert.ok(doc.body.classList.contains('show-filtered'));
+    assert.equal(btn.getAttribute('aria-pressed'), 'true');
+    assert.equal(doc.querySelector('[data-service="a"]').hidden, false, 'the search that is on finds it now');
+    assert.equal(w.HD.filterServices('bureau').length, 1);
+    btn.click();
+    assert.ok(!doc.body.classList.contains('show-filtered'));
+    assert.equal(w.HD.filterServices('bureau').length, 0);
   } finally {
     w.close();
   }
@@ -860,9 +872,29 @@ test('filter: container.healthy reads the container: status check, not a widget'
   try {
     const filtered = (id) => w.document.querySelector(`[data-service="${id}"]`).classList.contains('filtered');
     assert.deepEqual(['a', 'b', 'c', 'd'].map(filtered), [true, false, false, false]);
+    assert.equal(w.document.getElementById('filtered-btn').hidden, false);
+    const none = await page({ ...results, '/api/widgets/ca': container({ healthy: false, unhealthy: false }) });
+    assert.equal(none.document.getElementById('filtered-btn').hidden, true, 'nothing hidden: no button');
   } finally {
     w.close();
   }
+});
+
+test('filter: a widget without a server.js is evaluated at once, its group and the count follow', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.messages = { errors: [], warnings: [] };
+  layout.widgetTypes.datetime = { name: 'Date', client: null, i18n: {} };
+  const svc = (id, filter) => ({ id, name: id, href: null, target: '_blank', icon: null, description: null, discovered: null, statuses: [], filter,
+    widgets: [{ instanceId: `w${id}`, type: 'datetime', options: {}, known: true, server: false }] });
+  layout.groups = [
+    { name: 'Quiet', layout: {}, services: [svc('a', { op: '==', a: { ref: { indexes: [0], attr: 'x' } }, b: { lit: null } })] },  // true: hidden
+    { name: 'Shown', layout: {}, services: [svc('b', { op: '!=', a: { ref: { indexes: [0], attr: 'x' } }, b: { lit: null } })] },  // false: shown
+  ];
+  const w = await page({ '/api/layout': layout });
+  const doc = w.document;
+  assert.deepEqual(['a', 'b'].map((id) => doc.querySelector(`[data-service="${id}"]`).classList.contains('filtered')), [true, false]);
+  assert.ok(doc.querySelector('[data-group="Quiet"]').classList.contains('filtered-empty'));
+  assert.equal(doc.getElementById('filtered-btn').textContent, '1 verborgen');
 });
 
 test('filter: before its widget answers, a card is hidden', async () => {

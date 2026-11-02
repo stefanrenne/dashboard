@@ -141,7 +141,8 @@ example, a Shelly device that only appears while a firmware update is waiting:
 An attribute no widget sent counts as `null`, so `widget.update == false` is not true
 before the widget knows. Until the widgets the filter reads have answered, the card stays hidden;
 when one of them fails, the card is shown, so a broken service never disappears quietly. A group
-whose cards are all hidden is hidden too, and a hidden card is no search hit.
+whose cards are all hidden is hidden too, and a hidden card is no search hit. While filters
+hide cards, the footer says how many ("3 hidden"); a click shows them, dimmed, until the next click.
 
 ### Container health
 

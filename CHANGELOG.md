@@ -4,6 +4,18 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- While filters hide cards, the footer says how many ("3 hidden"); a click shows them, dimmed,
+  and a search finds them then too.
+
+### Fixed
+- A filter on a widget without a server.js (such as `datetime`) is evaluated when the page
+  loads: such a card stayed hidden whatever its filter said, and its emptied group stayed.
+
+### Changed
+- CI tests against the newest release of the widgets collection; the Pages build checks every
+  code block with Rouge, the site's highlighter.
+
 ## [0.14.0] - 2026-11-02
 
 ### Added

@@ -8,9 +8,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Filters
 
-- [ ] **Hidden cards cannot be seen at all.** A dashboard with filters gives no sign that cards
-  are hidden. A footer toggle ("show 3 hidden") or a count per group would let a viewer check
-  what the filters hide.
 
 ## Docs site
 
