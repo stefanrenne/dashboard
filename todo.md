@@ -18,8 +18,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Housekeeping
 
-- [ ] **Release the widget example repo.** `homelab-dashboard-widget-example` has the attributes
-  (57df532) on `main`, but no release, so `#latest` installs still get the old version.
 
 ## Other
 
