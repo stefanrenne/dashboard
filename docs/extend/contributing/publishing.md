@@ -10,6 +10,9 @@ CI (`.github/workflows/ci.yml`) does the work; a release is a tag.
 | Run by hand on `main` | As a tag, for `package.json`'s version when it is not released yet: CI creates the tag `vX.Y.Z` with the release. For when a tag cannot be pushed. Otherwise as a push to `main`. |
 | Monday 04:23 UTC | Rebuild of `latest`, so base image security fixes arrive without a code change; versioned as a push to `main`. |
 
+A new push to `main` or a pull request cancels the older CI run of that branch or PR, which is still
+running. Runs for a tag, by hand and on the schedule are never cancelled.
+
 ## Release steps
 
 1. Make sure `CHANGELOG.md` has everything under `## [Unreleased]`.
