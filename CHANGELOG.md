@@ -13,6 +13,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   loads: such a card stayed hidden whatever its filter said, and its emptied group stayed.
 
 ### Changed
+- Only releases are published as images: `latest` is the newest release, no longer every push
+  to `main` (a `main-<sha>` version in the footer). A tag must be on a commit on `main`; the
+  weekly rebuild rebuilds the newest release.
 - CI tests against the newest release of the widgets collection; the Pages build checks every
   code block with Rouge, the site's highlighter.
 - The widget images on the docs site are photographed in the light appearance, as the site is.

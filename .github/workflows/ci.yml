@@ -6,8 +6,8 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
-  # weekly rebuild of latest, so security fixes of the base image (node:22-alpine) reach the
-  # image without a code change
+  # weekly rebuild of the newest release, so security fixes of the base image reach it without
+  # a code change
   schedule:
     - cron: "23 4 * * 1"
 
@@ -47,12 +47,11 @@ jobs:
         env:
           HD_COLLECTION_DIR: collection
 
-  # On a pull request the image is built and smoke-tested too, without pushing: an update of the
-  # build actions or the base image is tested before it is merged.
+  # A push to main and a pull request build and smoke-test the image without pushing it: an update
+  # of the build actions or the base image is tested before a release. Only releases are pushed.
   # Whether the image changes. A push to main that touches only docs, scripts, tests, examples
-  # or Markdown (none of them matters in the image, see .dockerignore) builds no image, so
-  # `latest` stays the build it was (a release keeps its number). Tags, runs by hand, the weekly
-  # rebuild and pull requests always build.
+  # or Markdown (none of them matters in the image, see .dockerignore) skips the image build.
+  # Tags, runs by hand, the weekly rebuild and pull requests always build.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -84,28 +83,34 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags and main: only a release commit on main is published
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
-      # the version in the image: 1.2.3 for a tag v1.2.3, or for a run by hand on main (which
-      # releases package.json's version unless it is released already; dependabot-automerge.yml
-      # starts such runs too). Otherwise main-<short sha>, unless the commit carries a release
-      # tag: the main build of a release commit (and the weekly rebuild) is that version too, so
-      # `latest` never calls a release main-<sha>.
+      # Only releases are published (`latest`, `X.Y.Z`, `X.Y`): a tag vX.Y.Z on a commit on main,
+      # a run by hand on main that releases package.json's version (unless released already;
+      # dependabot-automerge.yml starts such runs too), and the weekly rebuild of the newest
+      # release. Every other build (a push to main, a pull request) is tested, not pushed, as
+      # main-<short sha>.
       - id: version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; rel=true
+          v="main-${GITHUB_SHA::7}"; rel=false; publish=false
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; rel=true; publish=true
           elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/main ]]; then
-            v=$(node -p "require('./package.json').version"); rel=true
-            if gh release view "v$v" >/dev/null 2>&1; then echo "v$v is released already: a main build"; v="main-${GITHUB_SHA::7}"; rel=false; fi
-          else v="main-${GITHUB_SHA::7}"; rel=false; fi
-          if [[ "$v" == main-* ]]; then
-            # a release tag on this commit (annotated tags show as <tag>^{})
-            tag=$(git ls-remote --tags origin | awk -v sha="$GITHUB_SHA" '$1 == sha { sub("refs/tags/", "", $2); sub(/\^\{\}$/, "", $2); print $2 }' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
-            if [ -n "$tag" ]; then echo "this commit is release $tag"; v="${tag#v}"; fi
+            pkg=$(node -p "require('./package.json').version")
+            if gh release view "v$pkg" >/dev/null 2>&1; then echo "v$pkg is released already: nothing to publish"
+            else v="$pkg"; rel=true; publish=true; fi
+          elif [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
+            # the newest release again, with the base image's security fixes
+            tag=$(gh release view --json tagName --jq .tagName)
+            git checkout -q "$tag"; v="${tag#v}"; publish=true; echo "rebuilding $tag"
           fi
-          { echo "version=$v"; echo "release=$rel"; echo "minor=${v%.*}"; } >> "$GITHUB_OUTPUT"
+          if [ "$publish" = true ] && ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$v is not a commit on main: only releases from main are published"; exit 1
+          fi
+          { echo "version=$v"; echo "release=$rel"; echo "publish=$publish"; echo "minor=${v%.*}"; } >> "$GITHUB_OUTPUT"
       - name: Build for the smoke test (amd64)
         uses: docker/build-push-action@v7
         with:
@@ -126,7 +131,7 @@ jobs:
           curl -fs http://127.0.0.1:3000/ | grep -q '<title>'
           docker logs hd
       - uses: docker/login-action@v4
-        if: github.event_name != 'pull_request'
+        if: steps.version.outputs.publish == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -136,17 +141,17 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.release == 'true' }}
-            type=raw,value=${{ steps.version.outputs.minor }},enable=${{ steps.version.outputs.release == 'true' }}
-            type=sha,format=short
-      - name: Build and push (amd64, arm64)
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.minor }}
+      # every build checks that arm64 builds too; only a release is pushed
+      - name: Build (amd64, arm64) and push a release
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           pull: true
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ steps.version.outputs.publish == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: VERSION=${{ steps.version.outputs.version }}

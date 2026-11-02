@@ -86,7 +86,7 @@ For Docker discovery through a read-only socket proxy, see
 
 </details>
 
-Images are built for amd64 and arm64: `latest` follows `main`, and every release has its own tag.
+Images are built for amd64 and arm64 for every release: `latest` is the newest release, and each has its own tag (`0.14.0`, `0.14`).
 
 ## Where to next
 

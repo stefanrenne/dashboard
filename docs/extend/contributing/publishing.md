@@ -5,10 +5,10 @@ CI (`.github/workflows/ci.yml`) does the work; a release is a tag.
 | Event | What CI does |
 |---|---|
 | Pull request | Tests, an amd64 image build and a smoke test. Nothing is pushed. |
-| Push to `main` | The same, then `ghcr.io/stefanrenne/homelab-dashboard:latest` and `:sha-<short>` for amd64 and arm64. The version in the image is `main-<short sha>`, or `X.Y.Z` when the commit carries the release tag `vX.Y.Z` (so `latest` of a release shows its number). A push that changes only `docs/`, `scripts/`, `tests/`, `examples/` or Markdown runs the tests but builds no image, so `latest` stays as it was. |
-| Tag `vX.Y.Z` | The same, tagged `X.Y.Z` and `X.Y`, and a GitHub release with that version's CHANGELOG section. |
+| Push to `main` | The same, for amd64 and arm64: tested, nothing is pushed. A push that changes only `docs/`, `scripts/`, `tests/`, `examples/` or Markdown runs the tests only. |
+| Tag `vX.Y.Z` | The same, pushed as `latest`, `X.Y.Z` and `X.Y`, and a GitHub release with that version's CHANGELOG section. The tagged commit must be on `main`, or nothing is published. |
 | Run by hand on `main` | As a tag, for `package.json`'s version when it is not released yet: CI creates the tag `vX.Y.Z` with the release. For when a tag cannot be pushed. Otherwise as a push to `main`. |
-| Monday 04:23 UTC | Rebuild of `latest`, so base image security fixes arrive without a code change; versioned as a push to `main`. |
+| Monday 04:23 UTC | Rebuild of the newest release (`latest`, `X.Y.Z`, `X.Y`), so base image security fixes arrive without a code change. |
 
 A new push to `main` or a pull request cancels the older CI run of that branch or PR, which is still
 running. Runs for a tag, by hand and on the schedule are never cancelled.
