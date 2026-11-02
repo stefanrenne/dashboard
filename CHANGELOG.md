@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-02
+
 ### Added
 - `filter:` on a service widget hides that widget instead of the card, such as an update button
   that only shows while there are updates. It reads the same attributes as the service's filter,
