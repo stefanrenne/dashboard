@@ -4,10 +4,6 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-### Added
-- `deprecated: <new name>` on a widget option: an old name keeps working, the dashboard warns
-  when it is used, and the docs site leaves it out of the options table.
-
 ## [0.15.0] - 2026-11-02
 
 ### Added

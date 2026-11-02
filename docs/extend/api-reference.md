@@ -68,7 +68,6 @@ formatted for the card ("1.2 TB", "2d 4h") makes a poor filter, so return the ra
 | `required` | `true` makes a missing option an error on the card and in the config messages. |
 | `default` | Used when the option is missing. |
 | `secret` | `true` keeps the option on the server. |
-| `deprecated` | An old name that still works: the new name (`deprecated: filterServices`) or `true`. Users who set it get a warning; the docs page leaves it out. |
 
 An `icon` option takes what a service's `icon:` takes (`plex.svg`, `mdi-home`, `si-ubuntu`,
 `sh-plex`, `/icons/x.png`, a URL) and reaches the widget as a URL. A single-colour icon (`mdi-`,
@@ -253,7 +252,6 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 | 1 | 0.1.0 | First version (including `vars`, row `status` and `defaultFields`). |
 | 1 | 0.8.0 | `action(ctx)` in server.js, `ctx.configDir`, the `hd-widget-action` event and the element's `busy`; `POST api/widgets/<instanceId>/action`. |
 | 1 | 0.10.0 | `showResult: 'failure'` in `hd-widget-action`, and the element's `actionResult`. |
-| 1 | next | `deprecated` in an option's schema: an old name that still works, with a warning. Older dashboards ignore it. |
 | 1 | next | `attributes` in widget.yaml and in the result: public values a service's `filter:` reads. Older dashboards ignore them. |
 | 1 | next | `from:` in an attribute: a block key, `@attention`, `@status` or `@rows`. |
 | 1 | next | Blocks can carry `highlight: { level, valueOnly }`, added by the dashboard from the entry's `highlight:` rules. Widgets need no change. |
