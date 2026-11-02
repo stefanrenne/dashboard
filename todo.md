@@ -11,10 +11,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 - [ ] **Hidden cards cannot be seen at all.** A dashboard with filters gives no sign that cards
   are hidden. A footer toggle ("show 3 hidden") or a count per group would let a viewer check
   what the filters hide.
-- [ ] **Filter recipes in the docs.** Filtering services has one example (Shelly). Add a few
-  that use the new attributes: Radarr only with a blocked import
-  (`widget.attention == false`), Proxmox only with a stopped VM (`widget.vmsStopped == 0`), a
-  speed test below a threshold (`widget.download > 100`).
 
 ## Docs site
 

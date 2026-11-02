@@ -163,6 +163,37 @@ something is wrong with it:
 containers without a healthcheck (in quotes: YAML reads a leading `!` as a tag). Discovered Docker
 services have `container:` already, so the label `homelab.filter=container.healthy` works there.
 
+### Recipes
+
+A filter hides a card while all is well, so the dashboard shows what needs a look:
+
+```yaml
+- Media:
+    - Radarr:                                   # only while it marks something, such as a blocked import
+        href: http://radarr.lan:7878
+        filter: widget.attention == false
+        widget: { type: radarr, url: http://radarr.lan:7878, key: "{{HD_VAR_RADARR_KEY}}" }
+    - Updates:                                  # only while a container has an update
+        filter: widget.updates == 0
+        widget: { type: whatsupdocker, url: http://wud.lan:3000 }
+- Infrastructure:
+    - Proxmox:                                  # only while a VM is stopped
+        href: https://pve.lan:8006
+        filter: widget.vmsStopped == 0
+        widget: { type: proxmox, url: https://pve.lan:8006, username: "{{HD_VAR_PVE_USER}}", password: "{{HD_VAR_PVE_TOKEN}}" }
+    - Speedtest:                                # only while the last test was slower than 100 Mbit/s
+        filter: widget.download > 100
+        widget: { type: speedtest, url: http://speedtest.lan }
+    - Uptime Kuma:                              # only while a monitor is down
+        filter: widget.down == 0
+        widget: { type: uptimekuma, url: http://kuma.lan:3001, slug: home }
+    - Plex:                                     # only while its container is not healthy
+        container: plex
+        filter: container.healthy
+```
+
+The attributes each widget publishes are on its page under Filter attributes.
+
 ### Mistakes
 
 A mistake in the expression (`widget.update false`), a widget that is not on the service

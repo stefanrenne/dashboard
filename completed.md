@@ -81,3 +81,4 @@ Finished work, newest first.
 - 2026-11-02: `tests/frontend.test.mjs` closes every page it opens after each test; run on its own it ends in seconds instead of hanging.
 - 2026-11-02: A test for the Kubernetes annotation `homelab.dev/filter` (and `gethomepage.dev/filter`).
 - 2026-11-02: The Pages workflow runs every code block of the site through Rouge 3.30.0 (`scripts/check-highlight.rb`) and fails on one it marks red.
+- 2026-11-02: Filter recipes in the docs: Radarr, What's up Docker, Proxmox, Speedtest, Uptime Kuma and container health.
