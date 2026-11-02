@@ -44,6 +44,12 @@ jobs:
           ref: ${{ steps.collection.outputs.tag }}
           path: collection
       - run: scripts/pages.sh site-src "$GITHUB_REPOSITORY" collection "${{ steps.collection.outputs.tag }}"
+      # every code block through Rouge, at the version GitHub Pages highlights with: a block it
+      # marks red fails the build (the runner has Ruby)
+      - name: Code blocks highlight without errors
+        run: |
+          gem install --user-install --no-document rouge -v 3.30.0
+          ruby scripts/check-highlight.rb site-src
       - uses: actions/configure-pages@v6
       - uses: actions/jekyll-build-pages@v1
         with:

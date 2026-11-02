@@ -40,7 +40,9 @@ page in `{% raw %}` so `{{HD_VAR_*}}` examples stay literal. For the widgets col
 newest release (checked out by the workflow), `scripts/widget-images.mjs` then photographs every
 widget with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its
 `README.md` and `widget.yaml` (with that image), split into service and header widgets, and the
-list of all of them on the Widgets page. Widget pages stay at `widgets/collection/<id>.html`,
+list of all of them on the Widgets page. `scripts/check-highlight.rb` then runs every code
+block through Rouge, at the version GitHub Pages uses, and fails the build on one it would mark
+red (`tests/pages.test.mjs` catches the known cases locally, without Ruby). Widget pages stay at `widgets/collection/<id>.html`,
 whatever their section: other sites link there. A daily run picks up a new collection release.
 
 A new page gets an entry under `defaults:` in `docs/_config.yml`; a moved page a `redirect_from`

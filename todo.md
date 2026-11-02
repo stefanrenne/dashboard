@@ -5,10 +5,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Tests and CI
 
-- [ ] **Check the docs' code blocks with Rouge in the Pages workflow.** The site's highlighter
-  marks some valid YAML red (keys with `[ ]` or `'`); `tests/pages.test.mjs` catches the known
-  cases with a regex. The Pages build has Ruby: run `rougify` on every code block of `docs/` and
-  the widget pages and fail on a highlighter error.
 
 ## Filters
 
