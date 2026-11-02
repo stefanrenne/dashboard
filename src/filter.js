@@ -4,10 +4,12 @@
 //
 //   filter: widget.update == false
 //   filter: widgets.shelly.update == false && widgets[1].count < 3
+//   filter: container.healthy
 //
 // Paths: widget.<attr> (the attributes of all the service's widgets, merged: the first widget, in
 // the card's order, that publishes it), widgets[<n>].<attr> (one widget by position, from 0),
-// widgets.<type>.<attr> (the first widget of that type). Literals: true, false, null, numbers,
+// widgets.<type>.<attr> (the first widget of that type), container.<attr> (the service's
+// `container:` status check, not a widget on the card). Literals: true, false, null, numbers,
 // 'text' or "text". Operators: == != < <= > >= && || ! and parentheses. A missing attribute is
 // null. The page evaluates the parsed form (public/index.html, evalFilter) against the results.
 
@@ -55,9 +57,11 @@ function tokenize(text) {
   return tokens;
 }
 
-/** A path word as a reference: { widget: { merged: true } | { index } | { type }, attr }. */
+/** A path word as a reference: { widget: { merged: true } | { index } | { type }, attr } or { status, attr }. */
 function reference(word) {
-  let m = /^widget\.([A-Za-z][\w]*)$/.exec(word);
+  let m = /^container\.([A-Za-z][\w]*)$/.exec(word);
+  if (m) return { status: 'container', attr: m[1] };
+  m = /^widget\.([A-Za-z][\w]*)$/.exec(word);
   if (m) return { widget: { merged: true }, attr: m[1] };
   m = /^widgets\[(\d+)\]\.([A-Za-z][\w]*)$/.exec(word);
   if (m) return { widget: { index: Number(m[1]) }, attr: m[2] };
@@ -97,7 +101,7 @@ export function parseFilter(text) {
       if (tok.v === 'true' || tok.v === 'false') return { lit: tok.v === 'true' };
       if (tok.v === 'null') return { lit: null };
       const ref = reference(tok.v);
-      if (!ref) throw new Error(`"${tok.v}" is not a value: use widget.<attribute>, widgets[<n>].<attribute> or widgets.<type>.<attribute>`);
+      if (!ref) throw new Error(`"${tok.v}" is not a value: use widget.<attribute>, widgets[<n>].<attribute>, widgets.<type>.<attribute> or container.<attribute>`);
       return { ref };
     }
     throw new Error(`expected a value ${where()}`);
@@ -152,14 +156,29 @@ export function filterRefs(tree, out = []) {
  * The tree with every reference turned into the widget positions on the service to read, in
  * order (`{ indexes, attr }`: the first that has the attribute counts),
  * checked against its widgets: [{ type, id?, attributes }] (type as written, id the widget's own
- * when `type` is an alias, attributes from widget.yaml). Returns
- * { tree, errors, warnings } as messages.
+ * when `type` is an alias, attributes from widget.yaml). The service's status checks
+ * ([{ kind, type, attributes }]) come after its widgets: container.<attr> reads the `container`
+ * one, at position widgets.length + its place. Returns { tree, errors, warnings } as messages.
  */
-export function bindFilter(tree, widgets) {
+export function bindFilter(tree, widgets, statuses = []) {
   const errors = [];
   const warnings = [];
   const bind = (node) => {
     if (!node || typeof node !== 'object') return node;
+    if (node.ref?.status) {
+      const { status, attr } = node.ref;
+      const at = statuses.findIndex((s) => s.kind === status);
+      if (at < 0) {
+        errors.push(`the service has no ${status}: to read "${attr}" from`);
+        return { ref: { indexes: [], attr } };
+      }
+      const declared = statuses[at].attributes;
+      if (declared && !(attr in declared)) {
+        const names = Object.keys(declared);
+        warnings.push(`${status}: has no attribute "${attr}"${names.length ? ` (it has ${names.join(', ')})` : ' (it publishes none)'}`);
+      }
+      return { ref: { indexes: [widgets.length + at], attr } };
+    }
     if (node.ref) {
       const { widget, attr } = node.ref;
       if (widget.merged) {

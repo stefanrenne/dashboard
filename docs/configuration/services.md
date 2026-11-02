@@ -131,6 +131,8 @@ example, a Shelly device that only appears while a firmware update is waiting:
   so it works the same with one widget or several. When two widgets publish the same name, the
   first one on the card counts. To read one widget only: `widgets[1].<name>` (by position,
   from 0) or `widgets.shelly.<name>` (the first widget of that type).
+- **The container**: `container.<name>` reads the service's `container:` status check rather than
+  a widget on the card (see [Container health](#container-health)).
 - **A value**: `true`, `false`, `null`, a number, `'text'` or `"text"`.
 - **Comparing**: `==`, `!=`, `<`, `<=`, `>`, `>=` (`<` and `>` only between numbers).
 - **Combining**: `&&` (and), `||` (or), `!` (not), and parentheses:
@@ -141,10 +143,34 @@ before the widget knows. Until the widgets the filter reads have answered, the c
 when one of them fails, the card is shown, so a broken service never disappears quietly. A group
 whose cards are all hidden is hidden too, and a hidden card is no search hit.
 
+### Container health
+
+Whether a service is healthy is decided by its container, not by a widget, so `container.<name>`
+reads the attributes of the service's `container:` check: `healthy` and `unhealthy` follow the
+container's Docker healthcheck (both `false` for a container without one, or one that is not
+running), and `status` is the label's `up`, `warn` or `down`. To show a service only while
+something is wrong with it:
+
+```yaml
+- Media:
+    - Plex:
+        href: http://plex.lan:32400
+        container: plex
+        filter: container.healthy               # hidden while Docker reports it healthy
+```
+
+`filter: container.healthy == true` is the same; `filter: "!container.unhealthy"` also hides
+containers without a healthcheck (in quotes: YAML reads a leading `!` as a tag). Discovered Docker
+services have `container:` already, so the label `homelab.filter=container.healthy` works there.
+
+### Mistakes
+
 A mistake in the expression (`widget.update false`), a widget that is not on the service
-(`widgets.radarr.queued` on a Shelly) or a secret in it are config errors; the service is then
-shown unfiltered. An attribute the widget does not publish is a warning. The filter goes to the
+(`widgets.radarr.queued` on a Shelly), `container.healthy` without `container:` or a secret in it
+are config errors; the service is then shown unfiltered. An attribute the widget does not publish is a warning. The filter goes to the
 browser, so it cannot hold a `{{HD_VAR_*}}` value.
+
+### Discovered services
 
 Discovered services take it too: as the Docker label `homelab.filter` (see [Docker](docker.md#discovery)),
 or as the Kubernetes annotation `homelab.dev/filter` on an Ingress (see [Kubernetes](kubernetes.md#discovery);

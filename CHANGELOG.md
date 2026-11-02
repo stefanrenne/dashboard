@@ -4,6 +4,15 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-02
+
+### Added
+- `container.<name>` in a service's `filter:` reads the service's `container:` status check, so
+  `filter: container.healthy` hides a card while its container's Docker healthcheck is healthy
+  (`container.unhealthy` and `container.status` too). Needs the widgets collection with
+  `docker` 1.6.0 (collection v0.11.0, which this version updates to by itself); with an older one
+  the card stays visible.
+
 ### Changed
 - Every widget page on the docs site has an example image: widgets that need a special service
   (apcupsd, game servers, ...), other options than their README example, or another page or

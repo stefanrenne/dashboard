@@ -60,6 +60,28 @@ test('bindFilter: an attribute no widget declares is a warning, and every widget
   assert.deepEqual(bindFilter(parseFilter('widget.x'), [{ type: 'ping', attributes: {} }]).warnings, ['no widget on this service publishes "x" (they publish none)']);
 });
 
+test('container.<attr>: the service\'s container: status check, after its widgets', () => {
+  const docker = [{ kind: 'container', type: 'docker', attributes: { status: { type: 'string' }, healthy: { type: 'boolean' }, unhealthy: { type: 'boolean' } } }];
+  assert.deepEqual(parseFilter('container.healthy'), { ref: { status: 'container', attr: 'healthy' } });
+  const bound = bindFilter(parseFilter('container.healthy'), shelly, [{ kind: 'ping', type: 'ping', attributes: {} }, ...docker]);
+  assert.deepEqual([bound.tree, bound.errors, bound.warnings], [{ ref: { indexes: [2], attr: 'healthy' } }, [], []], 'widgets first, then the checks');
+  assert.deepEqual(filterRefs(bindFilter(parseFilter('widget.healthy'), shelly, docker).tree), [{ indexes: [0], attr: 'healthy' }], 'widget.<attr> leaves the checks out');
+  assert.deepEqual(bindFilter(parseFilter('container.healthy'), shelly).errors, ['the service has no container: to read "healthy" from']);
+  assert.deepEqual(bindFilter(parseFilter('container.nope'), [], docker).warnings, ['container: has no attribute "nope" (it has status, healthy, unhealthy)']);
+  const health = (text, attrs) => {
+    const { tree, errors } = bindFilter(parseFilter(text), [], docker);
+    assert.deepEqual(errors, []);
+    return evalFilter(tree, (i, attr) => [attrs][i]?.[attr]);
+  };
+  for (const text of ['container.healthy', 'container.healthy == true']) {
+    assert.equal(health(text, { healthy: true, unhealthy: false }), true, `${text}: hidden while healthy`);
+    assert.equal(health(text, { healthy: false, unhealthy: true }), false, `${text}: shown while unhealthy`);
+    assert.equal(health(text, {}), false, `${text}: shown before it is known`);
+  }
+  assert.equal(health('!container.unhealthy', { healthy: false, unhealthy: false }), true);
+  assert.equal(health('!container.unhealthy', { healthy: false, unhealthy: true }), false);
+});
+
 test('evalFilter: merged attributes, the first widget in card order that has one counts', () => {
   const two = [{ type: 'shelly', attributes: { update: { type: 'boolean' } } }, { type: 'other', attributes: { update: { type: 'boolean' }, count: { type: 'number' } } }];
   assert.equal(run('widget.count > 2', two, [{ update: false }, { count: 3 }]), true, 'from the second widget');

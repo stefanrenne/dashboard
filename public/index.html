@@ -990,7 +990,7 @@ function stopPolling() {
  * A status label in the card's corner. statusStyle (settings or service): none shows the
  * response time or container state, `dot` a coloured dot, `basic` UP or DOWN for checks.
  */
-function statusTag(status, card, style, showStats) {
+function statusTag(status, card, style, showStats, onResult) {
   // container (docker), proxmox (proxmoxvm) and pods (kubernetes-pods) labels open CPU and memory on a click
   const isContainer = ['container', 'proxmox', 'pods'].includes(status.kind);
   // until the first result: a small spinner (static under Reduce Motion)
@@ -1039,6 +1039,7 @@ function statusTag(status, card, style, showStats) {
     tag.setAttribute('aria-label', `${translate(s)}: ${text}`);
     if (!isContainer) tag.title = result.ok ? translate(s) : result.error;
     if (stats) renderResult(stats, { type: status.type }, withoutState(result), card.dataset.name);
+    if (onResult) onResult(result);
   });
   return tag;
 }
@@ -1159,18 +1160,18 @@ function renderService(service) {
   head.append(el('div', { class: 'names' }, name, service.description ? el('div', { class: 'desc', text: service.description }) : null));
   const card = el('article', { class: 'card shadow', 'data-service': service.id, 'data-name': service.name }, head);
   card.dataset.search = [service.name, service.description || ''].join(' ').toLowerCase();
-  if (service.statuses.length) {
-    card.append(el('div', { class: 'tags' }, ...service.statuses.map((s) => statusTag(s, card, service.statusStyle, service.showStats))));
-  }
+  // results by filter position: the widgets, then the status checks (container.<attr>)
   const results = [];
+  const filterResult = (i) => service.filter ? (result) => {
+    results[i] = result;
+    applyFilter(card, service, results);
+  } : null;
   if (service.filter) card.classList.add('filtered'); // until the widgets it reads have answered
-  service.widgets.forEach((w, i) => {
-    const onResult = service.filter ? (result) => {
-      results[i] = result;
-      applyFilter(card, service, results);
-    } : null;
-    card.append(mountWidget(w, null, service.name, onResult));
-  });
+  if (service.statuses.length) {
+    const tags = service.statuses.map((s, j) => statusTag(s, card, service.statusStyle, service.showStats, filterResult(service.widgets.length + j)));
+    card.append(el('div', { class: 'tags' }, ...tags));
+  }
+  service.widgets.forEach((w, i) => card.append(mountWidget(w, null, service.name, filterResult(i))));
   card.style.setProperty('--tag-count', String(service.statuses.length));
   return card;
 }
@@ -1218,7 +1219,8 @@ function filterIndexes(tree, out = new Set()) {
  */
 function applyFilter(card, service, results) {
   let hide;
-  const read = [...filterIndexes(service.filter)].map((i) => ({ w: service.widgets[i], r: results[i] }));
+  const sources = [...service.widgets, ...service.statuses];
+  const read = [...filterIndexes(service.filter)].map((i) => ({ w: sources[i], r: results[i] }));
   if (read.some(({ r }) => r && !r.ok)) hide = false;
   else if (read.some(({ w, r }) => w?.server && !r)) hide = true;
   else hide = evalFilter(service.filter, (i, attr) => results[i]?.data?.attributes?.[attr]);

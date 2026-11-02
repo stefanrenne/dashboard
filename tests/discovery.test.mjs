@@ -379,4 +379,5 @@ test('Discovery passes settings.instanceName to the sources', async () => {
 test('labels: a service filter', () => {
   const svc = serviceFromLabels({ 'homelab.name': 'Shelly', 'homelab.filter': 'widget.update == false', 'homelab.widget.type': 'shelly' }, 'homelab.');
   assert.equal(svc.def.filter, 'widget.update == false');
+  assert.equal(serviceFromLabels({ 'homelab.name': 'Plex', 'homelab.filter': 'container.healthy' }, 'homelab.').def.filter, 'container.healthy');
 });

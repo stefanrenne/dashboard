@@ -827,6 +827,34 @@ test('filter: a card hides while its filter is true, shows on a failure, and an 
   }
 });
 
+test('filter: container.healthy reads the container: status check, not a widget', async () => {
+  const plex = (id, healthy, ...extra) => ({
+    id, name: id, href: null, target: '_blank', icon: null, description: null, discovered: null,
+    filter: { ref: { indexes: [1], attr: 'healthy' } }, // container.healthy, after the one widget
+    statuses: [{ kind: 'container', instanceId: `c${id}`, type: 'docker', options: {}, known: true, server: true, refreshMs: 60000 }],
+    widgets: [{ instanceId: `w${id}`, type: 'custom-api', options: {}, known: true, server: true, refreshMs: 60000 }],
+  });
+  const layout = structuredClone(LAYOUT);
+  layout.messages = { errors: [], warnings: [] };
+  layout.groups = [{ name: 'Media', layout: {}, services: [plex('a'), plex('b'), plex('c'), plex('d')] }];
+  const container = (attributes) => ({ ok: true, data: { status: 'up', statusText: 'healthy', blocks: [], attributes } });
+  const results = {
+    '/api/layout': layout,
+    '/api/widgets/ca': container({ healthy: true, unhealthy: false }),   // healthy: hidden
+    '/api/widgets/cb': container({ healthy: false, unhealthy: true }),   // unhealthy: shown
+    '/api/widgets/cc': container({ healthy: false, unhealthy: false }),  // no healthcheck: shown
+    '/api/widgets/cd': { ok: false, error: 'Docker API answered 500' },  // fails: shown
+  };
+  for (const id of 'abcd') results[`/api/widgets/w${id}`] = { ok: true, data: { blocks: [], attributes: { healthy: false } } };
+  const w = await page(results);
+  try {
+    const filtered = (id) => w.document.querySelector(`[data-service="${id}"]`).classList.contains('filtered');
+    assert.deepEqual(['a', 'b', 'c', 'd'].map(filtered), [true, false, false, false]);
+  } finally {
+    w.close();
+  }
+});
+
 test('filter: before its widget answers, a card is hidden', async () => {
   const layout = structuredClone(LAYOUT);
   layout.groups = [{ name: 'G', layout: {}, services: [{

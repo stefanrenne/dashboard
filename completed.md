@@ -74,3 +74,5 @@ Finished work, newest first.
   version requirements in the docs; YAML examples that highlight without red marks.
 - 2026-10-31: An example image for every widget page (the collection's fake services and options
   in `scripts/fakes.mjs`, demo page and camera, a fixed date).
+- 2026-11-02: `filter: container.healthy`: a service filter reads its `container:` check; the
+  collection's `docker` publishes `healthy` and `unhealthy` from the Docker healthcheck.

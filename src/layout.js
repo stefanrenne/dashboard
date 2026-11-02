@@ -278,15 +278,18 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     };
   };
 
-  // `filter:` bound to the service's widgets; the page evaluates it on their attributes. Its
-  // literals go to the browser, so a secret (a filled-in {{HD_VAR_*}}) is refused (hard rule 1).
-  const serviceFilter = (service, where) => {
+  // `filter:` bound to the service's widgets and status checks (container.<attr>); the page
+  // evaluates it on their attributes. Its literals go to the browser, so a secret (a filled-in
+  // {{HD_VAR_*}}) is refused (hard rule 1).
+  const serviceFilter = (service, statuses, where) => {
     if (!service.filter) return {};
     const at = { ...where, path: `${where.path}.filter` };
-    const widgets = service.widgets.map((w) => {
-      const widget = registry.get(w.type);
-      return { type: w.type, id: widget?.id, attributes: widget ? widget.manifest.attributes ?? {} : undefined };
-    });
+    const declared = (type) => {
+      const widget = registry.get(type);
+      return { id: widget?.id, attributes: widget ? widget.manifest.attributes ?? {} : undefined };
+    };
+    const widgets = service.widgets.map((w) => ({ type: w.type, ...declared(w.type) }));
+    const checks = statuses.map((s) => ({ kind: s.kind, type: s.type, ...declared(s.type) }));
     const literals = [];
     const walk = (n) => {
       if (!n || typeof n !== 'object') return;
@@ -299,7 +302,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       errors.push({ ...at, message: 'a filter cannot hold a secret ({{HD_VAR_*}} or {{HD_FILE_*}}); the service is shown unfiltered' });
       return {};
     }
-    const bound = bindFilter(service.filter, widgets);
+    const bound = bindFilter(service.filter, widgets, checks);
     for (const message of bound.warnings) warnings.push({ ...at, message });
     if (bound.errors.length) {
       for (const message of bound.errors) errors.push({ ...at, message: `${message}; the service is shown unfiltered` });
@@ -316,10 +319,11 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       // homepage's `target: hidden-iframe` (a webhook): the server calls it and reports back.
       const target = service.target ?? config.settings.target;
       if (target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '')) actions.set(id, { name: service.name, href: service.href });
+      const statuses = statusesFor(group, service, where);
       return {
         id,
         name: service.name,
-        ...serviceFilter(service, where),
+        ...serviceFilter(service, statuses, where),
         href: service.href ?? null,
         target: service.target ?? config.settings.target,
         icon: resolveIcon(service.icon),
@@ -327,7 +331,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         discovered: service.discovered ?? null,
         statusStyle: service.statusStyle ?? config.settings.statusStyle ?? null,
         showStats: service.showStats ?? config.settings.showStats ?? false,
-        statuses: statusesFor(group, service, where),
+        statuses,
         widgets: service.widgets.map((w, i) =>
           addInstance(stableId('w', group.name, service.name, String(i)), w.type, w.options, {
             file: where.file,
