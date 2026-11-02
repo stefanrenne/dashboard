@@ -146,10 +146,11 @@
 
   /* service card */
   /* a service's filter: (hidden while true), and a group left with no card to show */
-  body:not(.show-filtered) .card.filtered, body:not(.show-filtered) .group.filtered-empty,
-  body:not(.show-filtered) .card .widget.filtered { display: none; }
+  body:not(.show-filtered) .card.filtered, body:not(.show-filtered) .group.filtered-empty { display: none; }
   /* the footer's "3 hidden" shows them, dimmed */
-  .show-filtered .card.filtered, .show-filtered .card .widget.filtered { opacity: .55; }
+  .show-filtered .card.filtered { opacity: .55; }
+  /* a widget's own filter: always hidden while true; the footer is about whole cards */
+  .card .widget.filtered { display: none; }
   .card { position: relative; margin-bottom: 8px; padding: 4px; border-radius: 6px; background: var(--hd-card); transition: background .15s; min-width: 0;
     border: 1px solid var(--hd-card-border, transparent); }
   .card .names { padding-inline-end: calc(var(--tag-count, 0) * 68px + 8px); } /* keep long names clear of the status labels */
@@ -1257,8 +1258,8 @@ function applyFilter(card, service, results, boxes = []) {
 /** The footer's "3 hidden": how many cards a filter hides, a toggle that shows them dimmed. */
 function updateFilteredCount() {
   const btn = document.getElementById('filtered-btn');
-  // hidden cards, and the hidden widgets of the cards that are shown
-  const count = document.querySelectorAll('#groups .card.filtered, #groups .card:not(.filtered) > .widget.filtered').length;
+  // whole cards only: a widget its own filter hides is part of a card that is there
+  const count = document.querySelectorAll('#groups .card.filtered').length;
   btn.hidden = count === 0;
   btn.textContent = translate('filteredCount', { count });
   btn.title = translate('filteredShow');

@@ -4,6 +4,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- The footer's "hidden" counts whole cards only: a widget its own filter hides is no longer
+  counted, and stays hidden when the hidden cards are shown.
+
 ## [0.15.0] - 2026-11-02
 
 ### Added

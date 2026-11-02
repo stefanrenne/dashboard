@@ -900,10 +900,8 @@ test('filter on a widget: hides that widget, not the card; shown on updates or a
   assert.deepEqual(['a', 'b', 'c'].map((id) => boxes(id).map((b) => b.classList.contains('filtered'))), [[false, true], [false, false], [false, false]],
     'hidden while there are no updates; shown with updates, and when the widget it reads fails');
   assert.ok(!doc.querySelector('[data-service="a"]').classList.contains('filtered'), 'the card stays');
-  const btn = doc.getElementById('filtered-btn');
-  assert.deepEqual([btn.hidden, btn.textContent], [false, '1 verborgen'], 'the footer counts a hidden widget');
-  btn.click();
-  assert.ok(doc.body.classList.contains('show-filtered'));
+  assert.equal(doc.getElementById('filtered-btn').hidden, true, 'the footer counts whole cards only, not a hidden widget');
+  assert.equal(w.getComputedStyle(boxes('a')[1]).display, 'none');
 });
 
 test('filter: a widget without a server.js is evaluated at once, its group and the count follow', async () => {

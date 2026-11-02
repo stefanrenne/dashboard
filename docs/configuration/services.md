@@ -189,10 +189,10 @@ update:
 ```
 
 The widget behaves as a filtered card: hidden until the widgets its filter reads have answered,
-shown when one of them fails, and counted in the footer's "hidden". A hidden widget keeps
-refreshing, since other filters may read it. It works on service widgets only (a header widget
-such as `search` keeps its own options), and a widget that has an option named `filter` itself
-keeps that option. As a Docker label: `homelab.widgets[1].filter=widgets.whatsupdocker.updates == 0`.
+and shown when one of them fails. A hidden widget keeps refreshing, since other filters may read
+it. The footer's "hidden" is about whole cards: it does not count a hidden widget. It works on
+service widgets only (a header widget such as `search` keeps its own options), and a widget that
+has an option named `filter` itself keeps that option. As a Docker label: `homelab.widgets[1].filter=widgets.whatsupdocker.updates == 0`.
 
 ### Recipes
 
