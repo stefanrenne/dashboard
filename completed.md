@@ -76,3 +76,5 @@ Finished work, newest first.
   in `scripts/fakes.mjs`, demo page and camera, a fixed date).
 - 2026-11-02: `filter: container.healthy`: a service filter reads its `container:` check; the
   collection's `docker` publishes `healthy` and `unhealthy` from the Docker healthcheck.
+- 2026-11-02: CI tests against the newest release of the widgets collection, as installations get it.
+- 2026-11-02: CLAUDE.md hard rule 11 names the folders this repository has.

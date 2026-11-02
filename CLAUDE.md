@@ -30,7 +30,7 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 | `scripts/pages.sh`, `scripts/pages-widgets.mjs`, `scripts/widget-images.mjs` | Stage the GitHub Pages site: `docs/`, a page per widget with an example image (the widget's README example against the collection's fixtures). |
 | `scripts/screenshots.mjs`, `scripts/showcase/` | Recreates the README and home page screenshots from the showcase config (Playwright, not in `package.json`). |
 | `scripts/new-widget.mjs` | `npm run new-widget -- <id>`: the widget template under a new id (the example repo's `npm run rename` does the same in place). |
-| `../homelab-dashboard-widgets` | Separate repo ([GitHub](https://github.com/stefanrenne/homelab-dashboard-widgets)): every widget, as a collection, including `CORE_WIDGETS` (`src/plugins/installer.js`), the ones `src/layout.js` creates for `siteMonitor:`, `ping:`, `container:`, `app:` and `proxmoxNode:`. Not part of this codebase on purpose. The tests load its widgets from a checkout (`HD_COLLECTION_DIR`, else this sibling folder; CI checks out a pinned release). |
+| `../homelab-dashboard-widgets` | Separate repo ([GitHub](https://github.com/stefanrenne/homelab-dashboard-widgets)): every widget, as a collection, including `CORE_WIDGETS` (`src/plugins/installer.js`), the ones `src/layout.js` creates for `siteMonitor:`, `ping:`, `container:`, `app:` and `proxmoxNode:`. Not part of this codebase on purpose. The tests load its widgets from a checkout (`HD_COLLECTION_DIR`, else this sibling folder; CI checks out its newest release, as installations get it). |
 | `.github/` | CI (tests, image smoke test, amd64+arm64 image to GHCR, release on a tag), Dependabot and its auto-merge. |
 | `docs/` | The GitHub Pages site, in four parts: Home (`README.md`), `configuration/` (a page per config file, as homepage's, plus images and custom CSS/JS), `widgets/` (the list; a page per widget is generated) and `extend/` (local and remote widgets, API reference, security, `contributing/`). `docs/_config.yml`: titles, menu order, redirects. A new page gets an entry under `defaults:` there. |
 | `todo.md` / `completed.md` | Open and finished work. Update them when you pick something up or finish it. |
@@ -81,7 +81,7 @@ the image and smoke-tests it.
     user listed plus `DEFAULT_PLUGINS` (the project's own widgets collection, `#latest`), are pinned through the lock file, and arguments to `git`/`npm`/`ping` are
     validated and passed without a shell.
 11. **Nothing installation-specific outside `deploy/`.** No host names, IP addresses, user names
-    or personal config in `src/`, `public/`, `widgets/`, `docs/`, tests or examples; use
+    or personal config in `src/`, `public/`, `docs/`, `scripts/`, tests or examples; use
     `example.com`/`*.lan` and made-up data. `deploy/` is in `.gitignore`.
 
 ## Conventions

@@ -5,10 +5,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Tests and CI
 
-- [ ] **CI tests against widgets collection v0.4.0.** `.github/workflows/ci.yml` checks out the
-  collection at a pinned `v0.4.0`, so the tests that read the collection (widget pages, attributes,
-  README examples, `scripts/fakes.mjs`) never see anything newer in CI. Test against the newest
-  release, as the Pages workflow does, or bump the pin with every collection release.
 - [ ] **`tests/frontend.test.mjs` leaves timers running.** Run on its own
   (`node --test tests/frontend.test.mjs`) the process stays alive for minutes after the last
   test; `npm test` hides it with `--test-force-exit`. Find what jsdom keeps alive after
@@ -44,8 +40,6 @@ The widgets collection keeps its own list: `../homelab-dashboard-widgets/todo.md
 
 ## Housekeeping
 
-- [ ] **CLAUDE.md hard rule 11** still names a `widgets/` folder, which this repository no longer
-  has.
 - [ ] **Release the widget example repo.** `homelab-dashboard-widget-example` has the attributes
   (57df532) on `main`, but no release, so `#latest` installs still get the old version.
 

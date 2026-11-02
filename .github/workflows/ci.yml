@@ -30,11 +30,17 @@ jobs:
         with:
           node-version: "24" # the same LTS line as the image
           cache: npm
-      # the tests load every widget from the widgets collection, at the release this version needs
+      # the tests load every widget from the widgets collection, at its newest release: the one
+      # installations get through #latest (and the Pages workflow uses)
+      - name: Newest release of the widgets collection
+        id: collection
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "tag=$(gh release view --repo stefanrenne/homelab-dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
           repository: stefanrenne/homelab-dashboard-widgets
-          ref: v0.11.0
+          ref: ${{ steps.collection.outputs.tag }}
           path: collection
       - run: npm ci --no-audit --no-fund
       - run: npm test
