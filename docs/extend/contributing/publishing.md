@@ -52,6 +52,11 @@ collection's secret `PAGES_DISPATCH_TOKEN`); the daily run is the fallback.
 A new page gets an entry under `defaults:` in `docs/_config.yml`; a moved page a `redirect_from`
 with its old address.
 
+A deploy is named after its commit. When one hangs at GitHub (`updating_pages` until the
+timeout, then "Deployment cancelled" for every new try), a run for the same commit does not help,
+the daily one neither: push a new commit to `main` that touches `docs/`, and its deploy goes
+through.
+
 ## Dependabot
 
 `.github/dependabot.yml` opens grouped weekly PRs for GitHub Actions, npm and the Docker base
