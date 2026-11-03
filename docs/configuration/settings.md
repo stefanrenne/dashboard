@@ -34,7 +34,7 @@ quicklaunch:        # start typing anywhere on the page to find a service, bookm
   hideInternetSearch: false   # true: no web search entry
   hideVisitURL: false         # true: no "open <url>" entry for typed addresses
   mobileButtonPosition: bottom-right   # a search button on phones: top-left, top-right, bottom-left, bottom-right
-providers:          # shared keys and logins (better in providers.yaml, see Providers); a widget uses one with provider: <name>
+providers:          # shared keys and logins (see Providers); a widget entry uses one with provider: <name>
   openweathermap: "{{HD_VAR_OWM_KEY}}"   # a text fills the widget's first secret option left empty (its key)
   longhorn:                               # a map fills the options it names
     url: https://longhorn.lan

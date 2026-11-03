@@ -1,17 +1,17 @@
 # Providers
 
 Many widgets need an API key, or a username and password. A **provider** is such an account,
-defined once and used by every widget that needs it, as homepage's providers. They live in a file
-of their own, `providers.yaml`, apart from the services and settings you edit and share more
-often:
+defined once under `providers:` in [`settings.yaml`](settings.md) and used by every widget that
+needs it, as homepage's providers:
 
 ```yaml
-# providers.yaml
-radarr: "{{HD_VAR_RADARR_KEY}}"          # a text: the key
-nas:                                     # a map: the options it names
-  url: https://nas.lan:5001
-  username: dashboard
-  password: "{{HD_VAR_NAS_PASSWORD}}"
+# settings.yaml
+providers:
+  radarr: "{{HD_VAR_RADARR_KEY}}"        # a text: the key
+  nas:                                   # a map: the options it names
+    url: https://nas.lan:5001
+    username: dashboard
+    password: "{{HD_VAR_NAS_PASSWORD}}"
 ```
 
 A widget uses one with `provider: <name>`:
@@ -44,22 +44,29 @@ A provider that does not exist is a config error on the widget, shown at the top
 
 ## Keeping them secret
 
-- **Nothing in `providers.yaml` reaches the browser.** Every value in it is a secret, also one
+- **Nothing under `providers:` reaches the browser.** Every value in it is a secret, also one
   written there literally; secret values are scrubbed from error messages too.
-- **Prefer variables over literals**: `{{HD_VAR_NAME}}` takes the environment variable
+- **Use variables, not passwords**: `{{HD_VAR_NAME}}` takes the environment variable
   `HD_VAR_NAME`, and `{{HD_FILE_NAME}}` the contents of the file whose path is in `HD_FILE_NAME`,
-  such as a Docker secret (see [Variables](README.md#variables)). The file then holds names, not
-  passwords.
-- **Keep the file to yourself.** While every user on the machine can read `providers.yaml`, the
-  dashboard warns at the top of the page. The dashboard reads it as its own user (`node`, uid
-  1000, in the image), so give that user the file:
+  such as a Docker secret (see [Variables](README.md#variables)). `settings.yaml` then holds the
+  names of the variables, not the passwords, and can be shared or kept in git.
 
-  ```bash
-  chown 1000 providers.yaml && chmod 600 providers.yaml
-  ```
+```yaml
+# compose.yaml of the dashboard
+services:
+  dashboard:
+    image: ghcr.io/stefanrenne/homelab-dashboard:latest
+    environment:
+      HD_VAR_RADARR_KEY: 0123456789abcdef      # or from an .env file next to compose.yaml
+      HD_FILE_NAS_PASSWORD: /run/secrets/nas_password
+    secrets: [nas_password]
+secrets:
+  nas_password:
+    file: ./nas_password.txt
+```
 
-  Group-readable (`chmod 640`) is fine too.
-- Keep `providers.yaml` out of a git repository or a shared backup of your configuration.
+With `HD_FILE_NAS_PASSWORD`, write `"{{HD_FILE_NAS_PASSWORD}}"` in `settings.yaml` instead of the
+`HD_VAR_` form.
 
 ## Discovered services
 
@@ -75,8 +82,3 @@ labels:
   - homelab.widget.url=http://radarr:7878
   - homelab.widget.provider=radarr
 ```
-
-## In settings.yaml
-
-`providers:` in `settings.yaml` works as well, as in homepage. When a name is in both files, the
-one in `providers.yaml` is used, with a warning.

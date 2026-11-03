@@ -4,6 +4,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Removed
+- `providers.yaml`: providers stay under `providers:` in `settings.yaml`, with their keys and
+  passwords from `{{HD_VAR_*}}` or `{{HD_FILE_*}}`. The Providers page in the docs explains how.
+
 ## [0.17.0] - 2026-11-03
 
 ### Added

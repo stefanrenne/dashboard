@@ -9,14 +9,13 @@ skipped and the rest keeps working.
 
 | File | What |
 |---|---|
-| [`settings.yaml`](settings.md) | Title, language, theme, layout per group, discovery interval, plugins |
+| [`settings.yaml`](settings.md) | Title, language, theme, layout per group, discovery interval, plugins, [providers](providers.md) (keys and logins for widgets) |
 | [`bookmarks.yaml`](bookmarks.md) | Groups of links |
 | [`widgets.yaml`](header-widgets.md) | Widgets in the header |
 | [`services.yaml`](services.md) | Groups of services; [filters](filters.md) hide a card or widget while all is well |
 | [`kubernetes.yaml`](kubernetes.md) | Kubernetes discovery |
 | [`docker.yaml`](docker.md) | Docker servers (status and discovery) |
 | [`proxmox.yaml`](proxmox.md) | Proxmox nodes (VM and container status) |
-| [`providers.yaml`](providers.md) | Accounts: keys and logins that widgets use with `provider: <name>`; keep it to yourself |
 | other `.yaml` files | Pulled in with `!include` (see [Including other files](#including-other-files)) |
 | `icons/` | Your own icons, used as `icon: /icons/name.svg` (see [Images](images.md)) |
 | [`custom.css`, `custom.js`](custom-css-js.md) | Your own style and script, loaded after the page's own |
