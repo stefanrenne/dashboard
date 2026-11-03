@@ -849,31 +849,31 @@ test('filter: a card hides while its filter is true, shows on a failure, and an 
   }
 });
 
-test('filter: container.healthy reads the container: status check, not a widget', async () => {
-  const plex = (id, healthy, ...extra) => ({
+test('filter: container.attention reads the container: status check, not a widget', async () => {
+  const plex = (id) => ({
     id, name: id, href: null, target: '_blank', icon: null, description: null, discovered: null,
-    filter: { ref: { indexes: [1], attr: 'healthy' } }, // container.healthy, after the one widget
+    // container.attention == false, the check after the one widget
+    filter: { op: '==', a: { ref: { indexes: [1], attr: 'attention' } }, b: { lit: false } },
     statuses: [{ kind: 'container', instanceId: `c${id}`, type: 'docker', options: {}, known: true, server: true, refreshMs: 60000 }],
     widgets: [{ instanceId: `w${id}`, type: 'custom-api', options: {}, known: true, server: true, refreshMs: 60000 }],
   });
   const layout = structuredClone(LAYOUT);
   layout.messages = { errors: [], warnings: [] };
-  layout.groups = [{ name: 'Media', layout: {}, services: [plex('a'), plex('b'), plex('c'), plex('d')] }];
-  const container = (attributes) => ({ ok: true, data: { status: 'up', statusText: 'healthy', blocks: [], attributes } });
+  layout.groups = [{ name: 'Media', layout: {}, services: [plex('a'), plex('b'), plex('c')] }];
+  const container = (attention) => ({ ok: true, data: { status: attention ? 'warn' : 'up', statusText: 'running', blocks: [], attributes: { attention } } });
   const results = {
     '/api/layout': layout,
-    '/api/widgets/ca': container({ healthy: true, unhealthy: false }),   // healthy: hidden
-    '/api/widgets/cb': container({ healthy: false, unhealthy: true }),   // unhealthy: shown
-    '/api/widgets/cc': container({ healthy: false, unhealthy: false }),  // no healthcheck: shown
-    '/api/widgets/cd': { ok: false, error: 'Docker API answered 500' },  // fails: shown
+    '/api/widgets/ca': container(false),                                 // all is well: hidden
+    '/api/widgets/cb': container(true),                                  // unhealthy or stopped: shown
+    '/api/widgets/cc': { ok: false, error: 'Docker API answered 500' },  // fails: shown
   };
-  for (const id of 'abcd') results[`/api/widgets/w${id}`] = { ok: true, data: { blocks: [], attributes: { healthy: false } } };
+  for (const id of 'abc') results[`/api/widgets/w${id}`] = { ok: true, data: { blocks: [], attributes: { attention: false } } };
   const w = await page(results);
   try {
     const filtered = (id) => w.document.querySelector(`[data-service="${id}"]`).classList.contains('filtered');
-    assert.deepEqual(['a', 'b', 'c', 'd'].map(filtered), [true, false, false, false]);
+    assert.deepEqual(['a', 'b', 'c'].map(filtered), [true, false, false]);
     assert.equal(w.document.getElementById('filtered-btn').hidden, false);
-    const none = await page({ ...results, '/api/widgets/ca': container({ healthy: false, unhealthy: false }) });
+    const none = await page({ ...results, '/api/widgets/ca': container(true) });
     assert.equal(none.document.getElementById('filtered-btn').hidden, true, 'nothing hidden: no button');
   } finally {
     w.close();

@@ -6,6 +6,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ### Changed
 - Filters have a page of their own in the docs, under Configuration.
+- `container.healthy` and `container.unhealthy` are gone with the widgets collection 0.12.3: use
+  `container.attention`, true while the container is unhealthy, stopped or not found
+  (`filter: container.attention == false` hides a card while all is well).
 
 ### Added
 - `ping.<name>` and `siteMonitor.<name>` in a `filter:` read the service's `ping:` and

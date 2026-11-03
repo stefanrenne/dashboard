@@ -61,25 +61,25 @@ test('bindFilter: an attribute no widget declares is a warning, and every widget
 });
 
 test('container.<attr>: the service\'s container: status check, after its widgets', () => {
-  const docker = [{ kind: 'container', type: 'docker', attributes: { status: { type: 'string' }, healthy: { type: 'boolean' }, unhealthy: { type: 'boolean' } } }];
-  assert.deepEqual(parseFilter('container.healthy'), { ref: { status: 'container', attr: 'healthy' } });
-  const bound = bindFilter(parseFilter('container.healthy'), shelly, [{ kind: 'ping', type: 'ping', attributes: {} }, ...docker]);
-  assert.deepEqual([bound.tree, bound.errors, bound.warnings], [{ ref: { indexes: [2], attr: 'healthy' } }, [], []], 'widgets first, then the checks');
-  assert.deepEqual(filterRefs(bindFilter(parseFilter('widget.healthy'), shelly, docker).tree), [{ indexes: [0], attr: 'healthy' }], 'widget.<attr> leaves the checks out');
-  assert.deepEqual(bindFilter(parseFilter('container.healthy'), shelly).errors, ['the service has no container: to read "healthy" from']);
-  assert.deepEqual(bindFilter(parseFilter('container.nope'), [], docker).warnings, ['container: has no attribute "nope" (it has status, healthy, unhealthy)']);
-  const health = (text, attrs) => {
+  const docker = [{ kind: 'container', type: 'docker', attributes: { status: { type: 'string' }, attention: { type: 'boolean' } } }];
+  assert.deepEqual(parseFilter('container.attention'), { ref: { status: 'container', attr: 'attention' } });
+  const bound = bindFilter(parseFilter('container.attention'), shelly, [{ kind: 'ping', type: 'ping', attributes: {} }, ...docker]);
+  assert.deepEqual([bound.tree, bound.errors, bound.warnings], [{ ref: { indexes: [2], attr: 'attention' } }, [], []], 'widgets first, then the checks');
+  assert.deepEqual(filterRefs(bindFilter(parseFilter('widget.attention'), shelly, docker).tree), [{ indexes: [0], attr: 'attention' }], 'widget.<attr> leaves the checks out');
+  assert.deepEqual(bindFilter(parseFilter('container.attention'), shelly).errors, ['the service has no container: to read "attention" from']);
+  assert.deepEqual(bindFilter(parseFilter('container.nope'), [], docker).warnings, ['container: has no attribute "nope" (it has status, attention)']);
+  const hidden = (text, attrs) => {
     const { tree, errors } = bindFilter(parseFilter(text), [], docker);
     assert.deepEqual(errors, []);
     return evalFilter(tree, (i, attr) => [attrs][i]?.[attr]);
   };
-  for (const text of ['container.healthy', 'container.healthy == true']) {
-    assert.equal(health(text, { healthy: true, unhealthy: false }), true, `${text}: hidden while healthy`);
-    assert.equal(health(text, { healthy: false, unhealthy: true }), false, `${text}: shown while unhealthy`);
-    assert.equal(health(text, {}), false, `${text}: shown before it is known`);
-  }
-  assert.equal(health('!container.unhealthy', { healthy: false, unhealthy: false }), true);
-  assert.equal(health('!container.unhealthy', { healthy: false, unhealthy: true }), false);
+  // hidden while all is well
+  assert.equal(hidden('container.attention == false', { attention: false }), true);
+  assert.equal(hidden('container.attention == false', { attention: true }), false, 'shown while unhealthy or stopped');
+  assert.equal(hidden('container.attention == false', {}), false, 'shown before it is known');
+  // a bare attribute is true while its value is
+  assert.equal(hidden('container.attention', { attention: true }), true);
+  assert.equal(hidden('!container.attention', { attention: false }), true);
 });
 
 test('ping.<attr> and siteMonitor.<attr>: the service\'s ping: and siteMonitor: checks', () => {

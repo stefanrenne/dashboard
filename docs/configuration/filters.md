@@ -31,8 +31,8 @@ it shows. For example, a Shelly device that only appears while a firmware update
 - **Combining**: `&&` (and), `||` (or), `!` (not), and parentheses:
   `filter: widget.update == false && widget.queued == 0`.
 
-A bare attribute is true while its value is: `filter: container.healthy` is the same as
-`filter: container.healthy == true`.
+A bare attribute is true while its value is: `filter: ping.attention` is the same as
+`filter: ping.attention == true`.
 
 ## Attributes of the status checks
 
@@ -44,10 +44,8 @@ the card differ per widget: see its page under Filter attributes. Most widgets a
 
 | Attribute | Type | Value |
 |---|---|---|
-| `healthy` | boolean | true while Docker's healthcheck reports healthy; false without a healthcheck or while stopped |
-| `unhealthy` | boolean | true while Docker's healthcheck reports unhealthy |
+| `attention` | boolean | true while the container is unhealthy (its Docker healthcheck), stopped or not found |
 | `status` | text | `up`, `warn` (running but unhealthy, or a Swarm service with too few tasks) or `down` |
-| `attention` | boolean | true while the label marks a problem |
 
 **`ping.<name>`**, the service's `ping:`:
 
@@ -80,22 +78,21 @@ hide cards, the footer says how many ("3 hidden"); a click shows them, dimmed, u
 ## Container health
 
 Whether a service is healthy is decided by its container, not by a widget, so `container.<name>`
-reads the attributes of the service's `container:` check: `healthy` and `unhealthy` follow the
-container's Docker healthcheck (both `false` for a container without one, or one that is not
-running), and `status` is the label's `up`, `warn` or `down`. To show a service only while
-something is wrong with it:
+reads the attributes of the service's `container:` check: `attention` is true while the container
+is unhealthy (its Docker healthcheck), stopped or not found; a running container without a
+healthcheck is fine. To show a service only while something is wrong with it:
 
 ```yaml
 - Media:
     - Plex:
         href: http://plex.lan:32400
         container: plex
-        filter: container.healthy               # hidden while Docker reports it healthy
+        filter: container.attention == false    # hidden while all is well
 ```
 
-`filter: "!container.unhealthy"` also hides containers without a healthcheck (in quotes: YAML
-reads a leading `!` as a tag). Discovered Docker services have `container:` already, so the label
-`homelab.filter=container.healthy` works there.
+To tell unhealthy from stopped, `container.status` is `warn` for the one and `down` for the
+other. Discovered Docker services have `container:` already, so the label
+`homelab.filter=container.attention == false` works there.
 
 ## Devices that do not answer
 
@@ -186,9 +183,9 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
     - Uptime Kuma:                              # only while a monitor is down
         filter: widget.down == 0
         widget: { type: uptimekuma, url: http://kuma.lan:3001, slug: home }
-    - Plex:                                     # only while its container is not healthy
+    - Plex:                                     # only while its container is unhealthy or stopped
         container: plex
-        filter: container.healthy
+        filter: container.attention == false
     - NAS:                                      # only while it does not answer
         ping: nas.lan
         filter: ping.attention == false
@@ -199,6 +196,6 @@ The attributes each widget publishes are on its page under Filter attributes.
 ## Mistakes
 
 A mistake in the expression (`widget.update false`), a widget that is not on the service
-(`widgets.radarr.queued` on a Shelly), `container.healthy` without `container:` or a secret in it
+(`widgets.radarr.queued` on a Shelly), `container.attention` without `container:` or a secret in it
 are config errors; the service (or widget) is then shown unfiltered. An attribute the widget does
 not publish is a warning. The filter goes to the browser, so it cannot hold a `{{HD_VAR_*}}` value.
