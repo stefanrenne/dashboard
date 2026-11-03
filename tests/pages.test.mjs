@@ -101,7 +101,7 @@ test('writeWidgetPages: the collection\'s section, menu front matter, examples k
   const site = tmpDir('hd-site-');
   const collection = tmpDir('hd-collection-');
   fs.cpSync(path.resolve('examples/widget-template'), path.join(collection, 'widgets', 'example-counter'), { recursive: true });
-  fs.writeFileSync(path.join(collection, 'widgets', 'example-counter', 'README.md'), '# Example counter\n\nIntro.\n\n## Example\n\n```yaml\nkey: "{{HD_VAR_KEY}}"\n```\n');
+  fs.writeFileSync(path.join(collection, 'widgets', 'example-counter', 'README.md'), '# Example counter\n\nIntro.\n\n## Example\n\n```yaml\nkey: "{{DASHBOARD_VAR_KEY}}"\n```\n');
 
   fs.mkdirSync(path.join(site, 'widgets', 'collection', 'images'), { recursive: true });
   fs.writeFileSync(path.join(site, 'widgets', 'collection', 'images', 'example-counter.png'), '');
@@ -114,7 +114,7 @@ test('writeWidgetPages: the collection\'s section, menu front matter, examples k
   assert.deepEqual(YAML.parse(front), { title: 'Example counter', parent: 'Service widgets', grand_parent: 'Widgets', permalink: '/widgets/collection/example-counter.html' });
   assert.ok(body.includes('](images/example-counter.png)'));
   assert.match(body, /^\n\{% raw %\}\n/);
-  assert.ok(body.includes('"{{HD_VAR_KEY}}"'));
+  assert.ok(body.includes('"{{DASHBOARD_VAR_KEY}}"'));
   assert.ok(body.includes('**Secret**: stays on the server.'));
   assert.ok(body.includes('tree/v9.9.9/widgets/example-counter'));
   const index = fs.readFileSync(path.join(site, 'widgets/collection/index.md'), 'utf8');
@@ -213,7 +213,7 @@ test('docs: no YAML key with [ ] or \', which the site\'s highlighter (Rouge) ma
       }
     }
   }
-  assert.deepEqual(bad, [], 'labels as a list (- homelab.widgets[0].type=emby), or ’ for an apostrophe');
+  assert.deepEqual(bad, [], 'labels as a list (- dashboard.widgets[0].type=emby), or ’ for an apostrophe');
 });
 
 test('docs: no \\| inside `code` in a table, which the site shows with its backslash', () => {

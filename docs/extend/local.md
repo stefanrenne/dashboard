@@ -14,12 +14,12 @@ npm run new-widget -- my-nas ./config/my-widgets/my-nas
 ```
 
 That copies the template with `example-counter` renamed to `my-nas` everywhere: the `id` and
-`name` in `widget.yaml`, the `hd-<id>` element in `client.js`, the README and the tests.
+`name` in `widget.yaml`, the `dash-<id>` element in `client.js`, the README and the tests.
 
 ## 2. Declare the options
 
 Every option you read goes into `options:` in `widget.yaml`. Mark API keys, passwords and tokens
-`secret: true`. Users fill them in with `{{HD_VAR_...}}`, but the flag is what keeps them out of the
+`secret: true`. Users fill them in with `{{DASHBOARD_VAR_...}}`, but the flag is what keeps them out of the
 browser even when someone types the key in directly.
 
 ```yaml
@@ -82,7 +82,7 @@ plugins:
         widget:
           type: my-nas
           url: http://nas.lan:5000
-          key: "{{HD_VAR_NAS_KEY}}"
+          key: "{{DASHBOARD_VAR_NAS_KEY}}"
 ```
 
 A `path:` widget is read again whenever a YAML file is saved: save `settings.yaml` after changing

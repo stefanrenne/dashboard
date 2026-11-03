@@ -1,7 +1,7 @@
-// Substitution of `{{HD_VAR_*}}` and `{{HD_FILE_*}}` placeholders in config values.
+// Substitution of `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` placeholders in config values.
 //
-// HD_VAR_NAME  -> the value of the environment variable HD_VAR_NAME
-// HD_FILE_NAME -> the trimmed contents of the file whose path is in HD_FILE_NAME
+// DASHBOARD_VAR_NAME  -> the value of the environment variable DASHBOARD_VAR_NAME
+// DASHBOARD_FILE_NAME -> the trimmed contents of the file whose path is in DASHBOARD_FILE_NAME
 // HOMEPAGE_VAR_* and HOMEPAGE_FILE_* work the same, so a homepage config can be reused.
 //
 // Every substituted value is recorded in `secrets`, so the layout builder can keep
@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import { isPlainObject } from '../util.js';
 
-const PLACEHOLDER = /\{\{\s*((?:HD|HOMEPAGE)_(?:VAR|FILE)_[A-Z0-9_]+)\s*\}\}/g;
+const PLACEHOLDER = /\{\{\s*((?:DASHBOARD|HOMEPAGE)_(?:VAR|FILE)_[A-Z0-9_]+)\s*\}\}/g;
 // `{{SOME_NAME}}`: looks like a variable but is not one the dashboard fills in, so it would reach
 // the service as written (a wrong key or password). Templates such as Home Assistant's
 // `{{ states.x }}` are lowercase and left alone.
@@ -22,9 +22,11 @@ export function substitute(value, { env = process.env, readFile = (p) => fs.read
 
   const replaceString = (str) => {
     for (const [whole, name] of str.matchAll(LOOKALIKE)) {
-      if (/^(HD|HOMEPAGE)_(VAR|FILE)_/.test(name)) continue;
-      const hint = name.replace(/^(HD|HOMEPAGE)_/, '');
-      warnings.push(`${whole} is not filled in: only {{HD_VAR_*}} and {{HD_FILE_*}} are. Write {{HD_VAR_${hint}}} and set the environment variable HD_VAR_${hint}`);
+      if (/^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/.test(name)) continue;
+      // the old HD_VAR_/HD_FILE_ (or no prefix at all): say what to write instead
+      const [, kind = 'VAR', rest] = /^(?:HD_|DASHBOARD_)?(?:(VAR|FILE)_)?(.*)$/.exec(name);
+      const hint = `DASHBOARD_${kind}_${rest}`;
+      warnings.push(`${whole} is not filled in: only {{DASHBOARD_VAR_*}} and {{DASHBOARD_FILE_*}} are. Write {{${hint}}} and set the environment variable ${hint}`);
     }
     return str.replace(PLACEHOLDER, (whole, name) => {
       const raw = env[name];
@@ -33,7 +35,7 @@ export function substitute(value, { env = process.env, readFile = (p) => fs.read
         return whole;
       }
       let out = raw;
-      if (/^(HD|HOMEPAGE)_FILE_/.test(name)) {
+      if (/^(DASHBOARD|HOMEPAGE)_FILE_/.test(name)) {
         try {
           out = readFile(raw).trim();
         } catch (err) {

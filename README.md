@@ -1,6 +1,8 @@
 <div align="center">
 
-<h1>Homelab Dashboard</h1>
+<img src="docs/images/logo.svg" width="72" height="72" alt="">
+
+<h1>Dashboard</h1>
 
 <p>A fast, self-hosted start page for your homelab, configured in YAML,<br>
 with 170+ widgets and room for the ones <strong>you</strong> publish.</p>
@@ -31,7 +33,7 @@ with 170+ widgets and room for the ones <strong>you</strong> publish.</p>
 ## Getting started
 
 ```bash
-docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/homelab-dashboard:latest
+docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/dashboard:latest
 ```
 
 Or with Docker Compose:
@@ -40,7 +42,7 @@ Or with Docker Compose:
 # compose.yaml
 services:
   dashboard:
-    image: ghcr.io/stefanrenne/homelab-dashboard:latest
+    image: ghcr.io/stefanrenne/dashboard:latest
     ports:
       - "3000:3000"
     volumes:

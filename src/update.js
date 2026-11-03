@@ -2,7 +2,7 @@
 // the footer can say when a newer version is out. Off with hideVersion: true or
 // disableUpdateCheck, and without a url (tests). A failed check is logged and tried again the next day.
 
-export const RELEASES_URL = 'https://api.github.com/repos/stefanrenne/homelab-dashboard/releases/latest';
+export const RELEASES_URL = 'https://api.github.com/repos/stefanrenne/dashboard/releases/latest';
 export const CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
 
 const parts = (v) => (/^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(v)) ?? []).slice(1).map(Number);
@@ -39,7 +39,7 @@ export class UpdateCheck {
   async check() {
     try {
       const res = await this.fetchImpl(this.url, {
-        headers: { accept: 'application/vnd.github+json', 'user-agent': 'homelab-dashboard' },
+        headers: { accept: 'application/vnd.github+json', 'user-agent': 'dashboard' },
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) throw new Error(`GitHub answered ${res.status}`);

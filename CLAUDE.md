@@ -4,7 +4,7 @@ Context for Claude (and other developers) working on this project.
 
 ## What this is
 
-Homelab Dashboard: a self-hosted start page for a homelab, in the spirit of
+Dashboard (getdashboard.dev): a self-hosted start page for a homelab, in the spirit of
 [homepage](https://gethomepage.dev). Everything is configured in YAML files (services, header
 widgets, bookmarks, Docker/Kubernetes discovery). The difference: **widgets are packages that
 anyone can publish outside this repository** (a git repo, an npm package or a local folder),
@@ -17,12 +17,12 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 |---|---|
 | `src/server.js` | Entry point: arguments, listen, signals. |
 | `src/app.js` | Application state (config → plugins → registry → discovery → layout), HTTP routes, SSE reload. |
-| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{HD_VAR_*}}`/`{{HD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`). |
+| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`). |
 | `src/plugins/` | `loader.js` (widget.yaml + server.js → registry), `options.js` (option schema, public/secret split), `runtime.js` (ctx, timeout, cache), `sandbox.js` + `worker.js` (installed widgets in a worker thread), `installer.js` (git/npm/path sources + lock file). |
 | `src/discovery/` | `docker.js` (labels, Swarm services), `kubernetes.js` (Ingress, IngressRoute and HTTPRoute annotations), `kubeconfig.js` (service account or kubeconfig connection), `labels.js`, `index.js` (polling + merge with YAML, weights). |
 | `src/layout.js` | Widget instances (server side) and the layout JSON (browser side). |
 | `public/index.html` | The dashboard. A single file, vanilla JS, no build step. |
-| `examples/widget-template/` | Copy-and-go template for widget authors; covered by tests. Its repository form is `../homelab-dashboard-widget-example` ([GitHub](https://github.com/stefanrenne/homelab-dashboard-widget-example)); keep the two in step. |
+| `examples/widget-template/` | Copy-and-go template for widget authors; covered by tests. Its repository form is `../dashboard-widget-example` ([GitHub](https://github.com/stefanrenne/dashboard-widget-example)); keep the two in step. |
 | `config.example/` | Example config: the default for an empty `/config` and for `npm run dev`. |
 | `deploy/` | Your own installations (config, compose file, preview scripts). Ignored by git; never referenced from the rest of the codebase. |
 | `tests/` | `node:test` for everything, jsdom for the frontend, fixtures in `tests/fixtures/`. |
@@ -30,7 +30,7 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 | `scripts/pages.sh`, `scripts/pages-widgets.mjs`, `scripts/widget-images.mjs`, `scripts/check-highlight.rb` | Stage the GitHub Pages site: `docs/`, a page per widget with an example image (the widget's README example against the collection's fixtures); then every code block through Rouge. |
 | `scripts/screenshots.mjs`, `scripts/showcase/` | Recreates the README and home page screenshots from the showcase config (Playwright, not in `package.json`). |
 | `scripts/new-widget.mjs` | `npm run new-widget -- <id>`: the widget template under a new id (the example repo's `npm run rename` does the same in place). |
-| `../homelab-dashboard-widgets` | Separate repo ([GitHub](https://github.com/stefanrenne/homelab-dashboard-widgets)): every widget, as a collection, including `CORE_WIDGETS` (`src/plugins/installer.js`), the ones `src/layout.js` creates for `siteMonitor:`, `ping:`, `container:`, `app:` and `proxmoxNode:`. Not part of this codebase on purpose. The tests load its widgets from a checkout (`HD_COLLECTION_DIR`, else this sibling folder; CI checks out its newest release, as installations get it). |
+| `../dashboard-widgets` | Separate repo ([GitHub](https://github.com/stefanrenne/dashboard-widgets)): every widget, as a collection, including `CORE_WIDGETS` (`src/plugins/installer.js`), the ones `src/layout.js` creates for `siteMonitor:`, `ping:`, `container:`, `app:` and `proxmoxNode:`. Not part of this codebase on purpose. The tests load its widgets from a checkout (`DASHBOARD_COLLECTION_DIR`, else this sibling folder; CI checks out its newest release, as installations get it). |
 | `.github/` | CI (tests, image smoke test, amd64+arm64 image to GHCR, release on a tag), Dependabot and its auto-merge. |
 | `docs/` | The GitHub Pages site, in four parts: Home (`README.md`), `configuration/` (a page per config file, as homepage's, plus filters, images and custom CSS/JS), `widgets/` (the list; a page per widget is generated) and `extend/` (local and remote widgets, API reference, security, `contributing/`). `docs/_config.yml`: titles, menu order, redirects. A new page gets an entry under `defaults:` there. |
 | `todo.md` / `completed.md` | Open and finished work. Update them when you pick something up or finish it. |
@@ -41,17 +41,17 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 ```bash
 npm ci && npm test            # all tests (package-lock.json is committed)
 npm run dev                   # http://localhost:3000 with config.example, hot reload of the YAML
-docker build -t homelab-dashboard .
+docker build -t dashboard .
 ```
 
-The tests need a checkout of the widgets collection next to this repository (or `HD_COLLECTION_DIR`).
+The tests need a checkout of the widgets collection next to this repository (or `DASHBOARD_COLLECTION_DIR`).
 Run the tests before every commit. CI (`.github/workflows/ci.yml`) does the same, then builds
 the image and smoke-tests it.
 
 ## Hard rules
 
 1. **Secrets never reach the browser.** Options marked `secret: true`, options a widget does not
-   declare, and every value filled in from `{{HD_VAR_*}}`/`{{HD_FILE_*}}` exist only on the server.
+   declare, and every value filled in from `{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}` exist only on the server.
    `/api/layout` carries public options only, and error messages are scrubbed. A test checks
    that a secret never appears in `/api/layout`; keep it passing.
 2. **The widget API is a versioned contract** (`apiVersion` in widget.yaml). Within one version the
@@ -70,9 +70,10 @@ the image and smoke-tests it.
 5. **The user's files are never written.** The app only writes under `<config>/plugins/`
    (downloaded packages and `plugins.lock.yaml`), and a log file under `logpath` when the user
    sets one (`src/log.js`).
-6. **Config files are a contract** with existing installations. Change them in a
-   backward-compatible way only. When a key is renamed, the old one keeps working with a warning.
-   Describe it under "Migration" in `docs/configuration/README.md`, and add a test with config in the old form.
+6. **Config files are a contract** with existing installations. Before 1.0 a renamed or removed
+   key needs no fallback, but every such change is listed under "Migration" in
+   `docs/configuration/README.md` (what the old form becomes) and in the CHANGELOG. From 1.0 on the
+   old form keeps working with a warning, covered by a test with config in the old form.
 7. **Minimal dependencies.** Runtime: only `yaml`. Anything else needs a reason in `docs/extend/contributing/decisions.md`.
 8. **Host paths, sockets and API URLs via module constants or parameters** (`DEFAULT_SOCKET`,
    `K8S_SA_DIR`, `configDir`, ...) so tests can replace them.
@@ -91,7 +92,7 @@ the image and smoke-tests it.
   plus `widget.yaml`); the README format is in the collection's CLAUDE.md. A collection
   release starts the Pages workflow itself (its release job, with the secret
   `PAGES_DISPATCH_TOKEN`); otherwise **follow every collection release with a rebuild of the
-  site**: `gh workflow run pages.yml --repo stefanrenne/homelab-dashboard`. Then
+  site**: `gh workflow run pages.yml --repo stefanrenne/dashboard`. Then
   check that the page of each new or changed widget is there
   (`https://getdashboard.dev/widgets/collection/<id>.html`).
 - **No version requirements in the docs before 1.0**: no "(dashboard 0.12.0 or newer)", "since
@@ -124,8 +125,8 @@ the image and smoke-tests it.
 See `docs/extend/contributing/decisions.md` for the background. In short:
 - A path check must happen on the **resolved** path: `assets/../server.js` starts with `assets/`.
 - The dashboard runs as `node` (uid 1000); `/var/run/docker.sock` is usually `root:root 660`.
-  Root scripts (a button's `user: root`) go through sudo and `docker/hd-root`, and only with
-  `HD_ALLOW_ROOT_SCRIPTS=true`; the server itself never runs as root.
+  Root scripts (a button's `user: root`) go through sudo and `docker/dashboard-root`, and only with
+  `DASHBOARD_ALLOW_ROOT_SCRIPTS=true`; the server itself never runs as root.
   `docker/start.sh` starts as root, adds `node` to the socket's group and drops to `node` with
   su-exec. Started with `--user`, that step is skipped and discovery gets EACCES without
   `--group-add <gid of the socket>`. Never run `server.js` itself as root.
@@ -140,6 +141,6 @@ See `docs/extend/contributing/decisions.md` for the background. In short:
 - Node majors alternate LTS (even) and short-lived (odd). Dependabot once auto-merged
   `node:25-alpine`; Node majors are now ignored by Dependabot and bumped by hand to the next LTS.
 - Docker's `label` filter is AND-only; discovery lists all containers and matches both
-  `homelab.*` and `homepage.*` itself.
+  `dashboard.*` and `homepage.*` itself.
 - Values in discovered labels must go through `substitute()` too, or `{{HOMEPAGE_VAR_*}}`
   stays literal and its value is not known as a secret.

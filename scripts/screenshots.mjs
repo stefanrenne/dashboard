@@ -1,6 +1,6 @@
 // Recreates the README and home page screenshots from scripts/showcase (see
 // docs/extend/contributing/development.md): its widgets ask the fake homelab of a widgets
-// collection checkout (HD_COLLECTION_DIR, else ../homelab-dashboard-widgets), which answers from
+// collection checkout (DASHBOARD_COLLECTION_DIR, else ../dashboard-widgets), which answers from
 // the collection's fixtures. Status checks and system resources are stubbed, so the screenshots
 // do not depend on the network or this machine.
 // Playwright is deliberately not in package.json: only needed when the screenshots are refreshed.
@@ -18,7 +18,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const out = root + 'docs/images/';
 const quiet = { info() {}, warn() {}, error() {} };
 
-const collection = path.resolve(process.env.HD_COLLECTION_DIR ?? path.join(root, '../homelab-dashboard-widgets'));
+const collection = path.resolve(process.env.DASHBOARD_COLLECTION_DIR ?? path.join(root, '../dashboard-widgets'));
 const { startMock } = await import(path.join(collection, 'scripts/mock-homelab.mjs'));
 const mock = await startMock();
 

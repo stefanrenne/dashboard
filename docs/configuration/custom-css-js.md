@@ -7,7 +7,7 @@ reload the open pages.
 ```css
 /* custom.css */
 :root {
-  --hd-card: rgb(30 41 59 / 0.6);   /* the card background */
+  --dash-card: rgb(30 41 59 / 0.6);   /* the card background */
 }
 .card {
   border-radius: 12px;
@@ -19,8 +19,8 @@ reload the open pages.
 document.title = `${document.title} · lab`;
 ```
 
-The page's colours are CSS variables on `:root` (`--hd-bg`, `--hd-card`, `--hd-text`,
-`--hd-muted`, `--hd-accent`, `--hd-ok`, `--hd-warn`, `--hd-error`, ...), set for the light and the
+The page's colours are CSS variables on `:root` (`--dash-bg`, `--dash-card`, `--dash-text`,
+`--dash-muted`, `--dash-accent`, `--dash-ok`, `--dash-warn`, `--dash-error`, ...), set for the light and the
 dark theme. Override them in `custom.css` for a theme of your own. Class names of the page may change
 between versions; variables are the steadier hook.
 

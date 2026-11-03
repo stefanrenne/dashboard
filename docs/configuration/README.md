@@ -1,9 +1,9 @@
 # Configuration
 
-All configuration lives in one folder (`/config` in the container, `--config` or `HD_CONFIG_DIR`
+All configuration lives in one folder (`/config` in the container, `--config` or `DASHBOARD_CONFIG_DIR`
 otherwise). Every file is optional. The page reloads by itself when a `.yaml` file changes.
 On a network share (NFS, SMB) changes made on another machine are not noticed; set
-`HD_WATCH_POLL` to a number of seconds to check the files that often instead.
+`DASHBOARD_WATCH_POLL` to a number of seconds to check the files that often instead.
 Problems are shown at the top of the page with the file and a path into it. A broken entry is
 skipped and the rest keeps working.
 
@@ -27,23 +27,23 @@ Every file is [YAML](https://yaml.org), a superset of JSON that is easy to read 
 
 - **Indentation matters.** Nested keys go two spaces further in than their parent; never use tabs.
 - **`key: value`**, with a space after the colon. A list item starts with `- `.
-- **Quote strings** with special characters, and always API keys and `{{HD_VAR_...}}` values:
-  `key: "{{HD_VAR_RADARR_KEY}}"`.
+- **Quote strings** with special characters, and always API keys and `{{DASHBOARD_VAR_...}}` values:
+  `key: "{{DASHBOARD_VAR_RADARR_KEY}}"`.
 - A broken file is reported at the top of the page, with the file and a path into it. An online
   checker such as [YAML Lint](https://www.yamllint.com) helps to find the spot.
 
 ## Variables
 
-Any value can contain `{{HD_VAR_NAME}}` (the environment variable `HD_VAR_NAME`) or
-`{{HD_FILE_NAME}}` (the contents of the file whose path is in `HD_FILE_NAME`, e.g. a Docker
+Any value can contain `{{DASHBOARD_VAR_NAME}}` (the environment variable `DASHBOARD_VAR_NAME`) or
+`{{DASHBOARD_FILE_NAME}}` (the contents of the file whose path is in `DASHBOARD_FILE_NAME`, e.g. a Docker
 secret). homepage's `{{HOMEPAGE_VAR_*}}` and `{{HOMEPAGE_FILE_*}}` work the same, so an
 existing homepage environment can be reused. Substituted values are treated as secrets: they
 never reach the browser.
 
 Only these forms are filled in. Anything else in double braces, such as `{{SHELLY_PASSWORD}}`,
 stays as written and would reach the service as a wrong key or password; the dashboard warns
-about it at the top of the page, with the form that works (`{{HD_VAR_SHELLY_PASSWORD}}`, with the
-environment variable `HD_VAR_SHELLY_PASSWORD`).
+about it at the top of the page, with the form that works (`{{DASHBOARD_VAR_SHELLY_PASSWORD}}`, with the
+environment variable `DASHBOARD_VAR_SHELLY_PASSWORD`).
 
 ## Including other files
 
@@ -87,7 +87,7 @@ The rules:
   folder. Only `.yaml` and `.yml` files can be included. Keep included files out of `plugins/`.
 - **Nesting**: an included file can include others, up to 8 levels deep. A file that ends up
   including itself is reported.
-- **Variables and secrets**: `{{HD_VAR_*}}` and `{{HD_FILE_*}}` work in included files, and
+- **Variables and secrets**: `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` work in included files, and
   their values stay secret, as in the main files.
 - **Reloading**: saving an included file reloads the page, also in a subfolder.
 - **Problems** never stop the dashboard. A missing file, a path outside the config folder, a
@@ -105,18 +105,18 @@ Settings of the container rather than of the page.
 
 | Variable | What |
 |---|---|
-| `HD_VAR_*`, `HD_FILE_*` | Values for `{{HD_VAR_*}}` and `{{HD_FILE_*}}` (see [Variables](#variables)) |
-| `HD_ALLOWED_HOSTS` | The host names the dashboard answers to (see [Allowed hosts](#allowed-hosts)) |
-| `HD_WIDGET_MEMORY_MB`, `HD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
-| `HD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
-| `HD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
-| `HD_CONFIG_DIR` | The config folder, when not run from the image |
+| `DASHBOARD_VAR_*`, `DASHBOARD_FILE_*` | Values for `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` (see [Variables](#variables)) |
+| `DASHBOARD_ALLOWED_HOSTS` | The host names the dashboard answers to (see [Allowed hosts](#allowed-hosts)) |
+| `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
+| `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
+| `DASHBOARD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
+| `DASHBOARD_CONFIG_DIR` | The config folder, when not run from the image |
 | `LOG_TARGETS` | `both`, `stdout` or `file` (with `logpath` in [settings.yaml](settings.md)) |
 
 ### Allowed hosts
 
-`HD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) lists the host names the dashboard
-answers to, comma-separated, e.g. `HD_ALLOWED_HOSTS=dash.lan,dash.example.com:8443`. Any other
+`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) lists the host names the dashboard
+answers to, comma-separated, e.g. `DASHBOARD_ALLOWED_HOSTS=dash.lan,dash.example.com:8443`. Any other
 `Host` header gets a 403, which stops DNS rebinding: a web page that points its own domain at
 your network cannot read the dashboard through your browser. An entry without a port allows any
 port; `localhost` and `127.0.0.1` always work (the image's health check uses them). Unset, or
@@ -125,7 +125,7 @@ port; `localhost` and `127.0.0.1` always work (the image's health check uses the
 ### Widget worker
 
 Installed widgets run in a worker thread with a memory limit, so one that hangs cannot stop the
-dashboard. `HD_WIDGET_MEMORY_MB` sets the limit (default 256); `HD_WIDGET_ISOLATION=off` runs them
+dashboard. `DASHBOARD_WIDGET_MEMORY_MB` sets the limit (default 256); `DASHBOARD_WIDGET_ISOLATION=off` runs them
 in the dashboard process instead.
 
 ### Scripts as root
@@ -133,8 +133,8 @@ in the dashboard process instead.
 The [button](../widgets/collection/button.html)
 widget runs its script as the dashboard's user (`node`, uid 1000). A button with `user: root`
 runs it as root inside the container, for scripts that write files owned by root. That only works
-with `HD_ALLOW_ROOT_SCRIPTS: "true"` on the container: the image then lets `node` start one fixed
-runner (`/usr/local/bin/hd-root`) through sudo. Without it such a button shows that it needs the
+with `DASHBOARD_ALLOW_ROOT_SCRIPTS: "true"` on the container: the image then lets `node` start one fixed
+runner (`/usr/local/bin/dashboard-root`) through sudo. Without it such a button shows that it needs the
 variable. The container must start as root (the default; not `--user 1000`), since that is when
 the rule is written. Every installed widget could use the runner once it is on, and anyone who can
 open the page can press the button, so turn it on only for a dashboard you trust and keep behind
@@ -143,15 +143,36 @@ authentication.
 ```yaml
 # docker-compose.yml
 services:
-  homelab-dashboard:
+  dashboard:
     environment:
-      HD_ALLOW_ROOT_SCRIPTS: "true"
+      DASHBOARD_ALLOW_ROOT_SCRIPTS: "true"
 ```
 
 ## Migration
 
-Changes to these formats stay backward compatible (hard rule 6). Each renamed or changed key is
-listed here with the version, what the old form becomes, and the test that covers it.
+Each renamed or changed key is listed here with the version, what the old form becomes, and the
+test that covers it. Before 1.0 an old form may stop working; from 1.0 on it keeps working with a
+warning.
+
+### Next: Homelab Dashboard is now Dashboard
+
+The project is renamed **Dashboard** (getdashboard.dev). Before 1.0 the old names are not kept,
+so an existing installation changes these:
+
+| Was | Now |
+|---|---|
+| image `ghcr.io/stefanrenne/homelab-dashboard` | `ghcr.io/stefanrenne/dashboard` (the old path stays at its last release) |
+| `{{HD_VAR_*}}`, `{{HD_FILE_*}}` | `{{DASHBOARD_VAR_*}}`, `{{DASHBOARD_FILE_*}}`, with the environment variables renamed too; the dashboard warns about an old one, naming the new form |
+| `HD_CONFIG_DIR`, `HD_ALLOWED_HOSTS`, `HD_WATCH_POLL`, `HD_ALLOW_ROOT_SCRIPTS`, `HD_WIDGET_ISOLATION`, `HD_WIDGET_MEMORY_MB` | `DASHBOARD_…` with the same rest |
+| Docker labels `homelab.*` | `dashboard.*` (homepage's `homepage.*` keep working) |
+| Kubernetes annotations `homelab.dev/*` | `getdashboard.dev/*` (homepage's `gethomepage.dev/*` keep working) |
+| a button's `X-Requested-With: homelab-dashboard` | `X-Requested-With: dashboard` |
+| `custom.css` with `--hd-*` | `--dash-*` |
+
+The widgets collection moved to `github.com/stefanrenne/dashboard-widgets`; a `plugins:` entry
+with the old address keeps working through GitHub's redirect. Widgets of API 1 keep working (see
+the API reference). Covered by `tests/config.test.mjs` (variables), `tests/discovery.test.mjs`
+(labels and annotations) and `tests/frontend.test.mjs` (API 1 next to 2).
 
 ### 0.7.2: the version is shown by default
 

@@ -40,7 +40,7 @@ export default {
   },
 
   /**
-   * Optional: runs when client.js sends `hd-widget-action` (a button press). One at a time per
+   * Optional: runs when client.js sends `dash-widget-action` (a button press). One at a time per
    * instance; the dashboard shows the result in a dialog (`output` as text, `exitCode` if any).
    * Same ctx as fetch, plus ctx.configDir (the dashboard's config folder).
    */

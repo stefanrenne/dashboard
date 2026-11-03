@@ -6,10 +6,10 @@
     ],
     "State": "running",
     "Labels": {
-      "homelab.name": "Plex",
-      "homelab.group": "Media",
-      "homelab.icon": "plex.svg",
-      "homelab.href": "http://plex.lan:32400"
+      "dashboard.name": "Plex",
+      "dashboard.group": "Media",
+      "dashboard.icon": "plex.svg",
+      "dashboard.href": "http://plex.lan:32400"
     }
   },
   {
@@ -19,8 +19,8 @@
     ],
     "State": "running",
     "Labels": {
-      "homelab.name": "Uptime Kuma",
-      "homelab.siteMonitor": "http://uptime-kuma:3001"
+      "dashboard.name": "Uptime Kuma",
+      "dashboard.siteMonitor": "http://uptime-kuma:3001"
     }
   },
   {

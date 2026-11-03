@@ -43,15 +43,15 @@ test('secrets from variables and secret options never reach /api/layout', async 
         widget:
           type: example-counter
           url: ${upstream.url}/
-          key: "{{HD_VAR_COUNTER_KEY}}"
+          key: "{{DASHBOARD_VAR_COUNTER_KEY}}"
     - Api:
         widget:
           type: custom-api
           url: ${upstream.url}/
-          headers: { authorization: "Bearer {{HD_VAR_COUNTER_KEY}}" }
+          headers: { authorization: "Bearer {{DASHBOARD_VAR_COUNTER_KEY}}" }
           mappings: [{ field: count, label: Count }]
 `,
-  }, { HD_VAR_COUNTER_KEY: SECRET });
+  }, { DASHBOARD_VAR_COUNTER_KEY: SECRET });
   try {
     const raw = await t.get('/api/layout').then((r) => r.text());
     assert.equal(raw.includes(SECRET), false, 'secret leaked into the layout');
@@ -240,7 +240,7 @@ test('service_group and service_name pull another service\'s widget options in, 
     'services.yaml': `
 - Media:
     - Sonarr:
-        widget: { type: custom-api, url: "http://sonarr.lan", headers: { x-api-key: "{{HD_VAR_SONARR_KEY}}" }, mappings: [] }
+        widget: { type: custom-api, url: "http://sonarr.lan", headers: { x-api-key: "{{DASHBOARD_VAR_SONARR_KEY}}" }, mappings: [] }
 - Home:
     - Calendar:
         widget:
@@ -249,7 +249,7 @@ test('service_group and service_name pull another service\'s widget options in, 
             - { type: custom-api, service_group: Media, service_name: Sonarr, color: teal }
             - { service_group: Media, service_name: Nope }
 `,
-  }, { HD_VAR_SONARR_KEY: 'sonarr-secret-key' });
+  }, { DASHBOARD_VAR_SONARR_KEY: 'sonarr-secret-key' });
   try {
     const raw = await t.get('/api/layout').then((r) => r.text());
     assert.equal(raw.includes('sonarr-secret-key'), false);
@@ -361,11 +361,11 @@ test('the iframe widget: its origin, and only that, in frame-src', async () => {
       '    - Power:',
       '        widget: { type: iframe, src: "https://grafana.lan:3000/d-solo/power?panelId=2" }',
       '    - Hidden:',
-      '        widget: { type: iframe, src: "{{HD_VAR_PAGE}}" }',
+      '        widget: { type: iframe, src: "{{DASHBOARD_VAR_PAGE}}" }',
       '    - Broken:',
       '        widget: { type: iframe, src: "javascript:alert(1)" }',
     ].join('\n') + '\n',
-  }, { HD_VAR_PAGE: 'https://secret.lan/page' });
+  }, { DASHBOARD_VAR_PAGE: 'https://secret.lan/page' });
   try {
     const csp = (await t.get('/')).headers.get('content-security-policy');
     assert.match(csp, /frame-src https:\/\/grafana\.lan:3000; frame-ancestors 'self'/);
@@ -378,15 +378,15 @@ test('the iframe widget: its origin, and only that, in frame-src', async () => {
   }
 });
 
-test('HD_ALLOWED_HOSTS: only the listed Host headers (and loopback) get an answer', async () => {
+test('DASHBOARD_ALLOWED_HOSTS: only the listed Host headers (and loopback) get an answer', async () => {
   const { allowedHosts, hostAllowed } = await import('../src/app.js');
   assert.equal(allowedHosts({}), null);
-  assert.equal(allowedHosts({ HD_ALLOWED_HOSTS: 'a.lan, *' }), null);
+  assert.equal(allowedHosts({ DASHBOARD_ALLOWED_HOSTS: 'a.lan, *' }), null);
   assert.deepEqual(allowedHosts({ HOMEPAGE_ALLOWED_HOSTS: 'Dash.lan:3000' }), ['dash.lan:3000'], 'homepage\'s name works too');
   const list = ['dash.lan', 'dash.example.com:8443'];
   assert.deepEqual(['dash.lan:3000', 'DASH.lan', 'dash.example.com:8443', 'dash.example.com:443', 'evil.example', '127.0.0.1:3000', '[::1]:3000', undefined].map((h) => hostAllowed(h, list)),
     [true, true, true, false, false, true, true, false]);
-  const t = await startApp({}, { HD_ALLOWED_HOSTS: 'dash.lan' });
+  const t = await startApp({}, { DASHBOARD_ALLOWED_HOSTS: 'dash.lan' });
   const get = (host) => new Promise((resolve, reject) => {
     const req = http.request(`${t.base}/api/health`, { headers: { host } }, (res) => { res.resume(); resolve(res.statusCode); });
     req.on('error', reject);
@@ -438,7 +438,7 @@ test('hidden-iframe services run through /api/run with the configured URL only',
   });
   try {
     const [run, broken, link] = t.app.layout.groups[0].services;
-    const post = (id, headers = { 'x-requested-with': 'homelab-dashboard' }) => t.get(`/api/run/${id}`, { method: 'POST', headers });
+    const post = (id, headers = { 'x-requested-with': 'dashboard' }) => t.get(`/api/run/${id}`, { method: 'POST', headers });
     assert.equal((await post(run.id, {})).status, 403, 'needs the header');
     assert.equal(hits, 0);
     assert.deepEqual(await post(run.id).then((r) => r.json()), { ok: true, status: 200 });
@@ -453,7 +453,7 @@ test('hidden-iframe services run through /api/run with the configured URL only',
   const t2 = await startApp({ 'services.yaml': '- S:\n    - Down: { href: "http://127.0.0.1:1/x", target: hidden-iframe }\n' });
   try {
     const id = t2.app.layout.groups[0].services[0].id;
-    const out = await t2.get(`/api/run/${id}`, { method: 'POST', headers: { 'x-requested-with': 'homelab-dashboard' } }).then((r) => r.json());
+    const out = await t2.get(`/api/run/${id}`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } }).then((r) => r.json());
     assert.equal(out.ok, false);
     assert.match(out.error, /fetch failed/);
   } finally {
@@ -465,7 +465,7 @@ test('plugin sync needs the X-Requested-With header', async () => {
   const t = await startApp({});
   try {
     assert.equal((await t.get('/api/plugins/sync', { method: 'POST' })).status, 403);
-    const ok = await t.get('/api/plugins/sync', { method: 'POST', headers: { 'x-requested-with': 'homelab-dashboard' } });
+    const ok = await t.get('/api/plugins/sync', { method: 'POST', headers: { 'x-requested-with': 'dashboard' } });
     assert.equal(ok.status, 200);
   } finally {
     await t.close();
@@ -604,7 +604,7 @@ test('a mounted Docker socket is discovered without docker.yaml', async () => {
   const socketPath = path.join(tmpDir('hd-sock-'), 'docker.sock');
   const srv = await serve((req, res) => {
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify([{ Id: 'a1', Names: ['/grafana'], State: 'running', Labels: { 'homelab.name': 'Grafana', 'homelab.group': 'Monitoring' } }]));
+    res.end(JSON.stringify([{ Id: 'a1', Names: ['/grafana'], State: 'running', Labels: { 'dashboard.name': 'Grafana', 'dashboard.group': 'Monitoring' } }]));
   }, { socketPath });
   const configDir = tmpDir('hd-app-');
   fs.writeFileSync(path.join(configDir, 'docker.yaml'), '# only comments, like config.example\n');
@@ -848,8 +848,8 @@ test('the version is shown and checked for updates by default; hideVersion: true
     assert.deepEqual(off.layout.plugins.map((p) => p.name), ['widget-template'], 'the plugins next to the version');
     assert.equal(off.layout.versionUrl, versionUrl(off.layout.version));
     assert.equal(quiet.layout.versionUrl, null);
-    assert.equal(versionUrl('0.7.2'), 'https://github.com/stefanrenne/homelab-dashboard/releases/tag/v0.7.2');
-    assert.equal(versionUrl('main-1d0c028'), 'https://github.com/stefanrenne/homelab-dashboard/commit/1d0c028');
+    assert.equal(versionUrl('0.7.2'), 'https://github.com/stefanrenne/dashboard/releases/tag/v0.7.2');
+    assert.equal(versionUrl('main-1d0c028'), 'https://github.com/stefanrenne/dashboard/commit/1d0c028');
     assert.equal(versionUrl('dev'), null);
     assert.equal(off.layout.update, null);
     off.close();
@@ -978,9 +978,9 @@ test('a widget action: POST with the header, one at a time, secrets scrubbed, 40
   });
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${plugin}\n`,
-    'services.yaml': '- G:\n    - A:\n        widget: { type: act, key: "{{HD_VAR_K}}", wait: 300 }\n    - B:\n        widget: { type: act, key: "{{HD_VAR_K}}", wait: 1 }\n    - C:\n        widget: { type: custom-api, url: "http://c.lan/", mappings: [] }\n',
-  }, { HD_VAR_K: SECRET });
-  const post = (id, headers = { 'x-requested-with': 'homelab-dashboard' }) => fetch(`${t.base}/api/widgets/${id}/action`, { method: 'POST', headers });
+    'services.yaml': '- G:\n    - A:\n        widget: { type: act, key: "{{DASHBOARD_VAR_K}}", wait: 300 }\n    - B:\n        widget: { type: act, key: "{{DASHBOARD_VAR_K}}", wait: 1 }\n    - C:\n        widget: { type: custom-api, url: "http://c.lan/", mappings: [] }\n',
+  }, { DASHBOARD_VAR_K: SECRET });
+  const post = (id, headers = { 'x-requested-with': 'dashboard' }) => fetch(`${t.base}/api/widgets/${id}/action`, { method: 'POST', headers });
   try {
     const [a, b, c] = t.app.layout.groups[0].services.map((s) => s.widgets[0].instanceId);
     assert.equal((await post(a, {})).status, 403, 'the header keeps other sites out');
@@ -1000,13 +1000,13 @@ test('a widget action: POST with the header, one at a time, secrets scrubbed, 40
   }
 });
 
-test('readVersion: the image\'s VERSION file wins over a copied HD_VERSION, then package.json', () => {
+test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSION, then package.json', () => {
   const root = tmpDir('hd-version-');
   fs.writeFileSync(path.join(root, 'package.json'), '{ "version": "1.0.0" }');
   assert.equal(readVersion(root, {}), '1.0.0');
-  assert.equal(readVersion(root, { HD_VERSION: '0.8.1' }), '0.8.1');
+  assert.equal(readVersion(root, { DASHBOARD_VERSION: '0.8.1' }), '0.8.1');
   fs.writeFileSync(path.join(root, 'VERSION'), '0.10.0\n');
-  assert.equal(readVersion(root, { HD_VERSION: '0.8.1' }), '0.10.0', 'an old environment copied by a recreate does not win');
+  assert.equal(readVersion(root, { DASHBOARD_VERSION: '0.8.1' }), '0.10.0', 'an old environment copied by a recreate does not win');
 });
 
 test('filter: bound to the service\'s widgets in /api/layout; mistakes and secrets are messages', async () => {
@@ -1022,11 +1022,11 @@ test('filter: bound to the service\'s widgets in /api/layout; mistakes and secre
       '    - B: { filter: "widgets.attr.updates", widgets: [{ type: datetime }, { type: attr }] }',
       '    - C: { filter: "widget.update ==", widget: { type: attr } }',
       '    - D: { filter: "widgets.radarr.x", widget: { type: attr } }',
-      '    - E: { filter: "widget.update == \'{{HD_VAR_PW}}\'", widget: { type: attr } }',
+      '    - E: { filter: "widget.update == \'{{DASHBOARD_VAR_PW}}\'", widget: { type: attr } }',
       '    - F: { filter: "container.attention == false", container: plex, widget: { type: attr } }',
       '    - H: { filter: "container.attention", widget: { type: attr } }',
     ].join('\n') + '\n',
-  }, { HD_VAR_PW: 'hunter22' });
+  }, { DASHBOARD_VAR_PW: 'hunter22' });
   try {
     const layout = await t.json('/api/layout');
     const [a, b, c, d, e, f, h] = layout.groups[0].services;
@@ -1091,6 +1091,33 @@ test('a widget\'s own filter: bound like the service\'s, taken out of its option
     assert.ok(errors.some((m) => /G\[1\]\.Bad\.widgets\[1\]\.filter: no "radarr" widget on this service; the widget is shown unfiltered/.test(m)), errors.join('\n'));
     assert.ok(errors.some((m) => /G\[2\]\.Broken\.widgets\[0\]\.filter: .*the widget is shown unfiltered/.test(m)), errors.join('\n'));
     assert.ok(!layout.messages.warnings.some((m) => /unknown option.*filter|filter.*unknown/i.test(m.message)), JSON.stringify(layout.messages.warnings));
+  } finally {
+    await t.close();
+  }
+});
+
+test('widget API 2 next to 1: icon options marked #dash-mask or #hd-mask, ctx.apiVersion the widget\'s own', async () => {
+  const root = tmpDir('dash-api-');
+  for (const v of [1, 2]) {
+    const dir = path.join(root, `v${v}`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'widget.yaml'), `id: v${v}\nname: V${v}\nversion: 1.0.0\napiVersion: ${v}\noptions:\n  icon: { type: icon }\n`);
+    fs.writeFileSync(path.join(dir, 'server.js'), 'export default { async fetch(ctx) { return { blocks: [{ label: "api", value: ctx.apiVersion }] } } }');
+  }
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${path.join(root, 'v1')}\n  - path: ${path.join(root, 'v2')}\n`,
+    'services.yaml': '- G:\n    - One: { widget: { type: v1, icon: mdi-home } }\n    - Two: { widget: { type: v2, icon: mdi-home } }\n',
+  });
+  try {
+    const layout = await t.json('/api/layout');
+    const [one, two] = layout.groups[0].services.map((s) => s.widgets[0]);
+    assert.match(one.options.icon, /home\.svg#hd-mask$/, 'API 1: the old marker');
+    assert.match(two.options.icon, /home\.svg#dash-mask$/, 'API 2: the new marker');
+    assert.deepEqual([layout.widgetTypes.v1.apiVersion, layout.widgetTypes.v2.apiVersion], [1, 2]);
+    for (const [w, v] of [[one, 1], [two, 2]]) {
+      const result = await t.json(`/api/widgets/${w.instanceId}`);
+      assert.equal(result.data.blocks[0].value, v, `ctx.apiVersion ${v}`);
+    }
   } finally {
     await t.close();
   }

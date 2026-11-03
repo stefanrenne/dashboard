@@ -7,7 +7,7 @@ VM's or container's state as a label in the card's corner, with CPU and memory o
 pve:                                   # the node name, as in proxmoxNode
   url: https://pve.lan:8006
   token: api@pam!dashboard             # an API token id
-  secret: "{{HD_VAR_PROXMOX_SECRET}}"  # its secret
+  secret: "{{DASHBOARD_VAR_PROXMOX_SECRET}}"  # its secret
   insecure: true                       # default: accept Proxmox's self-signed certificate
 ```
 

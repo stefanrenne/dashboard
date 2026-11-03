@@ -35,19 +35,19 @@ quicklaunch:        # start typing anywhere on the page to find a service, bookm
   hideVisitURL: false         # true: no "open <url>" entry for typed addresses
   mobileButtonPosition: bottom-right   # a search button on phones: top-left, top-right, bottom-left, bottom-right
 providers:          # shared keys and logins (see Providers); a widget entry uses one with provider: <name>
-  openweathermap: "{{HD_VAR_OWM_KEY}}"   # a text fills the widget's first secret option left empty (its key)
+  openweathermap: "{{DASHBOARD_VAR_OWM_KEY}}"   # a text fills the widget's first secret option left empty (its key)
   longhorn:                               # a map fills the options it names
     url: https://longhorn.lan
     username: admin
-    password: "{{HD_VAR_LONGHORN_PASSWORD}}"
-instanceName: internal   # for discovery labels meant for one dashboard (homelab.instance.internal.href)
+    password: "{{DASHBOARD_VAR_LONGHORN_PASSWORD}}"
+instanceName: internal   # for discovery labels meant for one dashboard (dashboard.instance.internal.href)
 hideVersion: true   # hide the versions in the footer (shown by default, as in homepage):
                     # `core v0.7.3 | widgets v0.4.1`, each linking to its release or commit
 pluginUpdateInterval: 1h   # how often #latest and branch plugins are checked for a newer version (false: never)
 disableUpdateCheck: true   # do not ask GitHub once a day for a newer release (only asked while the version is shown)
 disableIndexing: true      # ask search engines not to index the page (robots.txt and a robots meta tag)
 base: https://lab.example.com/dashboard/   # behind a reverse proxy under a sub path: the page's address
-logpath: /config    # also log to <logpath>/logs/homelab-dashboard.log, rotated at 10 MiB, five files kept;
+logpath: /config    # also log to <logpath>/logs/dashboard.log, rotated at 10 MiB, five files kept;
                     # without it the log goes to stdout only. LOG_TARGETS (env): both, stdout or file
 showStats: true     # container stats open from the start instead of on a click; a service can set its own
 statusStyle: dot    # status labels: dot (a coloured dot) or basic (Online/Offline for siteMonitor and ping);
@@ -83,9 +83,9 @@ layout:
 discovery:
   interval: 30s
 plugins:
-  - source: git+https://github.com/someone/hd-widget-x#v1.0.0   # tag, branch or 40-char commit
-  - source: git+https://github.com/someone/hd-widget-v#latest   # the newest release tag
-  - source: npm:hd-widget-y@2.0.1
+  - source: git+https://github.com/someone/dashboard-widget-x#v1.0.0   # tag, branch or 40-char commit
+  - source: git+https://github.com/someone/dashboard-widget-v#latest   # the newest release tag
+  - source: npm:dashboard-widget-y@2.0.1
   - source: git+https://github.com/someone/widgets#v3.0.0
     subdir: widgets/z                                           # a repo with several widgets
   - path: ./my-widgets/w                                        # relative to the config folder
@@ -95,8 +95,8 @@ plugins:
 
 ## Plugins
 
-The [widgets collection](https://github.com/stefanrenne/homelab-dashboard-widgets) is always
-installed, as `git+https://github.com/stefanrenne/homelab-dashboard-widgets#latest`; the entries
+The [widgets collection](https://github.com/stefanrenne/dashboard-widgets) is always
+installed, as `git+https://github.com/stefanrenne/dashboard-widgets#latest`; the entries
 under `plugins:` extend it. To pin it or take only some of its widgets, list that repository
 yourself (with a tag, `only:` or `subdir:`): your entry then takes its place. A widget of your
 own with the same id as one in the collection (for example a local checkout under `path:`) wins.

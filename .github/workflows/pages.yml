@@ -49,10 +49,10 @@ jobs:
         id: collection
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "tag=$(gh release view --repo stefanrenne/homelab-dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=$(gh release view --repo stefanrenne/dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          repository: stefanrenne/homelab-dashboard-widgets
+          repository: stefanrenne/dashboard-widgets
           ref: ${{ steps.collection.outputs.tag }}
           path: collection
       - run: scripts/pages.sh site-src "$GITHUB_REPOSITORY" collection "${{ steps.collection.outputs.tag }}"

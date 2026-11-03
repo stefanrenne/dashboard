@@ -8,7 +8,7 @@
 // With settings.instanceName, <prefix>instance.<name>.<key> wins over <prefix><key> for that
 // dashboard and is ignored by the others (homepage's multiple instances).
 //
-// Docker uses the prefix "homelab." (or homepage's "homepage."), Kubernetes "homelab.dev/"
+// Docker uses the prefix "dashboard." (or homepage's "homepage."), Kubernetes "getdashboard.dev/"
 // (or "gethomepage.dev/").
 
 const FIELDS = ['href', 'icon', 'description', 'siteMonitor', 'ping', 'target', 'statusStyle', 'showStats', 'filter'];

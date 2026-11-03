@@ -20,7 +20,7 @@ type as the key and its options below it. Every type is listed under [Widgets](.
 
 ## Widgets without a service
 
-These widgets of the [widgets collection](https://github.com/stefanrenne/homelab-dashboard-widgets)
+These widgets of the [widgets collection](https://github.com/stefanrenne/dashboard-widgets)
 are not tied to a service. Each widget has its own page with fields and an example under
 [Widgets](../widgets/README.md).
 

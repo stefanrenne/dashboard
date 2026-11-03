@@ -1,4 +1,4 @@
-# homelab-dashboard: one Node process, config in /config.
+# dashboard: one Node process, config in /config.
 # An LTS line (even major). Dependabot only bumps within it; a new LTS is a manual change.
 FROM node:24-alpine
 
@@ -6,7 +6,7 @@ FROM node:24-alpine
 # (busybox ping needs root; iputils' ping works for the unprivileged user). su-exec: the
 # entrypoint drops from root to `node` after giving it the Docker socket's group.
 # bash, curl, jq, docker-cli, docker-cli-compose: for the scripts a button widget runs.
-# sudo: only for a button with `user: root`, and only with HD_ALLOW_ROOT_SCRIPTS=true (start.sh).
+# sudo: only for a button with `user: root`, and only with DASHBOARD_ALLOW_ROOT_SCRIPTS=true (start.sh).
 RUN apk add --no-cache git iputils-ping tini su-exec bash curl jq docker-cli docker-cli-compose sudo
 
 WORKDIR /app
@@ -21,17 +21,17 @@ COPY config.example ./config.example
 # would otherwise keep reporting the old version (src/app.js readVersion).
 ARG VERSION=dev
 RUN printf '%s\n' "$VERSION" > /app/VERSION
-ENV HD_VERSION=${VERSION} \
+ENV DASHBOARD_VERSION=${VERSION} \
     NODE_ENV=production \
-    HD_CONFIG_DIR=/config \
+    DASHBOARD_CONFIG_DIR=/config \
     PORT=3000 \
     HOST=0.0.0.0
 
 # docker/start.sh: Docker socket group, then the dashboard as `node` (never as root).
-# docker/hd-root: what a `user: root` button runs through sudo.
+# docker/dashboard-root: what a `user: root` button runs through sudo.
 COPY docker/start.sh /usr/local/bin/start
-COPY docker/hd-root /usr/local/bin/hd-root
-RUN mkdir -p /config && chown node:node /config && chmod +x /usr/local/bin/start && chmod 755 /usr/local/bin/hd-root
+COPY docker/dashboard-root /usr/local/bin/dashboard-root
+RUN mkdir -p /config && chown node:node /config && chmod +x /usr/local/bin/start && chmod 755 /usr/local/bin/dashboard-root
 
 VOLUME /config
 EXPOSE 3000

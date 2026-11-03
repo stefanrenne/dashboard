@@ -2,7 +2,7 @@
 // A new widget package from examples/widget-template:
 //   npm run new-widget -- <id> [folder] [--name "Display name"]
 // Copies the template to <folder> (default ./<id>) and renames example-counter, ExampleCounter
-// and "Example counter" everywhere. The repository form, homelab-dashboard-widget-example, has
+// and "Example counter" everywhere. The repository form, dashboard-widget-example, has
 // the same rename as `npm run rename`.
 import fs from 'node:fs';
 import path from 'node:path';

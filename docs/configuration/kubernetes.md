@@ -38,7 +38,7 @@ context: home             # optional: another context than the current one
 A kubeconfig may hold a token (`token`, `tokenFile`), a client certificate (`client-certificate`
 / `client-key`, or their `-data` forms) or a user name and password. Credential plugins (`exec`,
 as for EKS, GKE and AKS) are not run: make a service account token for the dashboard instead
-(`kubectl create token homelab-dashboard --duration=8760h`) and put it in the kubeconfig. Give
+(`kubectl create token dashboard --duration=8760h`) and put it in the kubeconfig. Give
 that account the RBAC below.
 
 In the cluster: The image starts as root and drops to `node` itself; with
@@ -47,7 +47,7 @@ In the cluster: The image starts as root and drops to `node` itself; with
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
-metadata: { name: homelab-dashboard }
+metadata: { name: dashboard }
 rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
@@ -67,9 +67,9 @@ rules:
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
-metadata: { name: homelab-dashboard }
-roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: homelab-dashboard }
-subjects: [{ kind: ServiceAccount, name: homelab-dashboard, namespace: homelab }]
+metadata: { name: dashboard }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: dashboard }
+subjects: [{ kind: ServiceAccount, name: dashboard, namespace: homelab }]
 ```
 
 Annotate Ingresses:
@@ -77,21 +77,21 @@ Annotate Ingresses:
 ```yaml
 metadata:
   annotations:
-    homelab.dev/enabled: "true"      # required
-    homelab.dev/name: Grafana        # default: the Ingress name
-    homelab.dev/group: Monitoring    # default: the namespace
-    homelab.dev/icon: grafana.svg
-    homelab.dev/href: https://grafana.example.com   # default: first rule host + path (https with TLS)
-    homelab.dev/widget.type: http-status
-    homelab.dev/widget.url: http://grafana.monitoring:3000/api/health
+    getdashboard.dev/enabled: "true"      # required
+    getdashboard.dev/name: Grafana        # default: the Ingress name
+    getdashboard.dev/group: Monitoring    # default: the namespace
+    getdashboard.dev/icon: grafana.svg
+    getdashboard.dev/href: https://grafana.example.com   # default: first rule host + path (https with TLS)
+    getdashboard.dev/widget.type: http-status
+    getdashboard.dev/widget.url: http://grafana.monitoring:3000/api/health
 ```
 
 homepage's `gethomepage.dev/*` annotations work as well.
 
 **Pod status.** As in homepage, a discovered Ingress or route gets the state of its app's pods
 as a label (the [Kubernetes pods](../widgets/collection/kubernetes-pods.html) widget): the pods
-labelled `app.kubernetes.io/name=<its name>` in its namespace. `homelab.dev/app` names another
-app, `homelab.dev/pod-selector` takes a label selector, and `homelab.dev/external: "true"` leaves
+labelled `app.kubernetes.io/name=<its name>` in its namespace. `getdashboard.dev/app` names another
+app, `getdashboard.dev/pod-selector` takes a label selector, and `getdashboard.dev/external: "true"` leaves
 the label out. This needs `list` on `pods` (and `pods.metrics.k8s.io` for CPU and memory).
 
 **Traefik and the Gateway API**, as in homepage: Ingresses are listed by default; add

@@ -38,7 +38,7 @@ const RELEASE_TAG = /^v?(\d+)\.(\d+)\.(\d+)$/;
 export const LATEST_REF = 'latest';
 // atLeast: the release this dashboard needs; a #latest locked below it moves on by itself.
 // label: its name in the footer.
-export const DEFAULT_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/homelab-dashboard-widgets#latest', atLeast: 'v0.11.0', label: 'widgets' }];
+export const DEFAULT_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', atLeast: 'v0.13.0', label: 'widgets' }];
 // The collection's widgets behind a service's siteMonitor:, ping:, container:, app: and
 // proxmoxNode: (src/layout.js). `only:` on a default's repository keeps them.
 export const CORE_WIDGETS = ['http-status', 'ping', 'docker', 'kubernetes-pods', 'proxmoxvm'];

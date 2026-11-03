@@ -73,7 +73,7 @@ rules are tried before string rules.
 widget:
   type: sonarr
   url: http://sonarr.lan:8989
-  key: "{{HD_VAR_SONARR_KEY}}"
+  key: "{{DASHBOARD_VAR_SONARR_KEY}}"
   highlight:
     queued:
       valueOnly: true                # colour the value only, not the whole block

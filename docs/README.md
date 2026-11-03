@@ -45,7 +45,7 @@ light themes, 22 accent colours, tabs, 17 languages, and it installs as an app o
 ## Get started in a minute
 
 ```bash
-docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/homelab-dashboard:latest
+docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/dashboard:latest
 ```
 
 Open `http://localhost:3000`. The empty `config` folder is filled with an example to start from;
@@ -61,7 +61,7 @@ edit `services.yaml` and watch the page follow:
         widget:
           type: radarr
           url: http://radarr.lan:7878
-          key: "{{HD_VAR_RADARR_KEY}}"
+          key: "{{DASHBOARD_VAR_RADARR_KEY}}"
 ```
 
 <details><summary>With Docker Compose</summary>
@@ -70,14 +70,14 @@ edit `services.yaml` and watch the page follow:
 # compose.yaml
 services:
   dashboard:
-    image: ghcr.io/stefanrenne/homelab-dashboard:latest
+    image: ghcr.io/stefanrenne/dashboard:latest
     ports:
       - "3000:3000"
     volumes:
       - ./config:/config
       - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: Docker status and discovery
     environment:
-      HD_VAR_RADARR_KEY: your-api-key
+      DASHBOARD_VAR_RADARR_KEY: your-api-key
     restart: unless-stopped
 ```
 

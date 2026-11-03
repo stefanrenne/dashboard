@@ -1,7 +1,7 @@
 // Watches the config directory and calls `onChange` (debounced) when a YAML file changes,
 // also in subfolders (for files pulled in with !include). plugins/ is skipped: the dashboard
 // writes plugins.lock.yaml there itself. On network file systems (NFS, SMB) fs.watch sees no
-// changes made elsewhere; `pollMs` (HD_WATCH_POLL) compares the files' size and time instead.
+// changes made elsewhere; `pollMs` (DASHBOARD_WATCH_POLL) compares the files' size and time instead.
 // When fs.watch cannot start at all, polling every 5 seconds takes over.
 
 import fs from 'node:fs';

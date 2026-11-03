@@ -26,10 +26,10 @@ without `client.js` is rendered by the dashboard from `blocks`.
 
 | Key | Required | Meaning |
 |---|---|---|
-| `id` | yes | Lowercase letters, digits and dashes, max 63. Used as `type:` in the config and as `hd-<id>` element name. |
+| `id` | yes | Lowercase letters, digits and dashes, max 63. Used as `type:` in the config and as `dash-<id>` element name. |
 | `name` | yes | Human-readable name. |
 | `version` | yes | A string, e.g. `"1.2.0"`. Installed as `plugins/<id>@<version>`. |
-| `apiVersion` | yes | The widget API this package targets. Supported: `1`. |
+| `apiVersion` | yes | The widget API this package targets: `2` (or `1`, see [API 1](#api-1)). |
 | `description` | no | One line, for docs and catalogues. |
 | `refresh` | no | Cache time of a result: `500ms`, `10s`, `5m`, `1h` or seconds. Default `30s`. The browser polls at this rate (minimum 2 s). |
 | `options` | no | Map of option name to schema (below). |
@@ -37,7 +37,7 @@ without `client.js` is rendered by the dashboard from `blocks`.
 | `defaultFields` | no | Block keys shown when the entry has no `fields`, e.g. `[cpu, memoryPercent]`. Without it every block shows. |
 | `frames` | no | `url` options whose page the `client.js` shows in an `<iframe>`, e.g. `[src]`. The page's CSP allows the origin of each one's value (`frame-src`); only public options count, so a URL from a variable or a secret option is never framed. |
 | `attributes` | no | Public values the widget publishes for a service's `filter:`, each `name: { type: <type>, from? }` with `boolean`, `number` or `string`. A line comment says what it means; the docs page lists them. See [Filter attributes](#filter-attributes). |
-| `params` | no | Names a `client.js` may send its `server.js` through the `hd-widget-params` page event, e.g. `[latitude, longitude]`. They reach `ctx.params`; anything else is dropped. |
+| `params` | no | Names a `client.js` may send its `server.js` through the `dash-widget-params` page event, e.g. `[latitude, longitude]`. They reach `ctx.params`; anything else is dropped. |
 
 ### Filter attributes
 
@@ -71,7 +71,7 @@ formatted for the card ("1.2 TB", "2d 4h") makes a poor filter, so return the ra
 
 An `icon` option takes what a service's `icon:` takes (`plex.svg`, `mdi-home`, `si-ubuntu`,
 `sh-plex`, `/icons/x.png`, a URL) and reaches the widget as a URL. A single-colour icon (`mdi-`,
-`si-`) ends in `#hd-mask`, or `#hd-mask=<hex>` with its colour: draw it as a CSS mask over the
+`si-`) ends in `#dash-mask`, or `#dash-mask=<hex>` with its colour: draw it as a CSS mask over the
 URL before the `#`, filled with that colour or a theme colour. An unknown name is an error.
 
 **What reaches the browser:** only options that are declared, not `secret`, and not filled in
@@ -89,7 +89,7 @@ export default {
 
 `fetch(ctx)` is called at most once per `refresh` per widget instance. Concurrent browser requests share one call.
 
-### action (API 1)
+### action
 
 ```js
 export default {
@@ -98,7 +98,7 @@ export default {
 };
 ```
 
-Optional. Runs when the widget's `client.js` sends `hd-widget-action` (a button press): the page
+Optional. Runs when the widget's `client.js` sends `dash-widget-action` (a button press): the page
 POSTs `api/widgets/<instanceId>/action` and shows the result in a dialog. Same `ctx` as `fetch`;
 `ctx.signal` aborts after an hour at most (keep your own, shorter limit). One action at a time per
 instance: a second press while one runs is refused. The result:
@@ -110,8 +110,8 @@ instance: a second press while one runs is refused. The result:
 | `exitCode` | An integer, shown next to the status. |
 | `error` | A short reason for a failure. |
 
-Other fields are dropped. Every secret value the dashboard knows (secret options, `{{HD_VAR_*}}`,
-`{{HD_FILE_*}}`) is replaced by `***` in `output` and `error`, as is a thrown error's message.
+Other fields are dropped. Every secret value the dashboard knows (secret options, `{{DASHBOARD_VAR_*}}`,
+`{{DASHBOARD_FILE_*}}`) is replaced by `***` in `output` and `error`, as is a thrown error's message.
 An action changes something somewhere: it runs for anyone who can open the page (there is no
 login), so say so in the widget's README.
 
@@ -120,15 +120,15 @@ worker for all of them, with a memory limit. `ctx` is the same; what `fetch` ret
 data (it is copied out of the worker), and module-level state is the worker's. A widget that does
 not stop within a second after its timeout gets the worker restarted.
 
-### ctx (API 1)
+### ctx
 
 | Field | Meaning |
 |---|---|
-| `ctx.apiVersion` | `1` |
+| `ctx.apiVersion` | the widget's `apiVersion`, `2` or `1` |
 | `ctx.instanceId` | Stable id of this instance (group + service + position). |
 | `ctx.options` | Validated options, secrets included. A copy: changing it has no effect. |
 | `ctx.fetch(url, init)` | The standard `fetch`, plus: relative URLs resolve against `options.url`; the call is aborted with the widget; `init.socketPath` sends the request over a unix socket (used for Docker); `init.insecure: true` accepts a self-signed certificate for that request (only behind an option the user sets, off by default); `init.tls: { ca, cert, key }` (PEM text) trusts that CA and sends that client certificate, as for a Docker daemon with `--tlsverify`. `res.headers.getSetCookie()` lists every cookie. |
-| `ctx.params` | What the page sent through `hd-widget-params`: only names in widget.yaml `params`, each a non-empty string of at most 100 characters; `{}` when nothing was sent. Comes from the browser, so treat it as untrusted input (validate, never put it in a URL path unchecked). Each set of params has its own cached result. |
+| `ctx.params` | What the page sent through `dash-widget-params`: only names in widget.yaml `params`, each a non-empty string of at most 100 characters; `{}` when nothing was sent. Comes from the browser, so treat it as untrusted input (validate, never put it in a URL path unchecked). Each set of params has its own cached result. |
 | `ctx.signal` | `AbortSignal`, aborted when the call times out (10 s). |
 | `ctx.cache` | A `Map` that survives between calls of this instance (e.g. the previous value for a delta). Cleared when the instance disappears from the config, and when the widget worker restarts (see below). |
 | `ctx.configDir` | The dashboard's config folder (an absolute path), e.g. to resolve a script path from the options. |
@@ -136,7 +136,7 @@ not stop within a second after its timeout gets the worker restarted.
 
 Only `node:` built-ins can be imported. Bundle any other dependency into the file.
 
-### Result (API 1)
+### Result
 
 An object; all fields are optional.
 
@@ -182,7 +182,7 @@ A thrown error (or a timeout) shows its message on the card. Secret values in it
 
 ## client.js
 
-A JavaScript module that defines a custom element named `hd-<id>`:
+A JavaScript module that defines a custom element named `dash-<id>`:
 
 ```js
 class MyWidget extends HTMLElement {
@@ -190,7 +190,7 @@ class MyWidget extends HTMLElement {
   set data(v) { this._data = v; this.render(); }
   render() { /* ... */ }
 }
-customElements.define('hd-my-widget', MyWidget);
+customElements.define('dash-my-widget', MyWidget);
 ```
 
 The dashboard sets these properties before the element is connected, and `data` and `error`
@@ -203,11 +203,18 @@ again after every refresh:
 | `data` | What `server.js` returned, or `null` (before the first result, or for a client-only widget). |
 | `error` | Error message of the last refresh, or `null`. |
 | `instanceId` | The id of this widget instance (for `api/suggest`). |
-| `busy` | `true` while an action this widget asked for (`hd-widget-action`) runs, then `false`. Use a setter to update the look (disable the button). |
+| `busy` | `true` while an action this widget asked for (`dash-widget-action`) runs, then `false`. Use a setter to update the look (disable the button). |
 | `actionResult` | `{ status: 'ok' }` or `{ status: 'error' }` of the last action, set just before `busy` goes back to `false`, e.g. to show a check after a quiet success. |
 
-Theme CSS variables inherit into the shadow root: `--hd-text`, `--hd-muted`, `--hd-accent`,
-`--hd-card`, `--hd-border`, `--hd-ok`, `--hd-warn`, `--hd-error`.
+Theme CSS variables inherit into the shadow root: `--dash-text`, `--dash-muted`, `--dash-accent`,
+`--dash-card`, `--dash-border`, `--dash-ok`, `--dash-warn`, `--dash-error`.
+
+### API 1
+
+A widget with `apiVersion: 1` keeps working: the dashboard names its element `hd-<id>`, listens
+for its events by their old names (`hd-widget-action`, `hd-widget-params`, `hd-search-input`,
+`hd-search-submit`), gives it every theme property as `--hd-*` too, and marks its `icon` options
+with `#hd-mask`. Everything else is the same in both versions.
 
 The page's Content-Security-Policy allows `connect-src 'self'`: get data through `server.js`, not
 from the browser. Images may come from anywhere.
@@ -219,13 +226,13 @@ A `client.js` may talk to the dashboard through DOM events that bubble out of it
 
 | Event | `detail` | What the dashboard does |
 |---|---|---|
-| `hd-search-input` | `{ query }` | Shows only the services and bookmarks that match every word; empty shows all. |
-| `hd-search-submit` | `{ query }` | Send it `cancelable: true`. With exactly one match the dashboard opens it and cancels the event; otherwise the widget may search elsewhere. |
-| `hd-widget-action` | `{ title?, showResult? }` | Runs server.js's `action` (see above) and shows its result in a dialog titled `title` (default: the service's name). Sets the element's `busy` to `true` until it is done and then its `actionResult`; a press while it runs is ignored. `showResult: 'failure'` is for a widget that shows its own progress: no running toast, and the dialog only when the action failed. |
-| `hd-widget-params` | `{ name: value, ... }` | Fetches the widget again with these values (text) for `server.js`, and keeps sending them on every refresh. Only the names in widget.yaml `params` arrive. |
+| `dash-search-input` | `{ query }` | Shows only the services and bookmarks that match every word; empty shows all. |
+| `dash-search-submit` | `{ query }` | Send it `cancelable: true`. With exactly one match the dashboard opens it and cancels the event; otherwise the widget may search elsewhere. |
+| `dash-widget-action` | `{ title?, showResult? }` | Runs server.js's `action` (see above) and shows its result in a dialog titled `title` (default: the service's name). Sets the element's `busy` to `true` until it is done and then its `actionResult`; a press while it runs is ignored. `showResult: 'failure'` is for a widget that shows its own progress: no running toast, and the dialog only when the action failed. |
+| `dash-widget-params` | `{ name: value, ... }` | Fetches the widget again with these values (text) for `server.js`, and keeps sending them on every refresh. Only the names in widget.yaml `params` arrive. |
 
 The collection's `search` widget uses the first two. The weather widgets of the
-[collection](https://github.com/stefanrenne/homelab-dashboard-widgets) send `hd-widget-params`
+[collection](https://github.com/stefanrenne/dashboard-widgets) send `dash-widget-params`
 with the viewer's location (`navigator.geolocation`, HTTPS only, rounded to two decimals) when
 their options have no coordinates.
 
@@ -249,6 +256,7 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 
 | API | Dashboard | Change |
 |---|---|---|
+| 2 | next | The names of the page: the element `dash-<id>`, the events `dash-widget-action`, `dash-widget-params`, `dash-search-input` and `dash-search-submit`, the theme properties `--dash-*` and the icon marker `#dash-mask`. Nothing else changed: a widget of API 1 goes to 2 by renaming them. |
 | 1 | 0.1.0 | First version (including `vars`, row `status` and `defaultFields`). |
 | 1 | 0.8.0 | `action(ctx)` in server.js, `ctx.configDir`, the `hd-widget-action` event and the element's `busy`; `POST api/widgets/<instanceId>/action`. |
 | 1 | 0.10.0 | `showResult: 'failure'` in `hd-widget-action`, and the element's `actionResult`. |

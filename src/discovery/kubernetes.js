@@ -1,4 +1,4 @@
-// Kubernetes discovery (in the cluster or through a kubeconfig): Ingresses with `homelab.dev/enabled: "true"`
+// Kubernetes discovery (in the cluster or through a kubeconfig): Ingresses with `getdashboard.dev/enabled: "true"`
 // become services. Needs RBAC to list ingresses; see docs/configuration/kubernetes.md.
 
 import http from 'node:http';
@@ -7,7 +7,7 @@ import { serviceFromLabels } from './labels.js';
 import { k8sConnection, k8sHeaders, k8sApiUrl, K8S_SA_DIR } from './kubeconfig.js';
 
 export { k8sApiUrl, K8S_SA_DIR };
-export const ANNOTATION_PREFIX = 'homelab.dev/';
+export const ANNOTATION_PREFIX = 'getdashboard.dev/';
 export const HOMEPAGE_PREFIX = 'gethomepage.dev/';
 
 /** GET on the Kubernetes API with a connection from k8sConnection(). */

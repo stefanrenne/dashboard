@@ -2,7 +2,7 @@
 id: example-counter          # unique, lowercase; becomes "type: example-counter" in services.yaml
 name: Example counter
 version: 1.0.0               # bump on every release; the dashboard installs it as <id>@<version>
-apiVersion: 1                # the widget API you wrote this against
+apiVersion: 2                # the widget API you wrote this against
 description: Shows a number from a JSON API, with its change since the last refresh.
 refresh: 30s                 # how long the dashboard caches a result
 options:

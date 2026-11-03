@@ -4,6 +4,19 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **Homelab Dashboard is now Dashboard**, at getdashboard.dev, with a mark of its own (also the
+  default favicon). The image is `ghcr.io/stefanrenne/dashboard`, the repositories
+  `stefanrenne/dashboard`, `dashboard-widgets` and `dashboard-widget-example`.
+- `{{HD_VAR_*}}`/`{{HD_FILE_*}}` and every `HD_*` environment variable are `DASHBOARD_*`; Docker
+  labels `homelab.*` are `dashboard.*`, Kubernetes annotations `homelab.dev/*` are
+  `getdashboard.dev/*`; buttons send `X-Requested-With: dashboard`. The Migration section of the
+  configuration docs lists every change.
+
+### Added
+- Widget API 2: the page's names become `dash-<id>`, `dash-widget-*`, `dash-search-*`,
+  `--dash-*` and `#dash-mask`. Widgets of API 1 keep working with their `hd-` names.
+
 ## [0.18.0] - 2026-11-03
 
 ### Removed

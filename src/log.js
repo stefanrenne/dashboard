@@ -2,13 +2,13 @@
 //
 // LOG_TARGETS picks where lines go: both, stdout or file. Without logpath only stdout is
 // written (hard rule 5: a file is only written where the user asked for one); with logpath the
-// default is both. The file is <logpath>/logs/homelab-dashboard.log and rotates at 10 MiB,
-// keeping five files (homelab-dashboard.log and homelab-dashboard1.log … 4.log).
+// default is both. The file is <logpath>/logs/dashboard.log and rotates at 10 MiB,
+// keeping five files (dashboard.log and dashboard1.log … 4.log).
 
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const LOG_FILE = 'homelab-dashboard.log';
+export const LOG_FILE = 'dashboard.log';
 export const MAX_LOG_BYTES = 10 * 1024 * 1024;
 export const ROTATED_FILES = 4;
 const TARGETS = ['both', 'stdout', 'file'];

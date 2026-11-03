@@ -2,7 +2,7 @@
 // dashboard's own event loop: a widget that loops forever or eats memory stops the worker, not
 // the dashboard (hard rule 4). A call that does not end within a second after its timeout gets
 // the worker restarted; the widgets in it lose their ctx.cache, nothing else. Built-in widgets
-// run in the dashboard process. HD_WIDGET_ISOLATION=off runs installed widgets there too.
+// run in the dashboard process. DASHBOARD_WIDGET_ISOLATION=off runs installed widgets there too.
 
 import { Worker } from 'node:worker_threads';
 
@@ -58,7 +58,7 @@ export class WidgetSandbox {
   }
 
   /** Runs a widget's fetch (or `kind: 'action'`, its action) in the worker; resolves its data or rejects with its error. */
-  run({ url, instanceId, options, params = {}, kind = 'fetch', configDir = null, signal, log }) {
+  run({ url, instanceId, apiVersion = 1, options, params = {}, kind = 'fetch', configDir = null, signal, log }) {
     this.#worker ??= this.#spawn();
     const worker = this.#worker;
     const id = ++this.#seq;
@@ -77,7 +77,7 @@ export class WidgetSandbox {
       if (signal?.aborted) onAbort();
       else signal?.addEventListener('abort', onAbort, { once: true });
       try {
-        worker.postMessage({ type: 'run', id, url, instanceId, options, params, kind, configDir });
+        worker.postMessage({ type: 'run', id, url, instanceId, apiVersion, options, params, kind, configDir });
       } catch (err) {
         this.#settle(id);
         reject(new Error(`options cannot reach the widget worker (${err.message})`));

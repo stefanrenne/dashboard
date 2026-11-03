@@ -44,9 +44,9 @@ test('the file rotates at the size limit and keeps five files', () => {
   log.setLogPath(dir);
   for (let i = 0; i < 20; i++) log.info(`line ${i}`);
   const files = fs.readdirSync(path.join(dir, 'logs')).sort();
-  assert.deepEqual(files, ['homelab-dashboard.log', 'homelab-dashboard1.log', 'homelab-dashboard2.log', 'homelab-dashboard3.log', 'homelab-dashboard4.log']);
-  assert.match(fs.readFileSync(path.join(dir, 'logs', 'homelab-dashboard.log'), 'utf8'), /line 19/);
-  assert.ok(!fs.readFileSync(path.join(dir, 'logs', 'homelab-dashboard4.log'), 'utf8').includes('line 0'), 'the oldest lines are gone');
+  assert.deepEqual(files, ['dashboard.log', 'dashboard1.log', 'dashboard2.log', 'dashboard3.log', 'dashboard4.log']);
+  assert.match(fs.readFileSync(path.join(dir, 'logs', 'dashboard.log'), 'utf8'), /line 19/);
+  assert.ok(!fs.readFileSync(path.join(dir, 'logs', 'dashboard4.log'), 'utf8').includes('line 0'), 'the oldest lines are gone');
 });
 
 test('a log folder that cannot be made falls back to stdout with a warning', () => {

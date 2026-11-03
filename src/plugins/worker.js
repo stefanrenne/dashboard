@@ -36,7 +36,7 @@ parentPort.on('message', async (m) => {
     if (!stores.has(m.instanceId)) stores.set(m.instanceId, new Map());
     const log = Object.fromEntries(['info', 'warn', 'error'].map((level) => [level, (...a) => parentPort.postMessage({ type: 'log', id: m.id, level, text: a.map((x) => (typeof x === 'string' ? x : describeError(x))).join(' ') })]));
     const ctx = Object.freeze({
-      apiVersion: 1,
+      apiVersion: m.apiVersion ?? 1,
       instanceId: m.instanceId,
       options: m.options,
       params: Object.freeze({ ...m.params }),

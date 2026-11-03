@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Entry point: `node src/server.js [--config <dir>] [--port <n>] [--host <addr>]`.
-// Environment: HD_CONFIG_DIR, PORT, HOST, LOG_TARGETS (both, stdout or file; see src/log.js),
-// HD_ALLOWED_HOSTS, HD_WATCH_POLL, HD_WIDGET_ISOLATION and HD_WIDGET_MEMORY_MB (see src/app.js).
+// Environment: DASHBOARD_CONFIG_DIR, PORT, HOST, LOG_TARGETS (both, stdout or file; see src/log.js),
+// DASHBOARD_ALLOWED_HOSTS, DASHBOARD_WATCH_POLL, DASHBOARD_WIDGET_ISOLATION and DASHBOARD_WIDGET_MEMORY_MB (see src/app.js).
 
 import http from 'node:http';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { createLogger } from './log.js';
 
 const { values } = parseArgs({
   options: {
-    config: { type: 'string', default: process.env.HD_CONFIG_DIR ?? '/config' },
+    config: { type: 'string', default: process.env.DASHBOARD_CONFIG_DIR ?? '/config' },
     port: { type: 'string', default: process.env.PORT ?? '3000' },
     host: { type: 'string', default: process.env.HOST ?? '0.0.0.0' },
   },
@@ -23,7 +23,7 @@ const log = createLogger(); // stdout, and a file when settings.yaml has logpath
 const app = await createApp({ configDir, log, watch: true });
 const server = http.createServer(app.handler);
 server.listen(Number(values.port), values.host, () => {
-  log.info(`homelab-dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
+  log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

@@ -88,10 +88,10 @@ test('unknown service keys are warnings, not errors', () => {
 test('variables and files are substituted and recorded as secrets', () => {
   const dir = configDir({ 'token.txt': 'from-file\n' });
   const out = substitute(
-    { a: 'key={{HD_VAR_KEY}}', b: ['{{ HD_FILE_TOKEN }}'], c: '{{HD_VAR_MISSING}}', d: 3 },
-    { env: { HD_VAR_KEY: 's3cret', HD_FILE_TOKEN: path.join(dir, 'token.txt') } },
+    { a: 'key={{DASHBOARD_VAR_KEY}}', b: ['{{ DASHBOARD_FILE_TOKEN }}'], c: '{{DASHBOARD_VAR_MISSING}}', d: 3 },
+    { env: { DASHBOARD_VAR_KEY: 's3cret', DASHBOARD_FILE_TOKEN: path.join(dir, 'token.txt') } },
   );
-  assert.deepEqual(out.value, { a: 'key=s3cret', b: ['from-file'], c: '{{HD_VAR_MISSING}}', d: 3 });
+  assert.deepEqual(out.value, { a: 'key=s3cret', b: ['from-file'], c: '{{DASHBOARD_VAR_MISSING}}', d: 3 });
   assert.deepEqual([...out.secrets].sort(), ['from-file', 's3cret']);
   assert.equal(out.warnings.length, 1);
 });
@@ -197,12 +197,12 @@ test('parseDuration and safeJoin', () => {
 });
 
 test('a {{NAME}} that is not a variable is reported with the form that works', () => {
-  const out = substitute({ password: '{{SHELLY_PASSWORD}}', tpl: '{{ states.switch | count }}', ok: '{{HD_VAR_X}}' }, { env: { HD_VAR_X: 'x1' } });
+  const out = substitute({ password: '{{SHELLY_PASSWORD}}', tpl: '{{ states.switch | count }}', ok: '{{DASHBOARD_VAR_X}}' }, { env: { DASHBOARD_VAR_X: 'x1' } });
   assert.equal(out.value.password, '{{SHELLY_PASSWORD}}', 'left as written');
-  assert.deepEqual(out.warnings, ['{{SHELLY_PASSWORD}} is not filled in: only {{HD_VAR_*}} and {{HD_FILE_*}} are. Write {{HD_VAR_SHELLY_PASSWORD}} and set the environment variable HD_VAR_SHELLY_PASSWORD']);
+  assert.deepEqual(out.warnings, ['{{SHELLY_PASSWORD}} is not filled in: only {{DASHBOARD_VAR_*}} and {{DASHBOARD_FILE_*}} are. Write {{DASHBOARD_VAR_SHELLY_PASSWORD}} and set the environment variable DASHBOARD_VAR_SHELLY_PASSWORD']);
 });
 
-test('homepage placeholders work like HD_ ones', () => {
+test('homepage placeholders work like DASHBOARD_ ones', () => {
   const out = substitute({ a: '{{HOMEPAGE_VAR_KEY}}' }, { env: { HOMEPAGE_VAR_KEY: 'pk' } });
   assert.equal(out.value.a, 'pk');
   assert.ok(out.secrets.has('pk'));
@@ -224,8 +224,8 @@ test('!include: relative to the including file, nested, and variables become sec
   const cfg = loadConfig(configDir({
     'services.yaml': '- Media: !include groups/media.yaml\n',
     'groups/media.yaml': '- Radarr: !include radarr.yaml\n',
-    'groups/radarr.yaml': 'href: http://radarr.lan\nwidget:\n  type: radarr\n  key: "{{HD_VAR_RADARR}}"\n',
-  }), { env: { HD_VAR_RADARR: 'k3y' } });
+    'groups/radarr.yaml': 'href: http://radarr.lan\nwidget:\n  type: radarr\n  key: "{{DASHBOARD_VAR_RADARR}}"\n',
+  }), { env: { DASHBOARD_VAR_RADARR: 'k3y' } });
   assert.deepEqual(cfg.errors, []);
   assert.equal(cfg.services[0].services[0].widgets[0].options.key, 'k3y');
   assert.ok(cfg.secrets.has('k3y'));

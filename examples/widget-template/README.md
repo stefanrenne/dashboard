@@ -1,16 +1,16 @@
 # Example counter (widget template)
 
-A starting point for your own homelab-dashboard widget. Copy this folder into its own
+A starting point for your own dashboard widget. Copy this folder into its own
 repository, change `id`, `name` and the code, and publish it. The same widget as a complete
-repository, with tests and a release workflow: [homelab-dashboard-widget-example](https://github.com/stefanrenne/homelab-dashboard-widget-example).
+repository, with tests and a release workflow: [dashboard-widget-example](https://github.com/stefanrenne/dashboard-widget-example).
 
 ## Use it
 
 ```yaml
 # settings.yaml
 plugins:
-  - source: git+https://github.com/you/hd-widget-example-counter#v1.0.0
-  # or: - source: npm:hd-widget-example-counter@1.0.0
+  - source: git+https://github.com/you/dashboard-widget-example-counter#v1.0.0
+  # or: - source: npm:dashboard-widget-example-counter@1.0.0
   # or, while developing: - path: ./my-widgets/example-counter
 
 # services.yaml
@@ -20,7 +20,7 @@ plugins:
         widget:
           type: example-counter
           url: http://app.lan/api/
-          key: "{{HD_VAR_APP_KEY}}"
+          key: "{{DASHBOARD_VAR_APP_KEY}}"
 ```
 
 ## Files
@@ -29,7 +29,7 @@ plugins:
 |---|---|---|
 | `widget.yaml` | yes | Manifest: id, version, apiVersion, refresh, options schema |
 | `server.js` | no | Fetches data on the server; may use secret options |
-| `client.js` | no | Custom rendering as a Web Component `hd-<id>`; without it the dashboard renders `blocks` |
+| `client.js` | no | Custom rendering as a Web Component `dash-<id>`; without it the dashboard renders `blocks` |
 | `i18n.json` | no | Labels per language (`en`, `nl`, `fr`, `de`, `es`) |
 | `assets/` | no | Static files for `client.js`, served at `/widgets/<id>/assets/` |
 

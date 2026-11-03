@@ -193,7 +193,7 @@ test('groups fold and unfold, remember it per viewer, and open while searching',
   assert.equal(toggle.getAttribute('aria-controls'), section.querySelector('.cards').id);
   toggle.click();
   assert.equal(section.classList.contains('collapsed'), false);
-  assert.deepEqual(JSON.parse(w.localStorage.getItem('hd-collapsed')), { Network: false });
+  assert.deepEqual(JSON.parse(w.localStorage.getItem('dash-collapsed')), { Network: false });
   toggle.click();
   doc.dispatchEvent(new w.CustomEvent('hd-search-input', { detail: { query: 'router' } }));
   assert.ok(doc.getElementById('groups').classList.contains('searching'), 'search looks inside folded groups');
@@ -228,7 +228,7 @@ test('appearance: light, dark and back to following the system; colour remembere
   assert.deepEqual(pressed(), ['dark'], 'settings.yaml says dark');
   doc.querySelector('[data-appearance="light"]').click();
   assert.equal(doc.documentElement.dataset.theme, 'light');
-  assert.equal(w.localStorage.getItem('hd-theme'), 'light');
+  assert.equal(w.localStorage.getItem('dash-theme'), 'light');
   doc.querySelector('[data-appearance="auto"]').click();
   assert.deepEqual(pressed(), ['auto']);
   assert.equal(doc.documentElement.dataset.theme, 'dark', 'jsdom has no light system preference');
@@ -338,7 +338,7 @@ test('background image with filters on its own layer, and card blur', async () =
   assert.equal(bg.style.filter, 'blur(8px) saturate(50%) brightness(75%)');
   assert.equal(bg.style.opacity, '0.4');
   assert.ok(w.document.body.classList.contains('card-blur'));
-  assert.equal(w.document.body.style.getPropertyValue('--hd-card-blur'), '12px');
+  assert.equal(w.document.body.style.getPropertyValue('--dash-card-blur'), '12px');
 
   const plain = await page();
   assert.equal(plain.document.getElementById('bg').hidden, true);
@@ -418,8 +418,8 @@ test('bookmarks as icons only (per group or bookmarksStyle) and category icons',
 
 test('single-colour icons are masks: their own colour, or iconStyle gradient/theme', async () => {
   const layout = structuredClone(LAYOUT);
-  layout.groups[0].services[0].icon = 'https://cdn.example.com/svg/flask.svg#hd-mask=f0d453';
-  layout.groups[0].services[2].icon = 'https://cdn.example.com/svg/sonos.svg#hd-mask';
+  layout.groups[0].services[0].icon = 'https://cdn.example.com/svg/flask.svg#dash-mask=f0d453';
+  layout.groups[0].services[2].icon = 'https://cdn.example.com/svg/sonos.svg#dash-mask';
   layout.groups[0].services[1].icon = 'https://cdn.example.com/png/plex.png';
   layout.settings.iconStyle = 'theme';
   const w = await page({ ...RESULTS, '/api/layout': layout });
@@ -680,6 +680,29 @@ test('quicklaunch shows search suggestions with showSearchSuggestions', async ()
   assert.deepEqual(names, ['Zoek “z” met DuckDuckGo', 'Zoek “zebra” met DuckDuckGo', 'Zoek “zebra crossing” met DuckDuckGo']);
 });
 
+
+test('widget API 2: dash-widget-params and dash-search-*, API 1 keeps hd-*; v1 reads --hd-* aliases', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.widgetTypes.resources = { ...layout.widgetTypes.resources, apiVersion: 2 };
+  const calls = [];
+  const w = await page({ ...RESULTS, '/api/layout': layout }, calls);
+  const box = w.document.querySelector('[data-service="svc-1"] .widget');
+  box.dispatchEvent(new w.CustomEvent('hd-widget-params', { detail: { city: 'old' }, bubbles: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-params', { detail: { city: 'new' }, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(calls.includes('api/widgets/w-1?city=new'), calls.join('\n'));
+  assert.ok(!calls.some((c) => c.includes('city=old')), 'an API 2 widget does not listen to hd-*');
+  // the search widget's events, by either name
+  for (const name of ['dash-search-input', 'hd-search-input']) {
+    w.document.dispatchEvent(new w.CustomEvent(name, { detail: { query: 'radarr' } }));
+    assert.equal(w.document.querySelector('[data-service="svc-1"]').hidden, true, name);
+    w.document.dispatchEvent(new w.CustomEvent(name, { detail: { query: '' } }));
+  }
+  // an API 1 widget's shadow DOM reads the old custom property names
+  const css = [...w.document.querySelectorAll('style')].map((s) => s.textContent).join('\n');
+  const aliases = /\.widget \{([^}]*)\}/.exec(css)?.[1] ?? '';
+  for (const name of ['text', 'card', 'card-blur', 'ok', 'error']) assert.ok(aliases.includes(`--hd-${name}: var(--dash-${name});`), name);
+});
 
 test('a widget\'s hd-widget-params makes the page ask again with those params', async () => {
   const calls = [];

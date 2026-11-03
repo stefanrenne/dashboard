@@ -39,7 +39,7 @@ are in `docs/_config.yml`. The menu has four parts: Home (`docs/README.md`), Con
 (`docs/configuration/`, a page per file as in homepage), Widgets and Extend (`docs/extend/`).
 
 `scripts/pages.sh` stages the site: it points links outside `docs/` at GitHub and wraps each
-page in `{% raw %}` so `{{HD_VAR_*}}` examples stay literal. For the widgets collection at its
+page in `{% raw %}` so `{{DASHBOARD_VAR_*}}` examples stay literal. For the widgets collection at its
 newest release (checked out by the workflow), `scripts/widget-images.mjs` then photographs every
 widget with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its
 `README.md` and `widget.yaml` (with that image), split into service and header widgets, and the

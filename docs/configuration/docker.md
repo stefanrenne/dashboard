@@ -59,7 +59,7 @@ Mount the Docker socket, or list a server in `docker.yaml` (see [Servers](#serve
 # compose.yaml, the simplest form
 services:
   dashboard:
-    image: ghcr.io/stefanrenne/homelab-dashboard:latest
+    image: ghcr.io/stefanrenne/dashboard:latest
     volumes:
       - ./config:/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -74,30 +74,30 @@ Then label containers:
 
 ```yaml
 labels:
-  homelab.name: Grafana              # required
-  homelab.group: Monitoring          # default "Docker"
-  homelab.icon: grafana.svg
-  homelab.href: http://grafana.lan
-  homelab.description: Dashboards
-  homelab.weight: "10"               # order within the group, low first (default 0; services.yaml ones weigh 100, 200, ...)
-  homelab.siteMonitor: http://grafana:3000/api/health   # otherwise: container state
-  homelab.widget.type: custom-api
-  homelab.widget.url: http://grafana:3000/api/health
-  homelab.widget.mappings: '[{"field":"version","label":"Version"}]'   # JSON for lists and maps
-  homelab.widget.headers.Authorization: "Bearer {{HD_VAR_GRAFANA}}"    # dots make nested maps
-  homelab.statusStyle: dot           # also target, showStats
+  dashboard.name: Grafana              # required
+  dashboard.group: Monitoring          # default "Docker"
+  dashboard.icon: grafana.svg
+  dashboard.href: http://grafana.lan
+  dashboard.description: Dashboards
+  dashboard.weight: "10"               # order within the group, low first (default 0; services.yaml ones weigh 100, 200, ...)
+  dashboard.siteMonitor: http://grafana:3000/api/health   # otherwise: container state
+  dashboard.widget.type: custom-api
+  dashboard.widget.url: http://grafana:3000/api/health
+  dashboard.widget.mappings: '[{"field":"version","label":"Version"}]'   # JSON for lists and maps
+  dashboard.widget.headers.Authorization: "Bearer {{DASHBOARD_VAR_GRAFANA}}"    # dots make nested maps
+  dashboard.statusStyle: dot           # also target, showStats
 ```
 
 Several widgets and lists use homepage's index notation:
 
 ```yaml
 labels:                          # Compose's list form: the same labels
-  - homelab.widgets[0].type=emby
-  - homelab.widgets[0].url=http://emby.lan
-  - homelab.widgets[1].type=custom-api
-  - homelab.widgets[1].url=http://argus.lan/api/v1/service/summary/emby
-  - homelab.widgets[1].mappings[0].label=Deployed version
-  - homelab.widgets[1].mappings[0].field.status=deployed_version
+  - dashboard.widgets[0].type=emby
+  - dashboard.widgets[0].url=http://emby.lan
+  - dashboard.widgets[1].type=custom-api
+  - dashboard.widgets[1].url=http://argus.lan/api/v1/service/summary/emby
+  - dashboard.widgets[1].mappings[0].label=Deployed version
+  - dashboard.widgets[1].mappings[0].field.status=deployed_version
 ```
 
 **Several dashboards on one Docker host**: give each an `instanceName` in settings.yaml. A label
@@ -106,9 +106,9 @@ label; the other dashboards ignore it.
 
 ```yaml
 labels:
-  homelab.name: Emby
-  homelab.instance.internal.href: http://emby.lan
-  homelab.instance.public.href: https://emby.example.com
+  dashboard.name: Emby
+  dashboard.instance.internal.href: http://emby.lan
+  dashboard.instance.public.href: https://emby.example.com
 ```
 
 A discovered container always gets its Docker state as a status label, next to `siteMonitor`
@@ -116,7 +116,7 @@ or `ping` when those are set.
 
 **Coming from homepage?** Containers labelled for homepage (`homepage.group` + `homepage.name`,
 `homepage.widget.*`, ...) are discovered as they are, and `{{HOMEPAGE_VAR_*}}` in their
-labels is filled in from the environment. `homelab.*` labels win when a container has both.
+labels is filled in from the environment. `dashboard.*` labels win when a container has both.
 
 **Access.** The dashboard only calls `GET /containers/json` and `GET /containers/<name>/json|stats`
 (with `swarm: true` also `GET /services` and `/tasks`).
@@ -143,9 +143,9 @@ services:
     image: jellyfin/jellyfin
     deploy:
       labels:
-        homelab.name: Jellyfin
-        homelab.group: Media
-        homelab.href: http://jellyfin.lan
+        dashboard.name: Jellyfin
+        dashboard.group: Media
+        dashboard.href: http://jellyfin.lan
 ```
 
 A service of a stack is named `<stack>_<service>` (`media_jellyfin`); that is its `container:`

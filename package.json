@@ -1,8 +1,8 @@
 {
-  "name": "homelab-dashboard",
+  "name": "dashboard",
   "version": "0.18.0",
   "private": true,
-  "description": "A YAML-configured homelab dashboard with widgets anyone can publish outside the core",
+  "description": "A self-hosted start page for your homelab, configured in YAML, with widgets anyone can publish",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -22,6 +22,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stefanrenne/homelab-dashboard.git"
+    "url": "git+https://github.com/stefanrenne/dashboard.git"
   }
 }

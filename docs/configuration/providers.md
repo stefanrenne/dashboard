@@ -7,11 +7,11 @@ needs it, as homepage's providers:
 ```yaml
 # settings.yaml
 providers:
-  radarr: "{{HD_VAR_RADARR_KEY}}"        # a text: the key
+  radarr: "{{DASHBOARD_VAR_RADARR_KEY}}"        # a text: the key
   nas:                                   # a map: the options it names
     url: https://nas.lan:5001
     username: dashboard
-    password: "{{HD_VAR_NAS_PASSWORD}}"
+    password: "{{DASHBOARD_VAR_NAS_PASSWORD}}"
 ```
 
 A widget uses one with `provider: <name>`:
@@ -46,8 +46,8 @@ A provider that does not exist is a config error on the widget, shown at the top
 
 - **Nothing under `providers:` reaches the browser.** Every value in it is a secret, also one
   written there literally; secret values are scrubbed from error messages too.
-- **Use variables, not passwords**: `{{HD_VAR_NAME}}` takes the environment variable
-  `HD_VAR_NAME`, and `{{HD_FILE_NAME}}` the contents of the file whose path is in `HD_FILE_NAME`,
+- **Use variables, not passwords**: `{{DASHBOARD_VAR_NAME}}` takes the environment variable
+  `DASHBOARD_VAR_NAME`, and `{{DASHBOARD_FILE_NAME}}` the contents of the file whose path is in `DASHBOARD_FILE_NAME`,
   such as a Docker secret (see [Variables](README.md#variables)). `settings.yaml` then holds the
   names of the variables, not the passwords, and can be shared or kept in git.
 
@@ -55,30 +55,30 @@ A provider that does not exist is a config error on the widget, shown at the top
 # compose.yaml of the dashboard
 services:
   dashboard:
-    image: ghcr.io/stefanrenne/homelab-dashboard:latest
+    image: ghcr.io/stefanrenne/dashboard:latest
     environment:
-      HD_VAR_RADARR_KEY: 0123456789abcdef      # or from an .env file next to compose.yaml
-      HD_FILE_NAS_PASSWORD: /run/secrets/nas_password
+      DASHBOARD_VAR_RADARR_KEY: 0123456789abcdef      # or from an .env file next to compose.yaml
+      DASHBOARD_FILE_NAS_PASSWORD: /run/secrets/nas_password
     secrets: [nas_password]
 secrets:
   nas_password:
     file: ./nas_password.txt
 ```
 
-With `HD_FILE_NAS_PASSWORD`, write `"{{HD_FILE_NAS_PASSWORD}}"` in `settings.yaml` instead of the
-`HD_VAR_` form.
+With `DASHBOARD_FILE_NAS_PASSWORD`, write `"{{DASHBOARD_FILE_NAS_PASSWORD}}"` in `settings.yaml` instead of the
+`DASHBOARD_VAR_` form.
 
 ## Discovered services
 
 A discovered service takes a provider the same way, as the Docker label
-`homelab.widget.provider` (or `homelab.widgets[1].provider` for the second widget), or the
-Kubernetes annotation `homelab.dev/widget.provider`:
+`dashboard.widget.provider` (or `dashboard.widgets[1].provider` for the second widget), or the
+Kubernetes annotation `getdashboard.dev/widget.provider`:
 
 ```yaml
 # compose.yaml
 labels:
-  - homelab.name=Radarr
-  - homelab.widget.type=radarr
-  - homelab.widget.url=http://radarr:7878
-  - homelab.widget.provider=radarr
+  - dashboard.name=Radarr
+  - dashboard.widget.type=radarr
+  - dashboard.widget.url=http://radarr:7878
+  - dashboard.widget.provider=radarr
 ```

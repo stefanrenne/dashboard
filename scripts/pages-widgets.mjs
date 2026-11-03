@@ -10,7 +10,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { exampleEntry } from './widget-images.mjs';
 
-const COLLECTION = 'https://github.com/stefanrenne/homelab-dashboard-widgets';
+const COLLECTION = 'https://github.com/stefanrenne/dashboard-widgets';
 
 /** The widget folders (with a widget.yaml) directly in `dir`, sorted. */
 export function widgetFolders(dir) {
@@ -165,7 +165,7 @@ export function withFieldsInExample(body, types, fields) {
 
 function writePage(file, frontMatter, markdown) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  // raw: {{HD_VAR_*}} in the examples must reach the page as written
+  // raw: {{DASHBOARD_VAR_*}} in the examples must reach the page as written
   fs.writeFileSync(file, `---\n${YAML.stringify(frontMatter)}---\n{% raw %}\n${markdown.trimEnd()}\n{% endraw %}\n`);
 }
 

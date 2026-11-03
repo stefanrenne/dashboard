@@ -18,44 +18,44 @@
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --hd-icon-from: var(--t300); --hd-icon-to: var(--t500);
-    --hd-bg: var(--t800);
-    --hd-text: var(--t200);
-    --hd-muted: var(--t300);
-    --hd-heading: var(--t300);
-    --hd-card: rgb(255 255 255 / .05);
-    --hd-card-hover: rgb(255 255 255 / .1);
-    --hd-block: color-mix(in srgb, var(--t900) 20%, transparent);
-    --hd-tab: color-mix(in srgb, var(--t900) 50%, transparent);
-    --hd-border: color-mix(in srgb, var(--t200) 20%, transparent);
-    --hd-accent: var(--t400);
-    --hd-shadow: color-mix(in srgb, var(--t900) 20%, transparent);
+    --dash-icon-from: var(--t300); --dash-icon-to: var(--t500);
+    --dash-bg: var(--t800);
+    --dash-text: var(--t200);
+    --dash-muted: var(--t300);
+    --dash-heading: var(--t300);
+    --dash-card: rgb(255 255 255 / .05);
+    --dash-card-hover: rgb(255 255 255 / .1);
+    --dash-block: color-mix(in srgb, var(--t900) 20%, transparent);
+    --dash-tab: color-mix(in srgb, var(--t900) 50%, transparent);
+    --dash-border: color-mix(in srgb, var(--t200) 20%, transparent);
+    --dash-accent: var(--t400);
+    --dash-shadow: color-mix(in srgb, var(--t900) 20%, transparent);
     /* status text: emerald-400, amber-400, rose-400 (≥ 5:1 on cards, tabs and blocks) */
-    --hd-ok: #34d399;
-    --hd-warn: #fbbf24;
-    --hd-error: #fb7185;
-    --hd-error-bg: rgb(136 19 55 / .8);
+    --dash-ok: #34d399;
+    --dash-warn: #fbbf24;
+    --dash-error: #fb7185;
+    --dash-error-bg: rgb(136 19 55 / .8);
   }
   :root[data-theme="light"] {
-    --hd-icon-from: var(--t500); --hd-icon-to: var(--t700);
+    --dash-icon-from: var(--t500); --dash-icon-to: var(--t700);
     color-scheme: light;
-    --hd-bg: var(--t50);
-    --hd-text: var(--t700);
-    --hd-muted: var(--t500);
-    --hd-heading: var(--t800);
-    --hd-card: #ffffff;
-    --hd-card-hover: color-mix(in srgb, var(--t100) 70%, #ffffff);
-    --hd-card-border: var(--t300);
-    --hd-block: color-mix(in srgb, var(--t200) 50%, transparent);
-    --hd-tab: color-mix(in srgb, var(--t500) 10%, transparent);
-    --hd-border: color-mix(in srgb, var(--t800) 20%, transparent);
-    --hd-accent: var(--t600);
-    --hd-shadow: color-mix(in srgb, var(--t900) 10%, transparent);
+    --dash-bg: var(--t50);
+    --dash-text: var(--t700);
+    --dash-muted: var(--t500);
+    --dash-heading: var(--t800);
+    --dash-card: #ffffff;
+    --dash-card-hover: color-mix(in srgb, var(--t100) 70%, #ffffff);
+    --dash-card-border: var(--t300);
+    --dash-block: color-mix(in srgb, var(--t200) 50%, transparent);
+    --dash-tab: color-mix(in srgb, var(--t500) 10%, transparent);
+    --dash-border: color-mix(in srgb, var(--t800) 20%, transparent);
+    --dash-accent: var(--t600);
+    --dash-shadow: color-mix(in srgb, var(--t900) 10%, transparent);
     /* status text: emerald-700, amber-800, rose-700 (≥ 4.8:1 on cards, tabs and blocks) */
-    --hd-ok: #047857;
-    --hd-warn: #92400e;
-    --hd-error: #be123c;
-    --hd-error-bg: rgb(136 19 55 / .85);
+    --dash-ok: #047857;
+    --dash-warn: #92400e;
+    --dash-error: #be123c;
+    --dash-error-bg: rgb(136 19 55 / .85);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -63,34 +63,34 @@
     min-height: 100vh;
     font: 500 1rem/1.5 Manrope, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     letter-spacing: .1px;
-    color: var(--hd-text);
-    background-color: var(--hd-bg);
+    color: var(--dash-text);
+    background-color: var(--dash-bg);
   }
   /* settings.background: the image on its own layer, so blur and brightness leave the text alone */
   #bg { position: fixed; inset: 0; z-index: -1; background-size: cover; background-position: center; pointer-events: none; }
   #bg::after { content: ""; position: absolute; inset: 0;
-    background: linear-gradient(color-mix(in srgb, var(--hd-bg) 60%, transparent), color-mix(in srgb, var(--hd-bg) 85%, transparent)); }
+    background: linear-gradient(color-mix(in srgb, var(--dash-bg) 60%, transparent), color-mix(in srgb, var(--dash-bg) 85%, transparent)); }
   #bg[hidden] { display: none; }
   /* settings.cardBlur */
-  .card-blur .card, .card-blur header.info.boxed { backdrop-filter: blur(var(--hd-card-blur)); -webkit-backdrop-filter: blur(var(--hd-card-blur)); }
+  .card-blur .card, .card-blur header.info.boxed { backdrop-filter: blur(var(--dash-card-blur)); -webkit-backdrop-filter: blur(var(--dash-card-blur)); }
   button { font: inherit; color: inherit; }
   .wrap { max-width: 1280px; margin: 0 auto;
     padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
   @media (min-width: 640px) { .wrap { padding: max(36px, env(safe-area-inset-top)) max(36px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(36px, env(safe-area-inset-left)); } }
-  .shadow { box-shadow: 0 4px 6px -1px var(--hd-shadow), 0 2px 4px -2px var(--hd-shadow); }
+  .shadow { box-shadow: 0 4px 6px -1px var(--dash-shadow), 0 2px 4px -2px var(--dash-shadow); }
 
   /* header */
-  h1.title { font-size: 1.5rem; font-weight: 600; margin: 0 0 16px; color: var(--hd-heading); }
+  h1.title { font-size: 1.5rem; font-weight: 600; margin: 0 0 16px; color: var(--dash-heading); }
   header.info { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
-  header.info.boxed { background: var(--hd-card); border-radius: 6px; padding: 12px; border: 1px solid var(--hd-card-border, transparent); }
+  header.info.boxed { background: var(--dash-card); border-radius: 6px; padding: 12px; border: 1px solid var(--dash-card-border, transparent); }
   header.info:empty { display: none; }
   .hw { flex: none; }
   .hw-search { flex: 1 1 260px; }
   .hw-datetime { flex: none; }
 
   .messages { margin-top: 16px; display: grid; gap: 8px; }
-  .msg { border-radius: 6px; padding: 10px 14px; font-size: .8125rem; background: color-mix(in srgb, var(--hd-error) 25%, var(--hd-card)); }
-  .msg.warn { background: color-mix(in srgb, var(--hd-warn) 18%, var(--hd-card)); }
+  .msg { border-radius: 6px; padding: 10px 14px; font-size: .8125rem; background: color-mix(in srgb, var(--dash-error) 25%, var(--dash-card)); }
+  .msg.warn { background: color-mix(in srgb, var(--dash-warn) 18%, var(--dash-card)); }
   .msg summary { cursor: pointer; font-weight: 700; }
   .msg ul { margin: 8px 0 0; padding-inline-start: 18px; }
   .msg code { font-size: .9em; opacity: .8; }
@@ -102,31 +102,31 @@
   @media (min-width: 768px) { .group.layout-column { flex-basis: 50%; } }
   @media (min-width: 1024px) { .group.layout-column { flex-basis: 33.333%; } }
   @media (min-width: 1280px) { .group.layout-column { flex-basis: 25%; } }
-  .group h2 { margin: 0; font-size: 1.25rem; line-height: 1.75rem; font-weight: 500; color: var(--hd-heading); }
+  .group h2 { margin: 0; font-size: 1.25rem; line-height: 1.75rem; font-weight: 500; color: var(--dash-heading); }
   .group h2 + .cards { margin-top: 12px; }
   /* header: false, as in homepage: no room for the hidden title, the cards follow the previous group at card spacing */
   .group.no-header { padding-block: 0; }
   .group.no-header > .sr-only + .cards { margin-top: 0; }
   /* nested groups (homepage's format) */
   .subgroups { display: flex; flex-wrap: wrap; margin: 4px -4px 0; }
-  .group.nested h3 { margin: 0; font-size: 1rem; line-height: 1.5rem; font-weight: 500; color: var(--hd-heading); }
+  .group.nested h3 { margin: 0; font-size: 1rem; line-height: 1.5rem; font-weight: 500; color: var(--dash-heading); }
   .group.nested h3 + .cards { margin-top: 8px; }
   .group.nested .cards:empty { display: none; }
   .group.collapsed .subgroups { display: none; }
   .group-title { display: flex; align-items: center; gap: 6px; }
   .group-toggle { all: unset; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 4px; }
-  .group-toggle:focus-visible { outline: 2px solid var(--hd-accent); outline-offset: 2px; }
+  .group-toggle:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 2px; }
   .group-toggle svg { width: 16px; height: 16px; opacity: .55; transition: transform .15s; }
   .group-toggle:hover svg { opacity: 1; }
   .group.collapsed .group-toggle svg { transform: rotate(-90deg); }
   .group.collapsed .cards { display: none; }
   #groups.searching .group.collapsed .cards { display: grid; } /* search looks inside folded groups */
   /* settings: headerStyle underlined / boxedWidgets, cardStyle hairline, blockStyle refined, font plex / plexData */
-  header.info.underlined { padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--hd-text) 20%, transparent); }
-  header.info.boxed-widgets .hw { background: var(--hd-card); border-radius: 6px; padding: 12px; border: 1px solid var(--hd-card-border, transparent); }
+  header.info.underlined { padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--dash-text) 20%, transparent); }
+  header.info.boxed-widgets .hw { background: var(--dash-card); border-radius: 6px; padding: 12px; border: 1px solid var(--dash-card-border, transparent); }
   .card-hairline .card, .card-hairline .bm, .card-hairline header.info.boxed, .card-hairline header.info.boxed-widgets .hw {
-    box-shadow: none; border: 1px solid color-mix(in srgb, var(--hd-text) 14%, transparent); }
-  .card-hairline .card:hover, .card-hairline .bm:hover { border-color: color-mix(in srgb, var(--hd-text) 32%, transparent); }
+    box-shadow: none; border: 1px solid color-mix(in srgb, var(--dash-text) 14%, transparent); }
+  .card-hairline .card:hover, .card-hairline .bm:hover { border-color: color-mix(in srgb, var(--dash-text) 32%, transparent); }
   .block-refined .block .v { font-size: 1rem; line-height: 1.5rem; font-weight: 700; }
   .font-plex, .font-plex button { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
   .font-plex-data .block .v, .font-plex-data .rv, .font-plex-data .tag, .font-plex-data .hw-datetime, .font-plex-data .hw-resources {
@@ -151,45 +151,47 @@
   .show-filtered .card.filtered { opacity: .55; }
   /* a widget's own filter: always hidden while true; the footer is about whole cards */
   .card .widget.filtered { display: none; }
-  .card { position: relative; margin-bottom: 8px; padding: 4px; border-radius: 6px; background: var(--hd-card); transition: background .15s; min-width: 0;
-    border: 1px solid var(--hd-card-border, transparent); }
+  .card { position: relative; margin-bottom: 8px; padding: 4px; border-radius: 6px; background: var(--dash-card); transition: background .15s; min-width: 0;
+    border: 1px solid var(--dash-card-border, transparent); }
   .card .names { padding-inline-end: calc(var(--tag-count, 0) * 68px + 8px); } /* keep long names clear of the status labels */
-  .card:hover { background: var(--hd-card-hover); }
+  .card:hover { background: var(--dash-card-hover); }
   .card-head { display: flex; align-items: center; color: inherit; text-decoration: none; min-width: 0; cursor: default; }
   a.card-head { cursor: pointer; }
   .icon { width: 48px; height: 52px; flex: none; display: grid; place-items: center; }
   .icon img, .icon .mask-icon { width: 32px; height: 32px; object-fit: contain; }
   /* single-colour icons (mdi-…, si-…): settings.iconStyle gradient (default) or theme, or their own colour */
   .mask-icon { display: inline-block; -webkit-mask: var(--mask) center / contain no-repeat; mask: var(--mask) center / contain no-repeat;
-    background: var(--fill, linear-gradient(180deg, var(--hd-icon-from), var(--hd-icon-to))); }
-  .icon-style-theme .mask-icon { background: var(--fill, var(--hd-heading)); }
+    background: var(--fill, linear-gradient(180deg, var(--dash-icon-from), var(--dash-icon-to))); }
+  .icon-style-theme .mask-icon { background: var(--fill, var(--dash-heading)); }
   .bm .abbr .mask-icon { width: 20px; height: 20px; }
   .bookmark-group.icons-only .bm .abbr .mask-icon { width: 24px; height: 24px; }
   .icon.letter span { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; font-weight: 700; font-size: .875rem;
-    background: color-mix(in srgb, var(--hd-text) 12%, transparent); }
+    background: color-mix(in srgb, var(--dash-text) 12%, transparent); }
   .names { flex: 1; min-width: 0; padding: 8px; font-size: .875rem; line-height: 1.25rem; }
   .card-head.no-icon .names { padding-inline-start: 8px; }
   .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .desc { font-size: .75rem; line-height: 1rem; font-weight: 400; color: var(--hd-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .desc { font-size: .75rem; line-height: 1rem; font-weight: 400; color: var(--dash-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tags { position: absolute; top: 0; inset-inline-end: 0; margin-inline-end: 8px; display: flex; gap: 8px; z-index: 1; }
-  .tag { position: relative; padding: 2px 8px; border-radius: 0 0 4px 4px; background: var(--hd-tab); font-size: .6875rem; line-height: 1rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase;
-    color: var(--hd-muted); border: 0; cursor: default; min-width: 24px; text-align: center; }
+  .tag { position: relative; padding: 2px 8px; border-radius: 0 0 4px 4px; background: var(--dash-tab); font-size: .6875rem; line-height: 1rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase;
+    color: var(--dash-muted); border: 0; cursor: default; min-width: 24px; text-align: center; }
   button.tag { cursor: pointer; }
   button.tag::before { content: ""; position: absolute; inset: -4px -4px -12px; } /* hit area ≥ 28 px high */
   .tag.dot { padding: 6px 8px; }
   .tag .status-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
   .tag.pending { display: flex; align-items: center; padding-block: 4px; }
-  .tag-spinner { display: block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--hd-muted) 35%, transparent);
-    border-top-color: var(--hd-muted); animation: tag-spin .8s linear infinite; }
+  .tag-spinner { display: block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--dash-muted) 35%, transparent);
+    border-top-color: var(--dash-muted); animation: tag-spin .8s linear infinite; }
   @keyframes tag-spin { to { transform: rotate(360deg); } }
-  .tag.up { color: var(--hd-ok); }
-  .tag.down { color: var(--hd-error); }
-  .tag.warn { color: var(--hd-warn); }
+  .tag.up { color: var(--dash-ok); }
+  .tag.down { color: var(--dash-error); }
+  .tag.warn { color: var(--dash-warn); }
 
   /* widget content */
   .widget:empty { display: none; }
+  /* a widget of API 1 reads the custom properties by their old names (--hd-*) */
+  .widget { --hd-accent: var(--dash-accent); --hd-bg: var(--dash-bg); --hd-block: var(--dash-block); --hd-border: var(--dash-border); --hd-card: var(--dash-card); --hd-card-blur: var(--dash-card-blur); --hd-card-border: var(--dash-card-border); --hd-card-hover: var(--dash-card-hover); --hd-error: var(--dash-error); --hd-error-bg: var(--dash-error-bg); --hd-heading: var(--dash-heading); --hd-icon-from: var(--dash-icon-from); --hd-icon-to: var(--dash-icon-to); --hd-muted: var(--dash-muted); --hd-ok: var(--dash-ok); --hd-shadow: var(--dash-shadow); --hd-tab: var(--dash-tab); --hd-text: var(--dash-text); --hd-warn: var(--dash-warn); }
   .blocks { display: flex; flex-wrap: wrap; }
-  .block { flex: 1 1 0; min-width: 64px; margin: 4px; padding: 4px; border-radius: 4px; background: var(--hd-block);
+  .block { flex: 1 1 0; min-width: 64px; margin: 4px; padding: 4px; border-radius: 4px; background: var(--dash-block);
     display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 44px; }
   .block .v.hl-good, .block .v.hl-warn, .block .v.hl-danger { border-radius: 3px; padding: 0 4px; }
   .block .v { font-size: .875rem; line-height: 1.25rem; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-variant-numeric: tabular-nums; }
@@ -197,24 +199,24 @@
     /* wrap to two lines (hyphenated in the page language) rather than cut a label off */
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; hyphens: auto; overflow-wrap: break-word; }
   .sym { display: inline-block; margin-inline-end: 3px; font-size: .75em; vertical-align: .05em; }
-  .block.ok .v { color: var(--hd-ok); }
-  .block.warn .v { color: var(--hd-warn); }
-  .block.error .v { color: var(--hd-error); }
+  .block.ok .v { color: var(--dash-ok); }
+  .block.warn .v { color: var(--dash-warn); }
+  .block.error .v { color: var(--dash-error); }
   .rows { display: flex; flex-direction: column; }
-  .row { position: relative; overflow: hidden; margin: 4px; padding: 4px; border-radius: 4px; background: var(--hd-block);
+  .row { position: relative; overflow: hidden; margin: 4px; padding: 4px; border-radius: 4px; background: var(--dash-block);
     display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .75rem; line-height: 1rem; }
   .row .rl { font-weight: 400; padding-inline-start: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; z-index: 1; }
   .row .rv { font-weight: 500; text-align: end; white-space: nowrap; z-index: 1; }
-  .row.ok .rv { color: var(--hd-ok); }
-  .row.warn .rv, .row.warn .rl .sym { color: var(--hd-warn); }
-  .row.error .rv, .row.error .rl .sym { color: var(--hd-error); }
+  .row.ok .rv { color: var(--dash-ok); }
+  .row.warn .rv, .row.warn .rl .sym { color: var(--dash-warn); }
+  .row.error .rv, .row.error .rl .sym { color: var(--dash-error); }
   .row.more { justify-content: center; background: none; }
   .row.more .rl { font-weight: 600; padding-inline-start: 0; }
   .row[tabindex] { cursor: pointer; }
   .row.expanded { align-items: flex-start; }
   .row.expanded .rl { white-space: normal; overflow-wrap: anywhere; }
-  .row .progress { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--hd-text) 12%, transparent); }
-  .api-error { margin: 4px; border-radius: 6px; background: var(--hd-error-bg); color: #f1f5f9; font-size: .75rem; text-align: center; }
+  .row .progress { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--dash-text) 12%, transparent); }
+  .api-error { margin: 4px; border-radius: 6px; background: var(--dash-error-bg); color: #f1f5f9; font-size: .75rem; text-align: center; }
   .api-error summary { cursor: pointer; padding: 8px; list-style: none; font-weight: 600; }
   .api-error summary::before { content: "ⓘ "; }
   .api-error div { padding: 0 10px 8px; text-align: left; overflow-wrap: anywhere; font-weight: 400; }
@@ -223,27 +225,27 @@
   /* settings.layout.<group>.tab */
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 4px; }
   .tabs a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 14px; border-radius: 6px; font-size: .875rem;
-    color: var(--hd-text); text-decoration: none; background: var(--hd-card); border: 1px solid var(--hd-card-border, transparent); }
-  .tabs a:hover { background: var(--hd-card-hover); }
-  .tabs a[aria-current="page"] { background: var(--hd-tab); font-weight: 700; }
+    color: var(--dash-text); text-decoration: none; background: var(--dash-card); border: 1px solid var(--dash-card-border, transparent); }
+  .tabs a:hover { background: var(--dash-card-hover); }
+  .tabs a[aria-current="page"] { background: var(--dash-tab); font-weight: 700; }
   [data-tab][hidden] { display: none !important; }
   /* quicklaunch: start typing anywhere on the page */
   .ql { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px;
-    background: color-mix(in srgb, var(--hd-bg) 60%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    background: color-mix(in srgb, var(--dash-bg) 60%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .ql[hidden] { display: none; }
-  .ql-box { width: min(640px, 100%); border-radius: 8px; background: var(--hd-bg); border: 1px solid var(--hd-border); box-shadow: 0 10px 30px var(--hd-shadow); overflow: hidden; }
-  .ql-box input { width: 100%; box-sizing: border-box; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--hd-border); font: inherit; font-size: 1rem;
-    color: var(--hd-text); background: transparent; outline: none; }
+  .ql-box { width: min(640px, 100%); border-radius: 8px; background: var(--dash-bg); border: 1px solid var(--dash-border); box-shadow: 0 10px 30px var(--dash-shadow); overflow: hidden; }
+  .ql-box input { width: 100%; box-sizing: border-box; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--dash-border); font: inherit; font-size: 1rem;
+    color: var(--dash-text); background: transparent; outline: none; }
   .ql-box ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow-y: auto; }
   .ql-box li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: .875rem; }
-  .ql-box li[aria-selected="true"] { background: var(--hd-card-hover); }
+  .ql-box li[aria-selected="true"] { background: var(--dash-card-hover); }
   .ql-box li .ql-icon { width: 24px; height: 24px; flex: none; display: grid; place-items: center; }
   .ql-box li .ql-icon img, .ql-box li .ql-icon .mask-icon { width: 24px; height: 24px; object-fit: contain; }
   .ql-box li .ql-name { font-weight: 600; }
-  .ql-box li .ql-desc { color: var(--hd-muted); font-size: .75rem; }
-  .ql-box li .ql-kind { margin-inline-start: auto; color: var(--hd-muted); font-size: .75rem; }
-  .ql-box .ql-empty { cursor: default; color: var(--hd-muted); }
-  .ql-button { position: fixed; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--hd-card); border: 1px solid var(--hd-border); display: none; }
+  .ql-box li .ql-desc { color: var(--dash-muted); font-size: .75rem; }
+  .ql-box li .ql-kind { margin-inline-start: auto; color: var(--dash-muted); font-size: .75rem; }
+  .ql-box .ql-empty { cursor: default; color: var(--dash-muted); }
+  .ql-button { position: fixed; z-index: 20; width: 44px; height: 44px; border-radius: 50%; background: var(--dash-card); border: 1px solid var(--dash-border); display: none; }
   @media (max-width: 767px) { .ql-button.on:not([hidden]) { display: grid; place-items: center; } }
   .ql-button.top-left { top: 12px; left: 12px; } .ql-button.top-right { top: 12px; right: 12px; }
   .ql-button.bottom-left { bottom: 12px; left: 12px; } .ql-button.bottom-right { bottom: 12px; right: 12px; }
@@ -251,9 +253,9 @@
   .bookmark-group { flex: 1 1 100%; }
   @media (min-width: 768px) { .bookmark-group { flex-basis: 50%; } }
   @media (min-width: 1024px) { .bookmark-group { flex-basis: 25%; } }
-  .bm { display: flex; align-items: center; gap: 0; margin-bottom: 8px; border-radius: 6px; background: var(--hd-card); border: 1px solid var(--hd-card-border, transparent); color: inherit; text-decoration: none; font-size: .875rem; overflow: hidden; }
-  .bm:hover { background: var(--hd-card-hover); }
-  .bm .abbr { width: 40px; align-self: stretch; display: grid; place-items: center; font-weight: 700; font-size: .75rem; background: var(--hd-block); }
+  .bm { display: flex; align-items: center; gap: 0; margin-bottom: 8px; border-radius: 6px; background: var(--dash-card); border: 1px solid var(--dash-card-border, transparent); color: inherit; text-decoration: none; font-size: .875rem; overflow: hidden; }
+  .bm:hover { background: var(--dash-card-hover); }
+  .bm .abbr { width: 40px; align-self: stretch; display: grid; place-items: center; font-weight: 700; font-size: .75rem; background: var(--dash-block); }
   .bm .abbr img { width: 20px; height: 20px; object-fit: contain; }
   .bm .bn { padding: 8px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* bookmarks as icons only (layout.<group>.iconsOnly, bookmarksStyle: icons) */
@@ -266,55 +268,55 @@
   .group h2 .group-icon, .group h3 .group-icon { margin-inline-end: 2px; }
   .bookmark-group h2 { display: flex; align-items: center; gap: 6px; }
 
-  .empty { text-align: center; color: var(--hd-muted); padding: 64px 16px; border-radius: 6px; background: var(--hd-card); width: 100%; margin: 4px; }
+  .empty { text-align: center; color: var(--dash-muted); padding: 64px 16px; border-radius: 6px; background: var(--dash-card); width: 100%; margin: 4px; }
 
   /* footer */
-  footer { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; color: var(--hd-muted); }
+  footer { display: flex; justify-content: space-between; align-items: center; margin-top: 40px; color: var(--dash-muted); }
   footer .right { display: flex; align-items: center; gap: 12px; }
   footer .version { font-size: .75rem; }
-  footer .version a { color: var(--hd-accent); }
+  footer .version a { color: var(--dash-accent); }
   footer .version a.ref { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
-  .icon-btn { background: none; border: 0; padding: 7px; min-width: 32px; min-height: 32px; cursor: pointer; color: var(--hd-text); opacity: .8;
+  .icon-btn { background: none; border: 0; padding: 7px; min-width: 32px; min-height: 32px; cursor: pointer; color: var(--dash-text); opacity: .8;
     display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
   .icon-btn:hover { opacity: 1; }
   .icon-btn svg { width: 18px; height: 18px; }
-  .text-btn { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--hd-block); color: var(--hd-text);
+  .text-btn { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--dash-block); color: var(--dash-text);
     font: inherit; font-size: .75rem; white-space: nowrap; cursor: pointer; }
-  .text-btn:hover, .text-btn[aria-pressed="true"] { background: var(--hd-card-hover); }
-  .appearance { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--hd-block); }
-  .appearance .icon-btn[aria-pressed="true"] { opacity: 1; background: var(--hd-card-hover); }
+  .text-btn:hover, .text-btn[aria-pressed="true"] { background: var(--dash-card-hover); }
+  .appearance { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--dash-block); }
+  .appearance .icon-btn[aria-pressed="true"] { opacity: 1; background: var(--dash-card-hover); }
   .palette { display: none; gap: 8px; flex-wrap: wrap; max-width: 560px; margin-inline-start: 8px; }
   .palette.open { display: flex; }
   .swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
-  .swatch.active { border-color: var(--hd-text); }
+  .swatch.active { border-color: var(--dash-text); }
   .toast { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px);
     display: flex; align-items: center; gap: 8px; background: var(--t900); color: var(--t100); padding: 4px 4px 4px 14px; border-radius: 6px;
     font-size: .8125rem; opacity: 0; transition: opacity .2s; pointer-events: none; }
   .toast.show { opacity: .97; pointer-events: auto; }
   .toast.error { background: #881337; color: #fff1f2; }
   .toast .icon-btn { color: inherit; }
-  .action-result { max-width: min(48rem, calc(100% - 32px)); width: 100%; padding: 16px 20px; border: 1px solid var(--hd-border);
-    border-radius: 10px; background: linear-gradient(var(--hd-card), var(--hd-card)), var(--hd-bg); color: var(--hd-text); box-shadow: var(--hd-shadow); }
+  .action-result { max-width: min(48rem, calc(100% - 32px)); width: 100%; padding: 16px 20px; border: 1px solid var(--dash-border);
+    border-radius: 10px; background: linear-gradient(var(--dash-card), var(--dash-card)), var(--dash-bg); color: var(--dash-text); box-shadow: var(--dash-shadow); }
   .action-result::backdrop { background: rgb(0 0 0 / .45); }
   .action-result { position: relative; }
-  .action-result h2 { margin: 0 0 4px; padding-inline-end: 36px; font-size: 1.0625rem; font-weight: 600; color: var(--hd-heading); }
+  .action-result h2 { margin: 0 0 4px; padding-inline-end: 36px; font-size: 1.0625rem; font-weight: 600; color: var(--dash-heading); }
   .action-result .close { position: absolute; top: 10px; inset-inline-end: 10px; }
   .action-result .icon-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
-    border: 0; border-radius: 6px; background: none; color: var(--hd-muted); cursor: pointer; }
-  .action-result .icon-action:hover { background: var(--hd-card-hover); color: var(--hd-text); }
+    border: 0; border-radius: 6px; background: none; color: var(--dash-muted); cursor: pointer; }
+  .action-result .icon-action:hover { background: var(--dash-card-hover); color: var(--dash-text); }
   .action-result .icon-action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .action-result .output { position: relative; }
-  .action-result .output .copy { position: absolute; top: 6px; inset-inline-end: 6px; background: var(--hd-block); opacity: 0; transition: opacity .15s; }
+  .action-result .output .copy { position: absolute; top: 6px; inset-inline-end: 6px; background: var(--dash-block); opacity: 0; transition: opacity .15s; }
   .action-result .output:hover .copy, .action-result .output:focus-within .copy, .action-result .copy.done { opacity: 1; }
-  .action-result .copy.done { color: var(--hd-ok); }
+  .action-result .copy.done { color: var(--dash-ok); }
   @media (hover: none) { .action-result .output .copy { opacity: 1; } }
   .action-result .status { margin: 0 0 12px; font-size: .875rem; }
-  .action-result .status.ok { color: var(--hd-ok); }
-  .action-result .status.error { color: var(--hd-error); }
-  .action-result pre { margin: 0; max-height: 60vh; overflow: auto; padding: 10px 12px; border-radius: 6px; background: var(--hd-block);
+  .action-result .status.ok { color: var(--dash-ok); }
+  .action-result .status.error { color: var(--dash-error); }
+  .action-result pre { margin: 0; max-height: 60vh; overflow: auto; padding: 10px 12px; border-radius: 6px; background: var(--dash-block);
     font: .8125rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; padding-inline-end: 44px; }
-  .action-result .empty { margin: 0; font-size: .875rem; color: var(--hd-muted); }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--hd-accent); outline-offset: 2px; }
+  .action-result .empty { margin: 0; font-size: .875rem; color: var(--dash-muted); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 2px; }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   [hidden] { display: none !important; }
 
@@ -322,9 +324,9 @@
     *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
   }
   @media (prefers-contrast: more) {
-    :root[data-theme="dark"] { --hd-muted: var(--t200); --hd-heading: var(--t100); --hd-card-border: var(--t400); --hd-text: var(--t100); }
-    :root[data-theme="light"] { --hd-muted: var(--t700); --hd-heading: var(--t900); --hd-card-border: var(--t500); --hd-text: var(--t900); }
-    .tag { background: var(--hd-bg); }
+    :root[data-theme="dark"] { --dash-muted: var(--t200); --dash-heading: var(--t100); --dash-card-border: var(--t400); --dash-text: var(--t100); }
+    :root[data-theme="light"] { --dash-muted: var(--t700); --dash-heading: var(--t900); --dash-card-border: var(--t500); --dash-text: var(--t900); }
+    .tag { background: var(--dash-bg); }
   }
 </style>
 </head>
@@ -385,7 +387,7 @@ const I18N = {
     updateAvailable: "{version} available",
     qlLabel: "Quick launch", qlPlaceholder: "Search services, bookmarks or the web", qlSearch: "Search {name} for “{q}”", qlVisit: "Open {url}", qlService: "Service", qlBookmark: "Bookmark", qlLink: "Link", qlWeb: "Web",
     tabs: 'Tabs', loading: 'Loading…', errors: 'Configuration errors', warnings: 'Warnings', empty: 'No services yet.',
-    emptyHint: 'Add them to services.yaml in your config folder, or label your containers with homelab.name.',
+    emptyHint: 'Add them to services.yaml in your config folder, or label your containers with dashboard.name.',
     up: 'Online', down: 'Offline', warn: 'Degraded', unknown: 'Unknown', tagUp: 'Up', tagDown: 'Down',
     apiError: 'API Error Information', unknownWidget: 'Unknown widget type', discovered: 'discovered from',
     offline: 'Server unreachable, retrying…', clientFailed: 'Could not load the widget code',
@@ -409,7 +411,7 @@ const I18N = {
     updateAvailable: "{version} beschikbaar",
     qlLabel: "Snel starten", qlPlaceholder: "Zoek services, bladwijzers of op het web", qlSearch: "Zoek “{q}” met {name}", qlVisit: "{url} openen", qlService: "Service", qlBookmark: "Bladwijzer", qlLink: "Link", qlWeb: "Web",
     tabs: 'Tabbladen', loading: 'Laden…', errors: 'Fouten in de configuratie', warnings: 'Waarschuwingen', empty: 'Nog geen services.',
-    emptyHint: 'Zet ze in services.yaml in je configmap, of geef je containers het label homelab.name.',
+    emptyHint: 'Zet ze in services.yaml in je configmap, of geef je containers het label dashboard.name.',
     up: 'Online', down: 'Offline', warn: 'Verstoord', unknown: 'Onbekend', tagUp: 'Online', tagDown: 'Offline',
     apiError: 'API-foutinformatie', unknownWidget: 'Onbekend widgettype', discovered: 'gevonden via',
     offline: 'Server onbereikbaar, opnieuw proberen…', clientFailed: 'De widgetcode kon niet geladen worden',
@@ -433,7 +435,7 @@ const I18N = {
     updateAvailable: "{version} disponible",
     qlLabel: "Lancement rapide", qlPlaceholder: "Chercher des services, des favoris ou sur le web", qlSearch: "Chercher « {q} » sur {name}", qlVisit: "Ouvrir {url}", qlService: "Service", qlBookmark: "Favori", qlLink: "Lien", qlWeb: "Web",
     tabs: 'Onglets', loading: 'Chargement…', errors: 'Erreurs de configuration', warnings: 'Avertissements', empty: 'Aucun service pour l’instant.',
-    emptyHint: 'Ajoutez-les dans services.yaml de votre dossier de configuration, ou étiquetez vos conteneurs avec homelab.name.',
+    emptyHint: 'Ajoutez-les dans services.yaml de votre dossier de configuration, ou étiquetez vos conteneurs avec dashboard.name.',
     up: 'En ligne', down: 'Hors ligne', warn: 'Dégradé', unknown: 'Inconnu', tagUp: 'En ligne', tagDown: 'Hors ligne',
     apiError: 'Informations sur l’erreur API', unknownWidget: 'Type de widget inconnu', discovered: 'découvert via',
     offline: 'Serveur injoignable, nouvelle tentative…', clientFailed: 'Impossible de charger le code du widget',
@@ -457,7 +459,7 @@ const I18N = {
     updateAvailable: "{version} verfügbar",
     qlLabel: "Schnellstart", qlPlaceholder: "Dienste, Lesezeichen oder das Web durchsuchen", qlSearch: "„{q}“ mit {name} suchen", qlVisit: "{url} öffnen", qlService: "Dienst", qlBookmark: "Lesezeichen", qlLink: "Link", qlWeb: "Web",
     tabs: 'Tabs', loading: 'Lädt…', errors: 'Konfigurationsfehler', warnings: 'Warnungen', empty: 'Noch keine Dienste.',
-    emptyHint: 'Trage sie in services.yaml im Konfigurationsordner ein oder versieh deine Container mit dem Label homelab.name.',
+    emptyHint: 'Trage sie in services.yaml im Konfigurationsordner ein oder versieh deine Container mit dem Label dashboard.name.',
     up: 'Online', down: 'Offline', warn: 'Beeinträchtigt', unknown: 'Unbekannt', tagUp: 'Online', tagDown: 'Offline',
     apiError: 'API-Fehlerinformationen', unknownWidget: 'Unbekannter Widget-Typ', discovered: 'gefunden über',
     offline: 'Server nicht erreichbar, neuer Versuch…', clientFailed: 'Widget-Code konnte nicht geladen werden',
@@ -481,7 +483,7 @@ const I18N = {
     updateAvailable: "{version} disponible",
     qlLabel: "Inicio rápido", qlPlaceholder: "Buscar servicios, marcadores o en la web", qlSearch: "Buscar «{q}» en {name}", qlVisit: "Abrir {url}", qlService: "Servicio", qlBookmark: "Marcador", qlLink: "Enlace", qlWeb: "Web",
     tabs: 'Pestañas', loading: 'Cargando…', errors: 'Errores de configuración', warnings: 'Advertencias', empty: 'Todavía no hay servicios.',
-    emptyHint: 'Añádelos en services.yaml de tu carpeta de configuración, o etiqueta tus contenedores con homelab.name.',
+    emptyHint: 'Añádelos en services.yaml de tu carpeta de configuración, o etiqueta tus contenedores con dashboard.name.',
     up: 'En línea', down: 'Sin conexión', warn: 'Degradado', unknown: 'Desconocido', tagUp: 'Activo', tagDown: 'Caído',
     apiError: 'Información del error de la API', unknownWidget: 'Tipo de widget desconocido', discovered: 'descubierto en',
     offline: 'Servidor inaccesible, reintentando…', clientFailed: 'No se pudo cargar el código del widget',
@@ -502,40 +504,40 @@ const I18N = {
     noMatches: "No se encontraron servicios",
   },
   ca: {
-    "updateAvailable": "{version} disponible", "qlLabel": "Inici ràpid", "qlPlaceholder": "Cerca serveis, adreces d’interès o al web", "qlSearch": "Cerca «{q}» a {name}", "qlVisit": "Obre {url}", "qlService": "Servei", "qlBookmark": "Adreça d’interès", "qlLink": "Enllaç", "qlWeb": "Web", "tabs": "Pestanyes", "loading": "Carregant…", "errors": "Errors de configuració", "warnings": "Avisos", "empty": "Encara no hi ha serveis.", "emptyHint": "Afegeix-los a services.yaml a la carpeta de configuració, o etiqueta els contenidors amb homelab.name.", "up": "En línia", "down": "Fora de línia", "warn": "Degradat", "unknown": "Desconegut", "tagUp": "Actiu", "tagDown": "Caigut", "apiError": "Informació de l’error de l’API", "unknownWidget": "Tipus de giny desconegut", "discovered": "descobert des de", "offline": "Servidor inaccessible, es torna a provar…", "clientFailed": "No s’ha pogut carregar el codi del giny", "containerStats": "Mostra les estadístiques del contenidor", "vmStats": "Mostra les estadístiques de la VM", "podStats": "Mostra les estadístiques dels pods", "refresh": "Actualitza", "color": "Canvia el color", "running": "{name}: en execució…", "runOk": "{name}: fet", "runFailed": "{name} ha fallat: {reason}", "exitCode": "Codi de sortida {code}", "noOutput": "Sense sortida", "copyOutput": "Copia la sortida", "copied": "Copiat", "copyFailed": "No s’ha pogut copiar", "actionBusy": "encara s’està executant", "close": "Tanca", "attention": "Cal atenció", "problem": "Problema", "playing": "Reproduint", "paused": "En pausa", "appearanceLight": "Aparença clara", "appearanceAuto": "Segueix l’aparença del sistema", "appearanceDark": "Aparença fosca", "appearance": "Aparença", "errAuth": "{name}: s’ha rebutjat l’accés. Comprova la clau o la contrasenya.", "errNotFound": "{name}: adreça no trobada. Comprova \"url\".", "errUnreachable": "{name} és inaccessible. Està en marxa i \"url\" és correcte?", "errServer": "{name} informa d’un error.", "errConfig": "{name}: la configuració té un error.", "errGeneric": "{name}: no s’han pogut carregar les dades.", "details": "Detalls", "matches": "{count} serveis trobats", "noMatches": "No s’ha trobat cap servei", "filteredCount": "{count} amagades", "filteredShow": "Mostra les targetes que amaga un filtre"
+    "updateAvailable": "{version} disponible", "qlLabel": "Inici ràpid", "qlPlaceholder": "Cerca serveis, adreces d’interès o al web", "qlSearch": "Cerca «{q}» a {name}", "qlVisit": "Obre {url}", "qlService": "Servei", "qlBookmark": "Adreça d’interès", "qlLink": "Enllaç", "qlWeb": "Web", "tabs": "Pestanyes", "loading": "Carregant…", "errors": "Errors de configuració", "warnings": "Avisos", "empty": "Encara no hi ha serveis.", "emptyHint": "Afegeix-los a services.yaml a la carpeta de configuració, o etiqueta els contenidors amb dashboard.name.", "up": "En línia", "down": "Fora de línia", "warn": "Degradat", "unknown": "Desconegut", "tagUp": "Actiu", "tagDown": "Caigut", "apiError": "Informació de l’error de l’API", "unknownWidget": "Tipus de giny desconegut", "discovered": "descobert des de", "offline": "Servidor inaccessible, es torna a provar…", "clientFailed": "No s’ha pogut carregar el codi del giny", "containerStats": "Mostra les estadístiques del contenidor", "vmStats": "Mostra les estadístiques de la VM", "podStats": "Mostra les estadístiques dels pods", "refresh": "Actualitza", "color": "Canvia el color", "running": "{name}: en execució…", "runOk": "{name}: fet", "runFailed": "{name} ha fallat: {reason}", "exitCode": "Codi de sortida {code}", "noOutput": "Sense sortida", "copyOutput": "Copia la sortida", "copied": "Copiat", "copyFailed": "No s’ha pogut copiar", "actionBusy": "encara s’està executant", "close": "Tanca", "attention": "Cal atenció", "problem": "Problema", "playing": "Reproduint", "paused": "En pausa", "appearanceLight": "Aparença clara", "appearanceAuto": "Segueix l’aparença del sistema", "appearanceDark": "Aparença fosca", "appearance": "Aparença", "errAuth": "{name}: s’ha rebutjat l’accés. Comprova la clau o la contrasenya.", "errNotFound": "{name}: adreça no trobada. Comprova \"url\".", "errUnreachable": "{name} és inaccessible. Està en marxa i \"url\" és correcte?", "errServer": "{name} informa d’un error.", "errConfig": "{name}: la configuració té un error.", "errGeneric": "{name}: no s’han pogut carregar les dades.", "details": "Detalls", "matches": "{count} serveis trobats", "noMatches": "No s’ha trobat cap servei", "filteredCount": "{count} amagades", "filteredShow": "Mostra les targetes que amaga un filtre"
   },
   he: {
-    "updateAvailable": "{version} זמינה", "qlLabel": "הפעלה מהירה", "qlPlaceholder": "חיפוש שירותים, סימניות או באינטרנט", "qlSearch": "חיפוש „{q}” ב־{name}", "qlVisit": "פתיחת {url}", "qlService": "שירות", "qlBookmark": "סימנייה", "qlLink": "קישור", "qlWeb": "אינטרנט", "tabs": "לשוניות", "loading": "טוען…", "errors": "שגיאות בהגדרות", "warnings": "אזהרות", "empty": "אין עדיין שירותים.", "emptyHint": "הוסיפו אותם ל־services.yaml בתיקיית ההגדרות, או תייגו את הקונטיינרים ב־homelab.name.", "up": "מחובר", "down": "מנותק", "warn": "פגוע", "unknown": "לא ידוע", "tagUp": "פעיל", "tagDown": "נפל", "apiError": "פרטי שגיאת API", "unknownWidget": "סוג וידג׳ט לא ידוע", "discovered": "התגלה מתוך", "offline": "השרת אינו זמין, מנסה שוב…", "clientFailed": "לא ניתן לטעון את קוד הווידג׳ט", "containerStats": "הצגת נתוני הקונטיינר", "vmStats": "הצגת נתוני המכונה הווירטואלית", "podStats": "הצגת נתוני הפודים", "refresh": "רענון", "color": "שינוי צבע", "running": "{name}: פועל…", "runOk": "{name}: הושלם", "runFailed": "{name} נכשל: {reason}", "exitCode": "קוד יציאה {code}", "noOutput": "אין פלט", "copyOutput": "העתקת הפלט", "copied": "הועתק", "copyFailed": "ההעתקה נכשלה", "actionBusy": "זה עדיין רץ", "close": "סגירה", "attention": "דורש תשומת לב", "problem": "בעיה", "playing": "מתנגן", "paused": "מושהה", "appearanceLight": "מראה בהיר", "appearanceAuto": "לפי מראה המערכת", "appearanceDark": "מראה כהה", "appearance": "מראה", "errAuth": "{name}: ההתחברות נדחתה. בדקו את המפתח או הסיסמה.", "errNotFound": "{name}: הכתובת לא נמצאה. בדקו את \"url\".", "errUnreachable": "{name} אינו זמין. האם הוא פועל, והאם \"url\" נכון?", "errServer": "{name} מדווח על שגיאה.", "errConfig": "{name}: יש שגיאה בהגדרות.", "errGeneric": "{name}: לא ניתן לטעון נתונים.", "details": "פרטים", "matches": "נמצאו {count} שירותים", "noMatches": "לא נמצאו שירותים", "filteredCount": "{count} מוסתרים", "filteredShow": "הצגת הכרטיסים שמסנן מסתיר"
+    "updateAvailable": "{version} זמינה", "qlLabel": "הפעלה מהירה", "qlPlaceholder": "חיפוש שירותים, סימניות או באינטרנט", "qlSearch": "חיפוש „{q}” ב־{name}", "qlVisit": "פתיחת {url}", "qlService": "שירות", "qlBookmark": "סימנייה", "qlLink": "קישור", "qlWeb": "אינטרנט", "tabs": "לשוניות", "loading": "טוען…", "errors": "שגיאות בהגדרות", "warnings": "אזהרות", "empty": "אין עדיין שירותים.", "emptyHint": "הוסיפו אותם ל־services.yaml בתיקיית ההגדרות, או תייגו את הקונטיינרים ב־dashboard.name.", "up": "מחובר", "down": "מנותק", "warn": "פגוע", "unknown": "לא ידוע", "tagUp": "פעיל", "tagDown": "נפל", "apiError": "פרטי שגיאת API", "unknownWidget": "סוג וידג׳ט לא ידוע", "discovered": "התגלה מתוך", "offline": "השרת אינו זמין, מנסה שוב…", "clientFailed": "לא ניתן לטעון את קוד הווידג׳ט", "containerStats": "הצגת נתוני הקונטיינר", "vmStats": "הצגת נתוני המכונה הווירטואלית", "podStats": "הצגת נתוני הפודים", "refresh": "רענון", "color": "שינוי צבע", "running": "{name}: פועל…", "runOk": "{name}: הושלם", "runFailed": "{name} נכשל: {reason}", "exitCode": "קוד יציאה {code}", "noOutput": "אין פלט", "copyOutput": "העתקת הפלט", "copied": "הועתק", "copyFailed": "ההעתקה נכשלה", "actionBusy": "זה עדיין רץ", "close": "סגירה", "attention": "דורש תשומת לב", "problem": "בעיה", "playing": "מתנגן", "paused": "מושהה", "appearanceLight": "מראה בהיר", "appearanceAuto": "לפי מראה המערכת", "appearanceDark": "מראה כהה", "appearance": "מראה", "errAuth": "{name}: ההתחברות נדחתה. בדקו את המפתח או הסיסמה.", "errNotFound": "{name}: הכתובת לא נמצאה. בדקו את \"url\".", "errUnreachable": "{name} אינו זמין. האם הוא פועל, והאם \"url\" נכון?", "errServer": "{name} מדווח על שגיאה.", "errConfig": "{name}: יש שגיאה בהגדרות.", "errGeneric": "{name}: לא ניתן לטעון נתונים.", "details": "פרטים", "matches": "נמצאו {count} שירותים", "noMatches": "לא נמצאו שירותים", "filteredCount": "{count} מוסתרים", "filteredShow": "הצגת הכרטיסים שמסנן מסתיר"
   },
   hr: {
-    "updateAvailable": "{version} je dostupna", "qlLabel": "Brzo pokretanje", "qlPlaceholder": "Pretraži usluge, oznake ili web", "qlSearch": "Traži „{q}” na {name}", "qlVisit": "Otvori {url}", "qlService": "Usluga", "qlBookmark": "Oznaka", "qlLink": "Poveznica", "qlWeb": "Web", "tabs": "Kartice", "loading": "Učitavanje…", "errors": "Pogreške u konfiguraciji", "warnings": "Upozorenja", "empty": "Još nema usluga.", "emptyHint": "Dodajte ih u services.yaml u mapi s konfiguracijom ili označite kontejnere s homelab.name.", "up": "Dostupno", "down": "Nedostupno", "warn": "Smetnje", "unknown": "Nepoznato", "tagUp": "Radi", "tagDown": "Ne radi", "apiError": "Podaci o pogrešci API-ja", "unknownWidget": "Nepoznata vrsta widgeta", "discovered": "otkriveno iz", "offline": "Poslužitelj nije dostupan, novi pokušaj…", "clientFailed": "Kôd widgeta nije se mogao učitati", "containerStats": "Prikaži statistiku kontejnera", "vmStats": "Prikaži statistiku virtualnog stroja", "podStats": "Prikaži statistiku podova", "refresh": "Osvježi", "color": "Promijeni boju", "running": "{name}: pokrenuto…", "runOk": "{name}: gotovo", "runFailed": "{name} nije uspjelo: {reason}", "exitCode": "Izlazni kôd {code}", "noOutput": "Nema izlaza", "copyOutput": "Kopiraj izlaz", "copied": "Kopirano", "copyFailed": "Kopiranje nije uspjelo", "actionBusy": "još se izvodi", "close": "Zatvori", "attention": "Traži pozornost", "problem": "Problem", "playing": "Reproducira se", "paused": "Pauzirano", "appearanceLight": "Svijetli izgled", "appearanceAuto": "Prati izgled sustava", "appearanceDark": "Tamni izgled", "appearance": "Izgled", "errAuth": "{name}: prijava je odbijena. Provjerite ključ ili lozinku.", "errNotFound": "{name}: adresa nije pronađena. Provjerite \"url\".", "errUnreachable": "{name} nije dostupno. Radi li i je li \"url\" točan?", "errServer": "{name} javlja pogrešku.", "errConfig": "{name}: u konfiguraciji je pogreška.", "errGeneric": "{name}: podaci se nisu mogli učitati.", "details": "Pojedinosti", "matches": "Pronađeno usluga: {count}", "noMatches": "Nije pronađena nijedna usluga", "filteredCount": "Skriveno: {count}", "filteredShow": "Prikaži kartice koje filtar skriva"
+    "updateAvailable": "{version} je dostupna", "qlLabel": "Brzo pokretanje", "qlPlaceholder": "Pretraži usluge, oznake ili web", "qlSearch": "Traži „{q}” na {name}", "qlVisit": "Otvori {url}", "qlService": "Usluga", "qlBookmark": "Oznaka", "qlLink": "Poveznica", "qlWeb": "Web", "tabs": "Kartice", "loading": "Učitavanje…", "errors": "Pogreške u konfiguraciji", "warnings": "Upozorenja", "empty": "Još nema usluga.", "emptyHint": "Dodajte ih u services.yaml u mapi s konfiguracijom ili označite kontejnere s dashboard.name.", "up": "Dostupno", "down": "Nedostupno", "warn": "Smetnje", "unknown": "Nepoznato", "tagUp": "Radi", "tagDown": "Ne radi", "apiError": "Podaci o pogrešci API-ja", "unknownWidget": "Nepoznata vrsta widgeta", "discovered": "otkriveno iz", "offline": "Poslužitelj nije dostupan, novi pokušaj…", "clientFailed": "Kôd widgeta nije se mogao učitati", "containerStats": "Prikaži statistiku kontejnera", "vmStats": "Prikaži statistiku virtualnog stroja", "podStats": "Prikaži statistiku podova", "refresh": "Osvježi", "color": "Promijeni boju", "running": "{name}: pokrenuto…", "runOk": "{name}: gotovo", "runFailed": "{name} nije uspjelo: {reason}", "exitCode": "Izlazni kôd {code}", "noOutput": "Nema izlaza", "copyOutput": "Kopiraj izlaz", "copied": "Kopirano", "copyFailed": "Kopiranje nije uspjelo", "actionBusy": "još se izvodi", "close": "Zatvori", "attention": "Traži pozornost", "problem": "Problem", "playing": "Reproducira se", "paused": "Pauzirano", "appearanceLight": "Svijetli izgled", "appearanceAuto": "Prati izgled sustava", "appearanceDark": "Tamni izgled", "appearance": "Izgled", "errAuth": "{name}: prijava je odbijena. Provjerite ključ ili lozinku.", "errNotFound": "{name}: adresa nije pronađena. Provjerite \"url\".", "errUnreachable": "{name} nije dostupno. Radi li i je li \"url\" točan?", "errServer": "{name} javlja pogrešku.", "errConfig": "{name}: u konfiguraciji je pogreška.", "errGeneric": "{name}: podaci se nisu mogli učitati.", "details": "Pojedinosti", "matches": "Pronađeno usluga: {count}", "noMatches": "Nije pronađena nijedna usluga", "filteredCount": "Skriveno: {count}", "filteredShow": "Prikaži kartice koje filtar skriva"
   },
   hu: {
-    "updateAvailable": "{version} elérhető", "qlLabel": "Gyorsindítás", "qlPlaceholder": "Szolgáltatások, könyvjelzők vagy a web keresése", "qlSearch": "„{q}” keresése: {name}", "qlVisit": "{url} megnyitása", "qlService": "Szolgáltatás", "qlBookmark": "Könyvjelző", "qlLink": "Hivatkozás", "qlWeb": "Web", "tabs": "Lapok", "loading": "Betöltés…", "errors": "Konfigurációs hibák", "warnings": "Figyelmeztetések", "empty": "Még nincsenek szolgáltatások.", "emptyHint": "Add hozzá őket a konfigurációs mappa services.yaml fájljához, vagy címkézd fel a konténereket homelab.name címkével.", "up": "Elérhető", "down": "Nem elérhető", "warn": "Korlátozott", "unknown": "Ismeretlen", "tagUp": "Működik", "tagDown": "Leállt", "apiError": "API-hiba részletei", "unknownWidget": "Ismeretlen widgettípus", "discovered": "felderítve innen:", "offline": "A szerver nem érhető el, újrapróbálás…", "clientFailed": "A widget kódja nem tölthető be", "containerStats": "Konténerstatisztika megjelenítése", "vmStats": "Virtuális gép statisztikájának megjelenítése", "podStats": "Podstatisztika megjelenítése", "refresh": "Frissítés", "color": "Szín módosítása", "running": "{name}: fut…", "runOk": "{name}: kész", "runFailed": "{name} sikertelen: {reason}", "exitCode": "Kilépési kód: {code}", "noOutput": "Nincs kimenet", "copyOutput": "Kimenet másolása", "copied": "Másolva", "copyFailed": "A másolás nem sikerült", "actionBusy": "még fut", "close": "Bezárás", "attention": "Figyelmet igényel", "problem": "Probléma", "playing": "Lejátszás", "paused": "Szüneteltetve", "appearanceLight": "Világos megjelenés", "appearanceAuto": "Rendszer szerinti megjelenés", "appearanceDark": "Sötét megjelenés", "appearance": "Megjelenés", "errAuth": "{name}: a bejelentkezést elutasították. Ellenőrizd a kulcsot vagy a jelszót.", "errNotFound": "{name}: a cím nem található. Ellenőrizd az \"url\" értékét.", "errUnreachable": "{name} nem érhető el. Fut, és helyes az \"url\"?", "errServer": "{name} hibát jelez.", "errConfig": "{name}: a konfiguráció hibás.", "errGeneric": "{name}: az adatok nem tölthetők be.", "details": "Részletek", "matches": "{count} szolgáltatás található", "noMatches": "Nincs találat", "filteredCount": "{count} rejtett", "filteredShow": "A szűrő által elrejtett kártyák megjelenítése"
+    "updateAvailable": "{version} elérhető", "qlLabel": "Gyorsindítás", "qlPlaceholder": "Szolgáltatások, könyvjelzők vagy a web keresése", "qlSearch": "„{q}” keresése: {name}", "qlVisit": "{url} megnyitása", "qlService": "Szolgáltatás", "qlBookmark": "Könyvjelző", "qlLink": "Hivatkozás", "qlWeb": "Web", "tabs": "Lapok", "loading": "Betöltés…", "errors": "Konfigurációs hibák", "warnings": "Figyelmeztetések", "empty": "Még nincsenek szolgáltatások.", "emptyHint": "Add hozzá őket a konfigurációs mappa services.yaml fájljához, vagy címkézd fel a konténereket dashboard.name címkével.", "up": "Elérhető", "down": "Nem elérhető", "warn": "Korlátozott", "unknown": "Ismeretlen", "tagUp": "Működik", "tagDown": "Leállt", "apiError": "API-hiba részletei", "unknownWidget": "Ismeretlen widgettípus", "discovered": "felderítve innen:", "offline": "A szerver nem érhető el, újrapróbálás…", "clientFailed": "A widget kódja nem tölthető be", "containerStats": "Konténerstatisztika megjelenítése", "vmStats": "Virtuális gép statisztikájának megjelenítése", "podStats": "Podstatisztika megjelenítése", "refresh": "Frissítés", "color": "Szín módosítása", "running": "{name}: fut…", "runOk": "{name}: kész", "runFailed": "{name} sikertelen: {reason}", "exitCode": "Kilépési kód: {code}", "noOutput": "Nincs kimenet", "copyOutput": "Kimenet másolása", "copied": "Másolva", "copyFailed": "A másolás nem sikerült", "actionBusy": "még fut", "close": "Bezárás", "attention": "Figyelmet igényel", "problem": "Probléma", "playing": "Lejátszás", "paused": "Szüneteltetve", "appearanceLight": "Világos megjelenés", "appearanceAuto": "Rendszer szerinti megjelenés", "appearanceDark": "Sötét megjelenés", "appearance": "Megjelenés", "errAuth": "{name}: a bejelentkezést elutasították. Ellenőrizd a kulcsot vagy a jelszót.", "errNotFound": "{name}: a cím nem található. Ellenőrizd az \"url\" értékét.", "errUnreachable": "{name} nem érhető el. Fut, és helyes az \"url\"?", "errServer": "{name} hibát jelez.", "errConfig": "{name}: a konfiguráció hibás.", "errGeneric": "{name}: az adatok nem tölthetők be.", "details": "Részletek", "matches": "{count} szolgáltatás található", "noMatches": "Nincs találat", "filteredCount": "{count} rejtett", "filteredShow": "A szűrő által elrejtett kártyák megjelenítése"
   },
   it: {
-    "updateAvailable": "{version} disponibile", "qlLabel": "Avvio rapido", "qlPlaceholder": "Cerca servizi, segnalibri o sul web", "qlSearch": "Cerca «{q}» con {name}", "qlVisit": "Apri {url}", "qlService": "Servizio", "qlBookmark": "Segnalibro", "qlLink": "Link", "qlWeb": "Web", "tabs": "Schede", "loading": "Caricamento…", "errors": "Errori di configurazione", "warnings": "Avvisi", "empty": "Nessun servizio per ora.", "emptyHint": "Aggiungili a services.yaml nella cartella di configurazione, oppure etichetta i container con homelab.name.", "up": "Online", "down": "Offline", "warn": "Degradato", "unknown": "Sconosciuto", "tagUp": "Attivo", "tagDown": "Giù", "apiError": "Dettagli dell’errore API", "unknownWidget": "Tipo di widget sconosciuto", "discovered": "rilevato da", "offline": "Server non raggiungibile, nuovo tentativo…", "clientFailed": "Impossibile caricare il codice del widget", "containerStats": "Mostra le statistiche del container", "vmStats": "Mostra le statistiche della VM", "podStats": "Mostra le statistiche dei pod", "refresh": "Aggiorna", "color": "Cambia colore", "running": "{name}: in esecuzione…", "runOk": "{name}: fatto", "runFailed": "{name} non riuscito: {reason}", "exitCode": "Codice di uscita {code}", "noOutput": "Nessun output", "copyOutput": "Copia output", "copied": "Copiato", "copyFailed": "Impossibile copiare", "actionBusy": "è ancora in esecuzione", "close": "Chiudi", "attention": "Richiede attenzione", "problem": "Problema", "playing": "In riproduzione", "paused": "In pausa", "appearanceLight": "Aspetto chiaro", "appearanceAuto": "Segui l’aspetto del sistema", "appearanceDark": "Aspetto scuro", "appearance": "Aspetto", "errAuth": "{name}: l’accesso è stato rifiutato. Controlla la chiave o la password.", "errNotFound": "{name}: indirizzo non trovato. Controlla \"url\".", "errUnreachable": "{name} non è raggiungibile. È in esecuzione e \"url\" è corretto?", "errServer": "{name} segnala un errore.", "errConfig": "{name}: la configurazione contiene un errore.", "errGeneric": "{name}: impossibile caricare i dati.", "details": "Dettagli", "matches": "{count} servizi trovati", "noMatches": "Nessun servizio trovato", "filteredCount": "{count} nascoste", "filteredShow": "Mostra le schede nascoste da un filtro"
+    "updateAvailable": "{version} disponibile", "qlLabel": "Avvio rapido", "qlPlaceholder": "Cerca servizi, segnalibri o sul web", "qlSearch": "Cerca «{q}» con {name}", "qlVisit": "Apri {url}", "qlService": "Servizio", "qlBookmark": "Segnalibro", "qlLink": "Link", "qlWeb": "Web", "tabs": "Schede", "loading": "Caricamento…", "errors": "Errori di configurazione", "warnings": "Avvisi", "empty": "Nessun servizio per ora.", "emptyHint": "Aggiungili a services.yaml nella cartella di configurazione, oppure etichetta i container con dashboard.name.", "up": "Online", "down": "Offline", "warn": "Degradato", "unknown": "Sconosciuto", "tagUp": "Attivo", "tagDown": "Giù", "apiError": "Dettagli dell’errore API", "unknownWidget": "Tipo di widget sconosciuto", "discovered": "rilevato da", "offline": "Server non raggiungibile, nuovo tentativo…", "clientFailed": "Impossibile caricare il codice del widget", "containerStats": "Mostra le statistiche del container", "vmStats": "Mostra le statistiche della VM", "podStats": "Mostra le statistiche dei pod", "refresh": "Aggiorna", "color": "Cambia colore", "running": "{name}: in esecuzione…", "runOk": "{name}: fatto", "runFailed": "{name} non riuscito: {reason}", "exitCode": "Codice di uscita {code}", "noOutput": "Nessun output", "copyOutput": "Copia output", "copied": "Copiato", "copyFailed": "Impossibile copiare", "actionBusy": "è ancora in esecuzione", "close": "Chiudi", "attention": "Richiede attenzione", "problem": "Problema", "playing": "In riproduzione", "paused": "In pausa", "appearanceLight": "Aspetto chiaro", "appearanceAuto": "Segui l’aspetto del sistema", "appearanceDark": "Aspetto scuro", "appearance": "Aspetto", "errAuth": "{name}: l’accesso è stato rifiutato. Controlla la chiave o la password.", "errNotFound": "{name}: indirizzo non trovato. Controlla \"url\".", "errUnreachable": "{name} non è raggiungibile. È in esecuzione e \"url\" è corretto?", "errServer": "{name} segnala un errore.", "errConfig": "{name}: la configurazione contiene un errore.", "errGeneric": "{name}: impossibile caricare i dati.", "details": "Dettagli", "matches": "{count} servizi trovati", "noMatches": "Nessun servizio trovato", "filteredCount": "{count} nascoste", "filteredShow": "Mostra le schede nascoste da un filtro"
   },
   'nb-NO': {
-    "updateAvailable": "{version} er tilgjengelig", "qlLabel": "Hurtigstart", "qlPlaceholder": "Søk i tjenester, bokmerker eller på nettet", "qlSearch": "Søk etter «{q}» med {name}", "qlVisit": "Åpne {url}", "qlService": "Tjeneste", "qlBookmark": "Bokmerke", "qlLink": "Lenke", "qlWeb": "Nett", "tabs": "Faner", "loading": "Laster…", "errors": "Feil i konfigurasjonen", "warnings": "Advarsler", "empty": "Ingen tjenester ennå.", "emptyHint": "Legg dem til i services.yaml i konfigurasjonsmappen, eller merk containerne med homelab.name.", "up": "Tilkoblet", "down": "Frakoblet", "warn": "Redusert", "unknown": "Ukjent", "tagUp": "Oppe", "tagDown": "Nede", "apiError": "Detaljer om API-feil", "unknownWidget": "Ukjent widgettype", "discovered": "oppdaget fra", "offline": "Serveren kan ikke nås, prøver igjen…", "clientFailed": "Kunne ikke laste widgetkoden", "containerStats": "Vis containerstatistikk", "vmStats": "Vis VM-statistikk", "podStats": "Vis pod-statistikk", "refresh": "Oppdater", "color": "Endre farge", "running": "{name}: kjører…", "runOk": "{name}: ferdig", "runFailed": "{name} mislyktes: {reason}", "exitCode": "Avslutningskode {code}", "noOutput": "Ingen utdata", "copyOutput": "Kopier utdata", "copied": "Kopiert", "copyFailed": "Kunne ikke kopiere", "actionBusy": "det kjører fortsatt", "close": "Lukk", "attention": "Trenger oppmerksomhet", "problem": "Problem", "playing": "Spiller", "paused": "Pauset", "appearanceLight": "Lyst utseende", "appearanceAuto": "Følg systemets utseende", "appearanceDark": "Mørkt utseende", "appearance": "Utseende", "errAuth": "{name}: innloggingen ble avvist. Sjekk nøkkelen eller passordet.", "errNotFound": "{name}: adressen ble ikke funnet. Sjekk \"url\".", "errUnreachable": "{name} kan ikke nås. Kjører den, og er \"url\" riktig?", "errServer": "{name} melder en feil.", "errConfig": "{name}: konfigurasjonen har en feil.", "errGeneric": "{name}: kunne ikke laste data.", "details": "Detaljer", "matches": "{count} tjenester funnet", "noMatches": "Ingen tjenester funnet", "filteredCount": "{count} skjult", "filteredShow": "Vis kortene et filter skjuler"
+    "updateAvailable": "{version} er tilgjengelig", "qlLabel": "Hurtigstart", "qlPlaceholder": "Søk i tjenester, bokmerker eller på nettet", "qlSearch": "Søk etter «{q}» med {name}", "qlVisit": "Åpne {url}", "qlService": "Tjeneste", "qlBookmark": "Bokmerke", "qlLink": "Lenke", "qlWeb": "Nett", "tabs": "Faner", "loading": "Laster…", "errors": "Feil i konfigurasjonen", "warnings": "Advarsler", "empty": "Ingen tjenester ennå.", "emptyHint": "Legg dem til i services.yaml i konfigurasjonsmappen, eller merk containerne med dashboard.name.", "up": "Tilkoblet", "down": "Frakoblet", "warn": "Redusert", "unknown": "Ukjent", "tagUp": "Oppe", "tagDown": "Nede", "apiError": "Detaljer om API-feil", "unknownWidget": "Ukjent widgettype", "discovered": "oppdaget fra", "offline": "Serveren kan ikke nås, prøver igjen…", "clientFailed": "Kunne ikke laste widgetkoden", "containerStats": "Vis containerstatistikk", "vmStats": "Vis VM-statistikk", "podStats": "Vis pod-statistikk", "refresh": "Oppdater", "color": "Endre farge", "running": "{name}: kjører…", "runOk": "{name}: ferdig", "runFailed": "{name} mislyktes: {reason}", "exitCode": "Avslutningskode {code}", "noOutput": "Ingen utdata", "copyOutput": "Kopier utdata", "copied": "Kopiert", "copyFailed": "Kunne ikke kopiere", "actionBusy": "det kjører fortsatt", "close": "Lukk", "attention": "Trenger oppmerksomhet", "problem": "Problem", "playing": "Spiller", "paused": "Pauset", "appearanceLight": "Lyst utseende", "appearanceAuto": "Følg systemets utseende", "appearanceDark": "Mørkt utseende", "appearance": "Utseende", "errAuth": "{name}: innloggingen ble avvist. Sjekk nøkkelen eller passordet.", "errNotFound": "{name}: adressen ble ikke funnet. Sjekk \"url\".", "errUnreachable": "{name} kan ikke nås. Kjører den, og er \"url\" riktig?", "errServer": "{name} melder en feil.", "errConfig": "{name}: konfigurasjonen har en feil.", "errGeneric": "{name}: kunne ikke laste data.", "details": "Detaljer", "matches": "{count} tjenester funnet", "noMatches": "Ingen tjenester funnet", "filteredCount": "{count} skjult", "filteredShow": "Vis kortene et filter skjuler"
   },
   pt: {
-    "updateAvailable": "{version} disponível", "qlLabel": "Início rápido", "qlPlaceholder": "Pesquisar serviços, marcadores ou na web", "qlSearch": "Pesquisar «{q}» no {name}", "qlVisit": "Abrir {url}", "qlService": "Serviço", "qlBookmark": "Marcador", "qlLink": "Ligação", "qlWeb": "Web", "tabs": "Separadores", "loading": "A carregar…", "errors": "Erros de configuração", "warnings": "Avisos", "empty": "Ainda não há serviços.", "emptyHint": "Adicione-os ao services.yaml na pasta de configuração, ou etiquete os contentores com homelab.name.", "up": "Online", "down": "Offline", "warn": "Degradado", "unknown": "Desconhecido", "tagUp": "Ativo", "tagDown": "Em baixo", "apiError": "Detalhes do erro da API", "unknownWidget": "Tipo de widget desconhecido", "discovered": "descoberto a partir de", "offline": "Servidor inacessível, a tentar de novo…", "clientFailed": "Não foi possível carregar o código do widget", "containerStats": "Mostrar estatísticas do contentor", "vmStats": "Mostrar estatísticas da VM", "podStats": "Mostrar estatísticas dos pods", "refresh": "Atualizar", "color": "Mudar cor", "running": "{name}: em execução…", "runOk": "{name}: concluído", "runFailed": "{name} falhou: {reason}", "exitCode": "Código de saída {code}", "noOutput": "Sem saída", "copyOutput": "Copiar saída", "copied": "Copiado", "copyFailed": "Não foi possível copiar", "actionBusy": "ainda está em execução", "close": "Fechar", "attention": "Requer atenção", "problem": "Problema", "playing": "A reproduzir", "paused": "Em pausa", "appearanceLight": "Aspeto claro", "appearanceAuto": "Seguir o aspeto do sistema", "appearanceDark": "Aspeto escuro", "appearance": "Aspeto", "errAuth": "{name}: o acesso foi recusado. Verifique a chave ou a palavra-passe.", "errNotFound": "{name}: endereço não encontrado. Verifique \"url\".", "errUnreachable": "{name} está inacessível. Está em execução e o \"url\" está certo?", "errServer": "{name} indica um erro.", "errConfig": "{name}: a configuração tem um erro.", "errGeneric": "{name}: não foi possível carregar os dados.", "details": "Detalhes", "matches": "{count} serviços encontrados", "noMatches": "Nenhum serviço encontrado", "filteredCount": "{count} ocultos", "filteredShow": "Mostrar os cartões que um filtro oculta"
+    "updateAvailable": "{version} disponível", "qlLabel": "Início rápido", "qlPlaceholder": "Pesquisar serviços, marcadores ou na web", "qlSearch": "Pesquisar «{q}» no {name}", "qlVisit": "Abrir {url}", "qlService": "Serviço", "qlBookmark": "Marcador", "qlLink": "Ligação", "qlWeb": "Web", "tabs": "Separadores", "loading": "A carregar…", "errors": "Erros de configuração", "warnings": "Avisos", "empty": "Ainda não há serviços.", "emptyHint": "Adicione-os ao services.yaml na pasta de configuração, ou etiquete os contentores com dashboard.name.", "up": "Online", "down": "Offline", "warn": "Degradado", "unknown": "Desconhecido", "tagUp": "Ativo", "tagDown": "Em baixo", "apiError": "Detalhes do erro da API", "unknownWidget": "Tipo de widget desconhecido", "discovered": "descoberto a partir de", "offline": "Servidor inacessível, a tentar de novo…", "clientFailed": "Não foi possível carregar o código do widget", "containerStats": "Mostrar estatísticas do contentor", "vmStats": "Mostrar estatísticas da VM", "podStats": "Mostrar estatísticas dos pods", "refresh": "Atualizar", "color": "Mudar cor", "running": "{name}: em execução…", "runOk": "{name}: concluído", "runFailed": "{name} falhou: {reason}", "exitCode": "Código de saída {code}", "noOutput": "Sem saída", "copyOutput": "Copiar saída", "copied": "Copiado", "copyFailed": "Não foi possível copiar", "actionBusy": "ainda está em execução", "close": "Fechar", "attention": "Requer atenção", "problem": "Problema", "playing": "A reproduzir", "paused": "Em pausa", "appearanceLight": "Aspeto claro", "appearanceAuto": "Seguir o aspeto do sistema", "appearanceDark": "Aspeto escuro", "appearance": "Aspeto", "errAuth": "{name}: o acesso foi recusado. Verifique a chave ou a palavra-passe.", "errNotFound": "{name}: endereço não encontrado. Verifique \"url\".", "errUnreachable": "{name} está inacessível. Está em execução e o \"url\" está certo?", "errServer": "{name} indica um erro.", "errConfig": "{name}: a configuração tem um erro.", "errGeneric": "{name}: não foi possível carregar os dados.", "details": "Detalhes", "matches": "{count} serviços encontrados", "noMatches": "Nenhum serviço encontrado", "filteredCount": "{count} ocultos", "filteredShow": "Mostrar os cartões que um filtro oculta"
   },
   ru: {
-    "updateAvailable": "Доступна версия {version}", "qlLabel": "Быстрый запуск", "qlPlaceholder": "Поиск сервисов, закладок или в интернете", "qlSearch": "Искать «{q}» в {name}", "qlVisit": "Открыть {url}", "qlService": "Сервис", "qlBookmark": "Закладка", "qlLink": "Ссылка", "qlWeb": "Интернет", "tabs": "Вкладки", "loading": "Загрузка…", "errors": "Ошибки конфигурации", "warnings": "Предупреждения", "empty": "Сервисов пока нет.", "emptyHint": "Добавьте их в services.yaml в папке конфигурации или пометьте контейнеры меткой homelab.name.", "up": "В сети", "down": "Не в сети", "warn": "Сбои", "unknown": "Неизвестно", "tagUp": "Работает", "tagDown": "Недоступен", "apiError": "Сведения об ошибке API", "unknownWidget": "Неизвестный тип виджета", "discovered": "обнаружено в", "offline": "Сервер недоступен, повторная попытка…", "clientFailed": "Не удалось загрузить код виджета", "containerStats": "Показать статистику контейнера", "vmStats": "Показать статистику виртуальной машины", "podStats": "Показать статистику подов", "refresh": "Обновить", "color": "Сменить цвет", "running": "{name}: выполняется…", "runOk": "{name}: готово", "runFailed": "{name}: ошибка: {reason}", "exitCode": "Код выхода {code}", "noOutput": "Нет вывода", "copyOutput": "Скопировать вывод", "copied": "Скопировано", "copyFailed": "Не удалось скопировать", "actionBusy": "ещё выполняется", "close": "Закрыть", "attention": "Требует внимания", "problem": "Проблема", "playing": "Воспроизведение", "paused": "Пауза", "appearanceLight": "Светлое оформление", "appearanceAuto": "Как в системе", "appearanceDark": "Тёмное оформление", "appearance": "Оформление", "errAuth": "{name}: вход отклонён. Проверьте ключ или пароль.", "errNotFound": "{name}: адрес не найден. Проверьте \"url\".", "errUnreachable": "{name} недоступен. Он запущен, и \"url\" указан верно?", "errServer": "{name} сообщает об ошибке.", "errConfig": "{name}: ошибка в конфигурации.", "errGeneric": "{name}: не удалось загрузить данные.", "details": "Подробности", "matches": "Найдено сервисов: {count}", "noMatches": "Сервисы не найдены", "filteredCount": "Скрыто: {count}", "filteredShow": "Показать карточки, скрытые фильтром"
+    "updateAvailable": "Доступна версия {version}", "qlLabel": "Быстрый запуск", "qlPlaceholder": "Поиск сервисов, закладок или в интернете", "qlSearch": "Искать «{q}» в {name}", "qlVisit": "Открыть {url}", "qlService": "Сервис", "qlBookmark": "Закладка", "qlLink": "Ссылка", "qlWeb": "Интернет", "tabs": "Вкладки", "loading": "Загрузка…", "errors": "Ошибки конфигурации", "warnings": "Предупреждения", "empty": "Сервисов пока нет.", "emptyHint": "Добавьте их в services.yaml в папке конфигурации или пометьте контейнеры меткой dashboard.name.", "up": "В сети", "down": "Не в сети", "warn": "Сбои", "unknown": "Неизвестно", "tagUp": "Работает", "tagDown": "Недоступен", "apiError": "Сведения об ошибке API", "unknownWidget": "Неизвестный тип виджета", "discovered": "обнаружено в", "offline": "Сервер недоступен, повторная попытка…", "clientFailed": "Не удалось загрузить код виджета", "containerStats": "Показать статистику контейнера", "vmStats": "Показать статистику виртуальной машины", "podStats": "Показать статистику подов", "refresh": "Обновить", "color": "Сменить цвет", "running": "{name}: выполняется…", "runOk": "{name}: готово", "runFailed": "{name}: ошибка: {reason}", "exitCode": "Код выхода {code}", "noOutput": "Нет вывода", "copyOutput": "Скопировать вывод", "copied": "Скопировано", "copyFailed": "Не удалось скопировать", "actionBusy": "ещё выполняется", "close": "Закрыть", "attention": "Требует внимания", "problem": "Проблема", "playing": "Воспроизведение", "paused": "Пауза", "appearanceLight": "Светлое оформление", "appearanceAuto": "Как в системе", "appearanceDark": "Тёмное оформление", "appearance": "Оформление", "errAuth": "{name}: вход отклонён. Проверьте ключ или пароль.", "errNotFound": "{name}: адрес не найден. Проверьте \"url\".", "errUnreachable": "{name} недоступен. Он запущен, и \"url\" указан верно?", "errServer": "{name} сообщает об ошибке.", "errConfig": "{name}: ошибка в конфигурации.", "errGeneric": "{name}: не удалось загрузить данные.", "details": "Подробности", "matches": "Найдено сервисов: {count}", "noMatches": "Сервисы не найдены", "filteredCount": "Скрыто: {count}", "filteredShow": "Показать карточки, скрытые фильтром"
   },
   sv: {
-    "updateAvailable": "{version} finns", "qlLabel": "Snabbstart", "qlPlaceholder": "Sök tjänster, bokmärken eller på webben", "qlSearch": "Sök efter ”{q}” med {name}", "qlVisit": "Öppna {url}", "qlService": "Tjänst", "qlBookmark": "Bokmärke", "qlLink": "Länk", "qlWeb": "Webb", "tabs": "Flikar", "loading": "Läser in…", "errors": "Fel i konfigurationen", "warnings": "Varningar", "empty": "Inga tjänster än.", "emptyHint": "Lägg till dem i services.yaml i konfigurationsmappen, eller märk containrarna med homelab.name.", "up": "Online", "down": "Offline", "warn": "Begränsad", "unknown": "Okänd", "tagUp": "Uppe", "tagDown": "Nere", "apiError": "Detaljer om API-fel", "unknownWidget": "Okänd widgettyp", "discovered": "upptäckt från", "offline": "Servern kan inte nås, försöker igen…", "clientFailed": "Det gick inte att läsa in widgetkoden", "containerStats": "Visa containerstatistik", "vmStats": "Visa VM-statistik", "podStats": "Visa poddstatistik", "refresh": "Uppdatera", "color": "Byt färg", "running": "{name}: körs…", "runOk": "{name}: klart", "runFailed": "{name} misslyckades: {reason}", "exitCode": "Slutkod {code}", "noOutput": "Ingen utdata", "copyOutput": "Kopiera utdata", "copied": "Kopierat", "copyFailed": "Det gick inte att kopiera", "actionBusy": "det körs fortfarande", "close": "Stäng", "attention": "Kräver uppmärksamhet", "problem": "Problem", "playing": "Spelar", "paused": "Pausad", "appearanceLight": "Ljust utseende", "appearanceAuto": "Följ systemets utseende", "appearanceDark": "Mörkt utseende", "appearance": "Utseende", "errAuth": "{name}: inloggningen avvisades. Kontrollera nyckeln eller lösenordet.", "errNotFound": "{name}: adressen hittades inte. Kontrollera \"url\".", "errUnreachable": "{name} kan inte nås. Körs den, och stämmer \"url\"?", "errServer": "{name} rapporterar ett fel.", "errConfig": "{name}: konfigurationen innehåller ett fel.", "errGeneric": "{name}: det gick inte att läsa in data.", "details": "Detaljer", "matches": "{count} tjänster hittades", "noMatches": "Inga tjänster hittades", "filteredCount": "{count} dolda", "filteredShow": "Visa korten som ett filter döljer"
+    "updateAvailable": "{version} finns", "qlLabel": "Snabbstart", "qlPlaceholder": "Sök tjänster, bokmärken eller på webben", "qlSearch": "Sök efter ”{q}” med {name}", "qlVisit": "Öppna {url}", "qlService": "Tjänst", "qlBookmark": "Bokmärke", "qlLink": "Länk", "qlWeb": "Webb", "tabs": "Flikar", "loading": "Läser in…", "errors": "Fel i konfigurationen", "warnings": "Varningar", "empty": "Inga tjänster än.", "emptyHint": "Lägg till dem i services.yaml i konfigurationsmappen, eller märk containrarna med dashboard.name.", "up": "Online", "down": "Offline", "warn": "Begränsad", "unknown": "Okänd", "tagUp": "Uppe", "tagDown": "Nere", "apiError": "Detaljer om API-fel", "unknownWidget": "Okänd widgettyp", "discovered": "upptäckt från", "offline": "Servern kan inte nås, försöker igen…", "clientFailed": "Det gick inte att läsa in widgetkoden", "containerStats": "Visa containerstatistik", "vmStats": "Visa VM-statistik", "podStats": "Visa poddstatistik", "refresh": "Uppdatera", "color": "Byt färg", "running": "{name}: körs…", "runOk": "{name}: klart", "runFailed": "{name} misslyckades: {reason}", "exitCode": "Slutkod {code}", "noOutput": "Ingen utdata", "copyOutput": "Kopiera utdata", "copied": "Kopierat", "copyFailed": "Det gick inte att kopiera", "actionBusy": "det körs fortfarande", "close": "Stäng", "attention": "Kräver uppmärksamhet", "problem": "Problem", "playing": "Spelar", "paused": "Pausad", "appearanceLight": "Ljust utseende", "appearanceAuto": "Följ systemets utseende", "appearanceDark": "Mörkt utseende", "appearance": "Utseende", "errAuth": "{name}: inloggningen avvisades. Kontrollera nyckeln eller lösenordet.", "errNotFound": "{name}: adressen hittades inte. Kontrollera \"url\".", "errUnreachable": "{name} kan inte nås. Körs den, och stämmer \"url\"?", "errServer": "{name} rapporterar ett fel.", "errConfig": "{name}: konfigurationen innehåller ett fel.", "errGeneric": "{name}: det gick inte att läsa in data.", "details": "Detaljer", "matches": "{count} tjänster hittades", "noMatches": "Inga tjänster hittades", "filteredCount": "{count} dolda", "filteredShow": "Visa korten som ett filter döljer"
   },
   vi: {
-    "updateAvailable": "Đã có {version}", "qlLabel": "Khởi chạy nhanh", "qlPlaceholder": "Tìm dịch vụ, dấu trang hoặc trên web", "qlSearch": "Tìm “{q}” trên {name}", "qlVisit": "Mở {url}", "qlService": "Dịch vụ", "qlBookmark": "Dấu trang", "qlLink": "Liên kết", "qlWeb": "Web", "tabs": "Thẻ", "loading": "Đang tải…", "errors": "Lỗi cấu hình", "warnings": "Cảnh báo", "empty": "Chưa có dịch vụ nào.", "emptyHint": "Thêm chúng vào services.yaml trong thư mục cấu hình, hoặc gắn nhãn homelab.name cho container.", "up": "Trực tuyến", "down": "Ngoại tuyến", "warn": "Suy giảm", "unknown": "Không rõ", "tagUp": "Hoạt động", "tagDown": "Ngừng", "apiError": "Chi tiết lỗi API", "unknownWidget": "Loại widget không xác định", "discovered": "phát hiện từ", "offline": "Không kết nối được máy chủ, đang thử lại…", "clientFailed": "Không tải được mã của widget", "containerStats": "Hiện thống kê container", "vmStats": "Hiện thống kê máy ảo", "podStats": "Hiện thống kê pod", "refresh": "Làm mới", "color": "Đổi màu", "running": "{name}: đang chạy…", "runOk": "{name}: xong", "runFailed": "{name} thất bại: {reason}", "exitCode": "Mã thoát {code}", "noOutput": "Không có đầu ra", "copyOutput": "Sao chép đầu ra", "copied": "Đã sao chép", "copyFailed": "Không sao chép được", "actionBusy": "vẫn đang chạy", "close": "Đóng", "attention": "Cần chú ý", "problem": "Sự cố", "playing": "Đang phát", "paused": "Tạm dừng", "appearanceLight": "Giao diện sáng", "appearanceAuto": "Theo giao diện hệ thống", "appearanceDark": "Giao diện tối", "appearance": "Giao diện", "errAuth": "{name}: đăng nhập bị từ chối. Kiểm tra khóa hoặc mật khẩu.", "errNotFound": "{name}: không tìm thấy địa chỉ. Kiểm tra \"url\".", "errUnreachable": "Không kết nối được {name}. Dịch vụ có đang chạy và \"url\" có đúng không?", "errServer": "{name} báo lỗi.", "errConfig": "{name}: cấu hình có lỗi.", "errGeneric": "{name}: không tải được dữ liệu.", "details": "Chi tiết", "matches": "Tìm thấy {count} dịch vụ", "noMatches": "Không tìm thấy dịch vụ nào", "filteredCount": "{count} đã ẩn", "filteredShow": "Hiện các thẻ bị bộ lọc ẩn"
+    "updateAvailable": "Đã có {version}", "qlLabel": "Khởi chạy nhanh", "qlPlaceholder": "Tìm dịch vụ, dấu trang hoặc trên web", "qlSearch": "Tìm “{q}” trên {name}", "qlVisit": "Mở {url}", "qlService": "Dịch vụ", "qlBookmark": "Dấu trang", "qlLink": "Liên kết", "qlWeb": "Web", "tabs": "Thẻ", "loading": "Đang tải…", "errors": "Lỗi cấu hình", "warnings": "Cảnh báo", "empty": "Chưa có dịch vụ nào.", "emptyHint": "Thêm chúng vào services.yaml trong thư mục cấu hình, hoặc gắn nhãn dashboard.name cho container.", "up": "Trực tuyến", "down": "Ngoại tuyến", "warn": "Suy giảm", "unknown": "Không rõ", "tagUp": "Hoạt động", "tagDown": "Ngừng", "apiError": "Chi tiết lỗi API", "unknownWidget": "Loại widget không xác định", "discovered": "phát hiện từ", "offline": "Không kết nối được máy chủ, đang thử lại…", "clientFailed": "Không tải được mã của widget", "containerStats": "Hiện thống kê container", "vmStats": "Hiện thống kê máy ảo", "podStats": "Hiện thống kê pod", "refresh": "Làm mới", "color": "Đổi màu", "running": "{name}: đang chạy…", "runOk": "{name}: xong", "runFailed": "{name} thất bại: {reason}", "exitCode": "Mã thoát {code}", "noOutput": "Không có đầu ra", "copyOutput": "Sao chép đầu ra", "copied": "Đã sao chép", "copyFailed": "Không sao chép được", "actionBusy": "vẫn đang chạy", "close": "Đóng", "attention": "Cần chú ý", "problem": "Sự cố", "playing": "Đang phát", "paused": "Tạm dừng", "appearanceLight": "Giao diện sáng", "appearanceAuto": "Theo giao diện hệ thống", "appearanceDark": "Giao diện tối", "appearance": "Giao diện", "errAuth": "{name}: đăng nhập bị từ chối. Kiểm tra khóa hoặc mật khẩu.", "errNotFound": "{name}: không tìm thấy địa chỉ. Kiểm tra \"url\".", "errUnreachable": "Không kết nối được {name}. Dịch vụ có đang chạy và \"url\" có đúng không?", "errServer": "{name} báo lỗi.", "errConfig": "{name}: cấu hình có lỗi.", "errGeneric": "{name}: không tải được dữ liệu.", "details": "Chi tiết", "matches": "Tìm thấy {count} dịch vụ", "noMatches": "Không tìm thấy dịch vụ nào", "filteredCount": "{count} đã ẩn", "filteredShow": "Hiện các thẻ bị bộ lọc ẩn"
   },
   'zh-Hans': {
-    "updateAvailable": "{version} 已发布", "qlLabel": "快速启动", "qlPlaceholder": "搜索服务、书签或网页", "qlSearch": "用 {name} 搜索“{q}”", "qlVisit": "打开 {url}", "qlService": "服务", "qlBookmark": "书签", "qlLink": "链接", "qlWeb": "网页", "tabs": "标签页", "loading": "加载中…", "errors": "配置错误", "warnings": "警告", "empty": "还没有服务。", "emptyHint": "把服务添加到配置文件夹中的 services.yaml，或为容器加上 homelab.name 标签。", "up": "在线", "down": "离线", "warn": "降级", "unknown": "未知", "tagUp": "正常", "tagDown": "宕机", "apiError": "API 错误详情", "unknownWidget": "未知的组件类型", "discovered": "发现自", "offline": "无法连接服务器，正在重试…", "clientFailed": "无法加载组件代码", "containerStats": "显示容器统计", "vmStats": "显示虚拟机统计", "podStats": "显示 Pod 统计", "refresh": "刷新", "color": "更改颜色", "running": "{name}：运行中…", "runOk": "{name}：完成", "runFailed": "{name} 失败：{reason}", "exitCode": "退出代码 {code}", "noOutput": "没有输出", "copyOutput": "复制输出", "copied": "已复制", "copyFailed": "无法复制", "actionBusy": "仍在运行", "close": "关闭", "attention": "需要注意", "problem": "问题", "playing": "正在播放", "paused": "已暂停", "appearanceLight": "浅色外观", "appearanceAuto": "跟随系统外观", "appearanceDark": "深色外观", "appearance": "外观", "errAuth": "{name}：登录被拒绝。请检查密钥或密码。", "errNotFound": "{name}：找不到地址。请检查 \"url\"。", "errUnreachable": "无法连接 {name}。它在运行吗？\"url\" 正确吗？", "errServer": "{name} 报告了错误。", "errConfig": "{name}：配置有误。", "errGeneric": "{name}：无法加载数据。", "details": "详情", "matches": "找到 {count} 个服务", "noMatches": "未找到服务", "filteredCount": "已隐藏 {count} 个", "filteredShow": "显示被筛选条件隐藏的卡片"
+    "updateAvailable": "{version} 已发布", "qlLabel": "快速启动", "qlPlaceholder": "搜索服务、书签或网页", "qlSearch": "用 {name} 搜索“{q}”", "qlVisit": "打开 {url}", "qlService": "服务", "qlBookmark": "书签", "qlLink": "链接", "qlWeb": "网页", "tabs": "标签页", "loading": "加载中…", "errors": "配置错误", "warnings": "警告", "empty": "还没有服务。", "emptyHint": "把服务添加到配置文件夹中的 services.yaml，或为容器加上 dashboard.name 标签。", "up": "在线", "down": "离线", "warn": "降级", "unknown": "未知", "tagUp": "正常", "tagDown": "宕机", "apiError": "API 错误详情", "unknownWidget": "未知的组件类型", "discovered": "发现自", "offline": "无法连接服务器，正在重试…", "clientFailed": "无法加载组件代码", "containerStats": "显示容器统计", "vmStats": "显示虚拟机统计", "podStats": "显示 Pod 统计", "refresh": "刷新", "color": "更改颜色", "running": "{name}：运行中…", "runOk": "{name}：完成", "runFailed": "{name} 失败：{reason}", "exitCode": "退出代码 {code}", "noOutput": "没有输出", "copyOutput": "复制输出", "copied": "已复制", "copyFailed": "无法复制", "actionBusy": "仍在运行", "close": "关闭", "attention": "需要注意", "problem": "问题", "playing": "正在播放", "paused": "已暂停", "appearanceLight": "浅色外观", "appearanceAuto": "跟随系统外观", "appearanceDark": "深色外观", "appearance": "外观", "errAuth": "{name}：登录被拒绝。请检查密钥或密码。", "errNotFound": "{name}：找不到地址。请检查 \"url\"。", "errUnreachable": "无法连接 {name}。它在运行吗？\"url\" 正确吗？", "errServer": "{name} 报告了错误。", "errConfig": "{name}：配置有误。", "errGeneric": "{name}：无法加载数据。", "details": "详情", "matches": "找到 {count} 个服务", "noMatches": "未找到服务", "filteredCount": "已隐藏 {count} 个", "filteredShow": "显示被筛选条件隐藏的卡片"
   },
   'zh-Hant': {
-    "updateAvailable": "{version} 已推出", "qlLabel": "快速啟動", "qlPlaceholder": "搜尋服務、書籤或網頁", "qlSearch": "用 {name} 搜尋「{q}」", "qlVisit": "開啟 {url}", "qlService": "服務", "qlBookmark": "書籤", "qlLink": "連結", "qlWeb": "網頁", "tabs": "分頁", "loading": "載入中…", "errors": "設定錯誤", "warnings": "警告", "empty": "還沒有服務。", "emptyHint": "把服務加到設定資料夾中的 services.yaml，或為容器加上 homelab.name 標籤。", "up": "線上", "down": "離線", "warn": "效能降低", "unknown": "未知", "tagUp": "正常", "tagDown": "停止", "apiError": "API 錯誤詳細資料", "unknownWidget": "未知的小工具類型", "discovered": "探索自", "offline": "無法連線至伺服器，正在重試…", "clientFailed": "無法載入小工具程式碼", "containerStats": "顯示容器統計", "vmStats": "顯示虛擬機統計", "podStats": "顯示 Pod 統計", "refresh": "重新整理", "color": "變更顏色", "running": "{name}：執行中…", "runOk": "{name}：完成", "runFailed": "{name} 失敗：{reason}", "exitCode": "結束代碼 {code}", "noOutput": "沒有輸出", "copyOutput": "複製輸出", "copied": "已複製", "copyFailed": "無法複製", "actionBusy": "仍在執行", "close": "關閉", "attention": "需要注意", "problem": "問題", "playing": "播放中", "paused": "已暫停", "appearanceLight": "淺色外觀", "appearanceAuto": "跟隨系統外觀", "appearanceDark": "深色外觀", "appearance": "外觀", "errAuth": "{name}：登入遭拒。請檢查金鑰或密碼。", "errNotFound": "{name}：找不到位址。請檢查 \"url\"。", "errUnreachable": "無法連線至 {name}。它是否在執行，\"url\" 是否正確？", "errServer": "{name} 回報錯誤。", "errConfig": "{name}：設定有誤。", "errGeneric": "{name}：無法載入資料。", "details": "詳細資料", "matches": "找到 {count} 個服務", "noMatches": "找不到服務", "filteredCount": "已隱藏 {count} 個", "filteredShow": "顯示被篩選條件隱藏的卡片"
+    "updateAvailable": "{version} 已推出", "qlLabel": "快速啟動", "qlPlaceholder": "搜尋服務、書籤或網頁", "qlSearch": "用 {name} 搜尋「{q}」", "qlVisit": "開啟 {url}", "qlService": "服務", "qlBookmark": "書籤", "qlLink": "連結", "qlWeb": "網頁", "tabs": "分頁", "loading": "載入中…", "errors": "設定錯誤", "warnings": "警告", "empty": "還沒有服務。", "emptyHint": "把服務加到設定資料夾中的 services.yaml，或為容器加上 dashboard.name 標籤。", "up": "線上", "down": "離線", "warn": "效能降低", "unknown": "未知", "tagUp": "正常", "tagDown": "停止", "apiError": "API 錯誤詳細資料", "unknownWidget": "未知的小工具類型", "discovered": "探索自", "offline": "無法連線至伺服器，正在重試…", "clientFailed": "無法載入小工具程式碼", "containerStats": "顯示容器統計", "vmStats": "顯示虛擬機統計", "podStats": "顯示 Pod 統計", "refresh": "重新整理", "color": "變更顏色", "running": "{name}：執行中…", "runOk": "{name}：完成", "runFailed": "{name} 失敗：{reason}", "exitCode": "結束代碼 {code}", "noOutput": "沒有輸出", "copyOutput": "複製輸出", "copied": "已複製", "copyFailed": "無法複製", "actionBusy": "仍在執行", "close": "關閉", "attention": "需要注意", "problem": "問題", "playing": "播放中", "paused": "已暫停", "appearanceLight": "淺色外觀", "appearanceAuto": "跟隨系統外觀", "appearanceDark": "深色外觀", "appearance": "外觀", "errAuth": "{name}：登入遭拒。請檢查金鑰或密碼。", "errNotFound": "{name}：找不到位址。請檢查 \"url\"。", "errUnreachable": "無法連線至 {name}。它是否在執行，\"url\" 是否正確？", "errServer": "{name} 回報錯誤。", "errConfig": "{name}：設定有誤。", "errGeneric": "{name}：無法載入資料。", "details": "詳細資料", "matches": "找到 {count} 個服務", "noMatches": "找不到服務", "filteredCount": "已隱藏 {count} 個", "filteredShow": "顯示被篩選條件隱藏的卡片"
   },
 };
 
@@ -604,11 +606,11 @@ const localPath = (src) => (typeof src === 'string' && src.startsWith('/icons/')
 
 /**
  * An icon as an <img>, or, for single-colour icons (mdi-…, si-…: the server marks their URL with
- * #hd-mask or #hd-mask=<hex>), a mask filled with that colour or with settings.iconStyle.
+ * #dash-mask or #dash-mask=<hex>), a mask filled with that colour or with settings.iconStyle.
  */
 function iconImage(src, cls) {
   src = localPath(src);
-  const mask = /#hd-mask(?:=([0-9a-f]+))?$/.exec(src);
+  const mask = /#dash-mask(?:=([0-9a-f]+))?$/.exec(src);
   if (!mask) return el('img', { class: cls || null, src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
   const span = el('span', { class: 'mask-icon' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
   span.style.setProperty('--mask', `url("${src.slice(0, mask.index)}")`);
@@ -664,10 +666,10 @@ function systemLight() {
 if (lightQuery && lightQuery.addEventListener) lightQuery.addEventListener('change', () => layout && applyTheme(layout.settings));
 
 function applyTheme(settings) {
-  const color = PALETTES[stored('hd-color')] ? stored('hd-color') : PALETTES[settings.color] ? settings.color : 'slate';
+  const color = PALETTES[stored('dash-color')] ? stored('dash-color') : PALETTES[settings.color] ? settings.color : 'slate';
   const shades = PALETTES[color].split(' ');
   SHADES.forEach((s, i) => document.documentElement.style.setProperty(`--t${s}`, shades[i]));
-  const choice = ['auto', 'light', 'dark'].includes(stored('hd-theme')) ? stored('hd-theme') : settings.theme;
+  const choice = ['auto', 'light', 'dark'].includes(stored('dash-theme')) ? stored('dash-theme') : settings.theme;
   const theme = choice === 'auto' ? (systemLight() ? 'light' : 'dark') : choice;
   document.documentElement.dataset.theme = theme;
   document.getElementById('theme-color').setAttribute('content', theme === 'dark' ? shades[8] : shades[0]);
@@ -676,7 +678,7 @@ function applyTheme(settings) {
   palette.replaceChildren(...Object.keys(PALETTES).map((name) => {
     const b = el('button', { class: 'swatch' + (name === color ? ' active' : ''), type: 'button', title: name, 'aria-label': name });
     b.style.background = PALETTES[name].split(' ')[5];
-    b.addEventListener('click', () => { store('hd-color', name); applyTheme(settings); });
+    b.addEventListener('click', () => { store('dash-color', name); applyTheme(settings); });
     return b;
   }));
 }
@@ -820,10 +822,12 @@ function mountWidget(instance, extraClass, name, onResult) {
       custom.data = result.ok ? result.data : null;
     } else if (!type.client) renderResult(box, instance, result, name);
   };
+  // API 2 names the element and its events dash-*, API 1 hd-*
+  const prefix = (type.apiVersion ?? 1) >= 2 ? 'dash' : 'hd';
   if (type.client) {
     if (!clientModules.has(instance.type)) clientModules.set(instance.type, import(type.client));
     clientModules.get(instance.type).then(() => {
-      custom = document.createElement(`hd-${instance.type}`);
+      custom = document.createElement(`${prefix}-${instance.type}`);
       custom.options = instance.options;
       custom.instanceId = instance.instanceId;
       custom.t = widgetT(instance.type);
@@ -837,14 +841,14 @@ function mountWidget(instance, extraClass, name, onResult) {
   }
   if (instance.server) {
     const run = poll(instance, apply);
-    // a client.js sends hd-widget-params (e.g. the viewer's location) for its server.js
-    box.addEventListener('hd-widget-params', (e) => {
+    // a client.js sends dash-widget-params (e.g. the viewer's location) for its server.js
+    box.addEventListener(`${prefix}-widget-params`, (e) => {
       e.stopPropagation();
       instance.params = Object.fromEntries(Object.entries(e.detail ?? {}).map(([k, v]) => [k, String(v)]));
       run();
     });
-    // a client.js sends hd-widget-action (a button press): server.js's action runs, the result shows in a dialog
-    box.addEventListener('hd-widget-action', (e) => {
+    // a client.js sends dash-widget-action (a button press): server.js's action runs, the result shows in a dialog
+    box.addEventListener(`${prefix}-widget-action`, (e) => {
       e.stopPropagation();
       const title = typeof e.detail?.title === 'string' && e.detail.title ? e.detail.title : name || widgetName(instance.type);
       runWidgetAction(instance, custom, title, e.detail?.showResult === 'failure' ? 'failure' : 'always');
@@ -867,7 +871,7 @@ async function runWidgetAction(instance, element, title, showResult = 'always') 
   if (showResult === 'always') toast(translate('running', { name: title }));
   let out;
   try {
-    const res = await fetch(`api/widgets/${encodeURIComponent(instance.instanceId)}/action`, { method: 'POST', headers: { 'x-requested-with': 'homelab-dashboard' } });
+    const res = await fetch(`api/widgets/${encodeURIComponent(instance.instanceId)}/action`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } });
     out = await res.json();
   } catch {
     out = { ok: false, error: translate('offline') };
@@ -1087,7 +1091,7 @@ function renderMessages(messages) {
 async function runAction(service) {
   toast(translate('running', { name: service.name }));
   try {
-    const res = await fetch(`api/run/${encodeURIComponent(service.id)}`, { method: 'POST', headers: { 'x-requested-with': 'homelab-dashboard' } });
+    const res = await fetch(`api/run/${encodeURIComponent(service.id)}`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } });
     const out = await res.json();
     if (out.ok) toast(translate('runOk', { name: service.name }));
     else toast(translate('runFailed', { name: service.name, reason: out.error || `HTTP ${out.status}` }), { error: true });
@@ -1099,7 +1103,7 @@ async function runAction(service) {
 // ---------------------------------------------------------------- groups
 /** Folded groups per viewer: { name: true|false }; settings.yaml's initiallyCollapsed is the default. */
 function collapsedState() {
-  try { return JSON.parse(stored('hd-collapsed') || '{}'); } catch { return {}; }
+  try { return JSON.parse(stored('dash-collapsed') || '{}'); } catch { return {}; }
 }
 
 function groupToggle(g, section, cardsId) {
@@ -1117,7 +1121,7 @@ function groupToggle(g, section, cardsId) {
   button.addEventListener('click', () => {
     const value = !section.classList.contains('collapsed');
     apply(value);
-    store('hd-collapsed', JSON.stringify({ ...collapsedState(), [g.name]: value }));
+    store('dash-collapsed', JSON.stringify({ ...collapsedState(), [g.name]: value }));
   });
   return button;
 }
@@ -1343,7 +1347,7 @@ function applyBackground(s) {
   document.body.style.setProperty('--max-group-cols', s.maxGroupColumns || '');
   document.body.classList.toggle('max-bookmark-cols', Boolean(s.maxBookmarkGroupColumns));
   document.body.style.setProperty('--max-bookmark-cols', s.maxBookmarkGroupColumns || '');
-  document.body.style.setProperty('--hd-card-blur', s.cardBlur ? `${s.cardBlur}px` : '');
+  document.body.style.setProperty('--dash-card-blur', s.cardBlur ? `${s.cardBlur}px` : '');
 }
 
 /**
@@ -1699,15 +1703,19 @@ function filterServices(query) {
   return matches;
 }
 
-document.addEventListener('hd-search-input', (e) => filterServices(e.detail && e.detail.query));
-document.addEventListener('hd-search-submit', (e) => {
+// a search widget's events: dash-search-* (API 2) or hd-search-* (API 1)
+const onSearchSubmit = (e) => {
   // One service left: open it instead of searching the web.
   const matches = filterServices(e.detail && e.detail.query);
   const link = matches.length === 1 ? matches[0].querySelector('a.card-head') : null;
   if (!link) return;
   e.preventDefault();
   link.click();
-});
+};
+for (const prefix of ['dash', 'hd']) {
+  document.addEventListener(`${prefix}-search-input`, (e) => filterServices(e.detail && e.detail.query));
+  document.addEventListener(`${prefix}-search-submit`, onSearchSubmit);
+}
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) for (const p of pollers) p.run();
@@ -1721,7 +1729,7 @@ document.getElementById('toast-close').addEventListener('click', hideToast);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideToast(); });
 for (const b of document.querySelectorAll('[data-appearance]')) {
   b.addEventListener('click', () => {
-    store('hd-theme', b.dataset.appearance);
+    store('dash-theme', b.dataset.appearance);
     if (layout) applyTheme(layout.settings);
   });
 }

@@ -2,7 +2,7 @@
 
 Every widget on the dashboard is a package: a folder with a `widget.yaml` and usually a
 `server.js`. Even the widgets behind the dashboard's own service fields (`siteMonitor:`,
-`container:`, ...) come from the [widgets collection](https://github.com/stefanrenne/homelab-dashboard-widgets)
+`container:`, ...) come from the [widgets collection](https://github.com/stefanrenne/dashboard-widgets)
 this way, so anything they do, a widget of yours can do too. Nobody has to merge a pull request
 here first.
 

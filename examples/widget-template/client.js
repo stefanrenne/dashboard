@@ -1,23 +1,23 @@
-// Optional client part: a Web Component named hd-<id>. Without this file the dashboard
+// Optional client part: a Web Component named dash-<id>. Without this file the dashboard
 // renders `blocks` itself. It receives:
 //   .data     what server.js returned (set again after every refresh; null before)
 //   .options  the public options only (never secrets)
 //   .t(key)   translations from i18n.json for the dashboard language
 //   .error    a message when the last refresh failed, otherwise null
-//   .busy     true while an action this widget asked for (hd-widget-action) runs
-// Theme colours come in as CSS variables: --hd-text, --hd-muted, --hd-accent, --hd-card,
-// --hd-border, --hd-ok, --hd-warn, --hd-error.
+//   .busy     true while an action this widget asked for (dash-widget-action) runs
+// Theme colours come in as CSS variables: --dash-text, --dash-muted, --dash-accent, --dash-card,
+// --dash-border, --dash-ok, --dash-warn, --dash-error.
 
 class ExampleCounter extends HTMLElement {
   connectedCallback() {
     this.attachShadow({ mode: 'open' }).innerHTML = `
       <style>
-        .bar { height: 6px; border-radius: 3px; background: var(--hd-border); overflow: hidden; }
-        .fill { height: 100%; background: var(--hd-accent); transition: width .3s; }
+        .bar { height: 6px; border-radius: 3px; background: var(--dash-border); overflow: hidden; }
+        .fill { height: 100%; background: var(--dash-accent); transition: width .3s; }
         .row { display: flex; justify-content: space-between; font-size: .85rem; margin-top: .3rem; }
-        .muted { color: var(--hd-muted); }
+        .muted { color: var(--dash-muted); }
         button { min-height: 28px; margin-top: .4rem; padding-inline: .75rem; border-radius: 6px; font: inherit; font-size: .8125rem;
-          border: 1px solid var(--hd-border); background: none; color: var(--hd-text); cursor: pointer; }
+          border: 1px solid var(--dash-border); background: none; color: var(--dash-text); cursor: pointer; }
         button:disabled { opacity: .6; cursor: progress; }
       </style>
       <div class="bar"><div class="fill" style="width:0"></div></div>
@@ -25,7 +25,7 @@ class ExampleCounter extends HTMLElement {
       <button type="button" class="reset"></button>`;
     // a button press: the dashboard runs server.js's action and shows its result
     this.shadowRoot.querySelector('.reset').addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('hd-widget-action', { bubbles: true, composed: true, detail: { title: this.t?.('reset') ?? 'Reset' } }));
+      this.dispatchEvent(new CustomEvent('dash-widget-action', { bubbles: true, composed: true, detail: { title: this.t?.('reset') ?? 'Reset' } }));
     });
     this.render();
   }
@@ -59,4 +59,4 @@ class ExampleCounter extends HTMLElement {
   }
 }
 
-customElements.define('hd-example-counter', ExampleCounter);
+customElements.define('dash-example-counter', ExampleCounter);

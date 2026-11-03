@@ -50,7 +50,7 @@ export class Discovery {
         errors.push({ file: 'kubernetes.yaml', path: 'mode', message: `discovery: ${err.message}` });
       }
     }
-    // Labels may use {{HD_VAR_*}} / {{HOMEPAGE_VAR_*}} too; those values are secrets (hard rule 1).
+    // Labels may use {{DASHBOARD_VAR_*}} / {{HOMEPAGE_VAR_*}} too; those values are secrets (hard rule 1).
     const secrets = new Set();
     for (const svc of found) {
       const sub = substitute(svc.def, { env: this.env });

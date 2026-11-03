@@ -24,11 +24,11 @@ import { safeJoin } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
-export const REPO_URL = 'https://github.com/stefanrenne/homelab-dashboard';
+export const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
- * The version: the VERSION file the Docker build writes (1.2.3 or main-<sha>), else HD_VERSION,
+ * The version: the VERSION file the Docker build writes (1.2.3 or main-<sha>), else DASHBOARD_VERSION,
  * else package.json's. The file comes first because it is part of the image: a container
- * recreated with its old environment copied over (Portainer's Recreate) keeps an old HD_VERSION.
+ * recreated with its old environment copied over (Portainer's Recreate) keeps an old DASHBOARD_VERSION.
  */
 export function readVersion(root = ROOT, env = process.env) {
   try {
@@ -37,7 +37,7 @@ export function readVersion(root = ROOT, env = process.env) {
   } catch {
     // not an image build
   }
-  return env.HD_VERSION || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+  return env.DASHBOARD_VERSION || JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 }
 export const VERSION = readVersion();
 
@@ -70,12 +70,12 @@ export function securityHeaders(frames = []) {
 const SECURITY_HEADERS = securityHeaders();
 
 /**
- * HD_ALLOWED_HOSTS (or homepage's HOMEPAGE_ALLOWED_HOSTS): the Host headers the dashboard answers,
+ * DASHBOARD_ALLOWED_HOSTS (or homepage's HOMEPAGE_ALLOWED_HOSTS): the Host headers the dashboard answers,
  * comma-separated, against DNS rebinding. An entry without a port allows every port. Unset or
  * `*`: every host, as before. Loopback addresses are always allowed (the image's health check).
  */
 export function allowedHosts(env = process.env) {
-  const raw = env.HD_ALLOWED_HOSTS ?? env.HOMEPAGE_ALLOWED_HOSTS;
+  const raw = env.DASHBOARD_ALLOWED_HOSTS ?? env.HOMEPAGE_ALLOWED_HOSTS;
   if (raw === undefined || raw.trim() === '') return null;
   const list = raw.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
   return list.includes('*') ? null : list;
@@ -112,8 +112,8 @@ export async function createApp({
   releasesUrl = RELEASES_URL,
 } = {}) {
   const sseClients = new Set();
-  // installed widgets run in a worker thread (src/plugins/sandbox.js) unless HD_WIDGET_ISOLATION=off
-  const sandbox = env.HD_WIDGET_ISOLATION === 'off' ? null : new WidgetSandbox({ log, memoryMb: Number(env.HD_WIDGET_MEMORY_MB) > 0 ? Number(env.HD_WIDGET_MEMORY_MB) : undefined });
+  // installed widgets run in a worker thread (src/plugins/sandbox.js) unless DASHBOARD_WIDGET_ISOLATION=off
+  const sandbox = env.DASHBOARD_WIDGET_ISOLATION === 'off' ? null : new WidgetSandbox({ log, memoryMb: Number(env.DASHBOARD_WIDGET_MEMORY_MB) > 0 ? Number(env.DASHBOARD_WIDGET_MEMORY_MB) : undefined });
   const runtime = new WidgetRuntime({ registry: new Map(), log, timeoutMs, sandbox, configDir: path.resolve(configDir) });
   const state = { config: null, registry: new Map(), pluginResult: { errors: [], warnings: [] }, registryErrors: [], layout: null, actions: new Map(), frames: [] };
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
@@ -226,9 +226,9 @@ export async function createApp({
   }
 
   await reload();
-  // HD_WATCH_POLL: seconds between checks for changes, for network file systems
-  const pollSeconds = Number(env.HD_WATCH_POLL);
-  if (env.HD_WATCH_POLL !== undefined && !(pollSeconds > 0)) log.warn(`HD_WATCH_POLL: "${env.HD_WATCH_POLL}" is not a number of seconds; watching as usual`);
+  // DASHBOARD_WATCH_POLL: seconds between checks for changes, for network file systems
+  const pollSeconds = Number(env.DASHBOARD_WATCH_POLL);
+  if (env.DASHBOARD_WATCH_POLL !== undefined && !(pollSeconds > 0)) log.warn(`DASHBOARD_WATCH_POLL: "${env.DASHBOARD_WATCH_POLL}" is not a number of seconds; watching as usual`);
   const watcher = watch ? watchConfig(configDir, () => reload(), { log, pollMs: pollSeconds > 0 ? Math.max(1, pollSeconds) * 1000 : 0 }) : null;
   const heartbeat = setInterval(() => {
     for (const res of sseClients) res.write(': ping\n\n');
@@ -256,8 +256,8 @@ export async function createApp({
 
   async function handler(req, res) {
     if (!hostAllowed(req.headers.host, hosts)) {
-      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in HD_ALLOWED_HOSTS)`);
-      return send(res, 403, 'Host not allowed; add it to HD_ALLOWED_HOSTS', 'text/plain; charset=utf-8');
+      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in DASHBOARD_ALLOWED_HOSTS)`);
+      return send(res, 403, 'Host not allowed; add it to DASHBOARD_ALLOWED_HOSTS', 'text/plain; charset=utf-8');
     }
     const url = new URL(req.url, 'http://localhost');
     const p = decodeURIComponent(url.pathname);
@@ -292,19 +292,19 @@ export async function createApp({
       }
       if (method === 'POST' && p === '/api/plugins/sync') {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'homelab-dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         await reload({ update: url.searchParams.get('update') === '1' });
         return send(res, 200, { errors: state.pluginResult.errors, warnings: state.pluginResult.warnings });
       }
       if (method === 'POST' && /^\/api\/widgets\/[^/]+\/action$/.test(p)) {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'homelab-dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const out = await runtime.action(p.split('/')[3]);
         return send(res, out.busy ? 409 : out.missing ? 404 : 200, out);
       }
       if (method === 'POST' && p.startsWith('/api/run/')) {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'homelab-dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const action = state.actions.get(p.slice('/api/run/'.length));
         if (!action) return send(res, 404, { error: 'no such action' });
         return send(res, 200, await runAction(action));

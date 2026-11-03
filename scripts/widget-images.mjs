@@ -265,7 +265,7 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [out, collection] = process.argv.slice(2);
   const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-  const collectionDir = path.resolve(collection ?? process.env.HD_COLLECTION_DIR ?? path.join(root, '../homelab-dashboard-widgets'));
+  const collectionDir = path.resolve(collection ?? process.env.DASHBOARD_COLLECTION_DIR ?? path.join(root, '../dashboard-widgets'));
   const written = await writeWidgetImages({ out: path.resolve(out), collectionDir });
   console.log(`widget images: ${written.length} written to ${out}`);
   process.exit(0);

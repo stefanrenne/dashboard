@@ -32,11 +32,11 @@ test('status colours reach 4.5:1 on cards, status tabs and blocks in both appear
     return { card, tab: over(SLATE[900], 0.5, card), block: over(SLATE[900], 0.2, card) };
   })();
   const light = (() => {
-    const card = hex(new RegExp('--hd-card: (#[0-9a-f]{6})').exec(block(':root[data-theme="light"]'))[1]);
+    const card = hex(new RegExp('--dash-card: (#[0-9a-f]{6})').exec(block(':root[data-theme="light"]'))[1]);
     return { card, tab: over(SLATE[500], 0.1, card), block: over(SLATE[200], 0.5, card) };
   })();
   for (const [theme, surfaces] of [['dark', dark], ['light', light]]) {
-    for (const name of ['hd-ok', 'hd-warn', 'hd-error']) {
+    for (const name of ['dash-ok', 'dash-warn', 'dash-error']) {
       for (const [where, bg] of Object.entries(surfaces)) {
         const r = ratio(token(theme, name), bg);
         assert.ok(r >= 4.5, `${theme} ${name} on ${where}: ${r.toFixed(2)}:1`);
@@ -75,8 +75,8 @@ test('Reduce Motion and Increase Contrast have an answer', () => {
 });
 
 test('light cards are separated from the page by more than a shadow', () => {
-  assert.match(block(':root[data-theme="light"]'), /--hd-card-border: var\(--t300\)/);
-  assert.match(block('  .card {'), /border: 1px solid var\(--hd-card-border, transparent\)/);
+  assert.match(block(':root[data-theme="light"]'), /--dash-card-border: var\(--t300\)/);
+  assert.match(block('  .card {'), /border: 1px solid var\(--dash-card-border, transparent\)/);
 });
 
 test('block labels wrap to two lines with hyphenation instead of being cut off', () => {

@@ -6,8 +6,8 @@ Why things are the way they are. Newest first.
 Scripts that maintain the homelab (swag configs) write files that must stay owned by root, and the
 dashboard runs as `node`. The server itself stays unprivileged (see the pitfalls); instead the
 image's entrypoint, which starts as root anyway, can write one sudo rule that lets `node` run a
-fixed runner, `/usr/local/bin/hd-root`, which is bash as root. It does so only with
-`HD_ALLOW_ROOT_SCRIPTS=true`, because the rule cannot tell the button from any other widget code.
+fixed runner, `/usr/local/bin/dashboard-root`, which is bash as root. It does so only with
+`DASHBOARD_ALLOW_ROOT_SCRIPTS=true`, because the rule cannot tell the button from any other widget code.
 `sudo -n` never waits for a password; `-E` keeps the environment only with the button's
 `inheritEnv`. A timeout reaches the root processes through sudo, which passes SIGTERM to the
 runner, and the runner stops its whole process group (node cannot signal root processes itself).

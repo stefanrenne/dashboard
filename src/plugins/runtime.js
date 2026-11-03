@@ -80,7 +80,7 @@ export class WidgetRuntime {
       try {
         const isolated = this.sandbox && widget.source !== 'builtin' && widget.serverUrl;
         const call = isolated
-          ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, options: structuredClone(instance.options), params, signal: controller.signal, log: this.#log(instance) })
+          ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), params, signal: controller.signal, log: this.#log(instance) })
           : () => widget.server.fetch(this.#context(instanceId, instance, controller.signal, params));
         const data = await Promise.race([
           Promise.resolve().then(call),
@@ -132,7 +132,7 @@ export class WidgetRuntime {
     try {
       const isolated = this.sandbox && widget.source !== 'builtin' && widget.serverUrl;
       const call = isolated
-        ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, options: structuredClone(instance.options), kind: 'action', configDir: this.configDir, signal: controller.signal, log: this.#log(instance) })
+        ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), kind: 'action', configDir: this.configDir, signal: controller.signal, log: this.#log(instance) })
         : () => widget.server.action(this.#context(instanceId, instance, controller.signal));
       const data = await Promise.race([
         Promise.resolve().then(call),
@@ -163,7 +163,7 @@ export class WidgetRuntime {
     if (!this.stores.has(instanceId)) this.stores.set(instanceId, new Map());
     const log = this.#log(instance);
     return Object.freeze({
-      apiVersion: 1,
+      apiVersion: instance.apiVersion ?? 1,
       instanceId,
       options: structuredClone(instance.options),
       params: Object.freeze({ ...params }),

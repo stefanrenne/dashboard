@@ -1,7 +1,7 @@
 // The dashboard page (public/index.html) with the parts of settings.yaml that must be in the
 // HTML itself, for browsers and crawlers that do not run the page's script: the title, the
 // meta description, the favicon and the web app manifest (site.webmanifest). Values are
-// HTML-escaped and secrets (values filled in from {{HD_VAR_*}}) are replaced by ***
+// HTML-escaped and secrets (values filled in from {{DASHBOARD_VAR_*}}) are replaced by ***
 // (hard rule 1); nothing else is templated.
 
 import { resolveIcon } from './layout.js';
@@ -15,8 +15,11 @@ export const SHADE_800 = {
   purple: '#6b21a8', fuchsia: '#86198f', pink: '#9d174d', rose: '#9f1239',
 };
 
-/** An icon URL without the page's #hd-mask marker, and /icons/… relative (for settings.base). */
+/** An icon URL without the page's #dash-mask marker, and /icons/… relative (for settings.base). */
 const plainIcon = (icon) => resolveIcon(icon)?.split('#')[0].replace(/^\/icons\//, 'icons/') ?? null;
+
+// Dashboard's mark (docs/images/logo.svg): the favicon and app icon unless settings.favicon names another
+export const MARK = `data:image/svg+xml,${encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\" fill=\"#0ea5e9\"><rect x=\"6\" y=\"6\" width=\"16\" height=\"16\" rx=\"4\"/><rect x=\"26\" y=\"6\" width=\"16\" height=\"10\" rx=\"4\" opacity=\".55\"/><rect x=\"26\" y=\"20\" width=\"16\" height=\"22\" rx=\"4\"/><rect x=\"6\" y=\"26\" width=\"16\" height=\"16\" rx=\"4\" opacity=\".55\"/></svg>")}`;
 
 const scrub = (value, secrets) => [...secrets].reduce((s, secret) => s.split(secret).join('***'), String(value));
 
@@ -33,7 +36,7 @@ export function renderIndex(html, settings, secrets = new Set(), custom = []) {
   if (settings.disableIndexing === true) head.push('<meta name="robots" content="noindex, nofollow">');
   if (settings.description) head.push(`<meta name="description" content="${clean(settings.description)}">`);
   const favicon = plainIcon(settings.favicon);
-  if (favicon) head.push(`<link rel="icon" href="${clean(favicon)}">`);
+  head.push(favicon ? `<link rel="icon" href="${clean(favicon)}">` : `<link rel="icon" type="image/svg+xml" href="${MARK}">`);
   // custom.css / custom.js from the config folder, after the page's own style and script
   const tail = [];
   if (custom.includes('custom.css')) head.push('<link rel="stylesheet" href="custom.css">');
@@ -51,7 +54,7 @@ export function renderManifest(settings, secrets = new Set()) {
   const favicon = plainIcon(settings.favicon);
   const icons = settings.pwa?.icons?.length
     ? settings.pwa.icons.map((i) => ({ ...i, src: text(plainIcon(i.src) ?? i.src) }))
-    : favicon ? [{ src: text(favicon), sizes: 'any' }] : [];
+    : [{ src: favicon ? text(favicon) : MARK, sizes: 'any', ...(favicon ? {} : { type: 'image/svg+xml' }) }];
   return {
     name: text(settings.title),
     short_name: text(settings.title),

@@ -45,11 +45,11 @@ export function resolveIcon(icon) {
   if (!icon) return null;
   if (/^https?:\/\//.test(icon) || icon.startsWith('/icons/')) return icon;
   // Single-colour icons (Material Design, Simple Icons) are drawn as a mask in the page; the
-  // #hd-mask fragment says so, with an optional colour (homepage's mdi-name-#f0d453).
+  // #dash-mask fragment says so, with an optional colour (homepage's mdi-name-#f0d453).
   const mono = /^(mdi|si)-([a-z0-9][a-z0-9-]*?)(?:-#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8}))?$/i.exec(icon);
   if (mono) {
     const base = mono[1] === 'mdi' ? MDI_ICONS : SIMPLE_ICONS;
-    return `${base}/${mono[2].toLowerCase()}.svg#hd-mask${mono[3] ? `=${mono[3].toLowerCase()}` : ''}`;
+    return `${base}/${mono[2].toLowerCase()}.svg#dash-mask${mono[3] ? `=${mono[3].toLowerCase()}` : ''}`;
   }
   const selfhst = /^sh-([a-z0-9][a-z0-9-]*)(?:\.(svg|png|webp))?$/.exec(icon);
   if (selfhst) return `${SELFHST_ICONS}/${selfhst[2] ?? 'png'}/${selfhst[1]}.${selfhst[2] ?? 'png'}`;
@@ -149,7 +149,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const { own, options: widgetOptions } = splitInstanceKeys(widget.manifest.options, withConnection(widget.id, rawOptions, where));
     if (own.provider !== undefined) applyProvider(widget.manifest.options, String(own.provider), widgetOptions, where, type);
     const { options, publicOptions, errors: optionErrors } = validateOptions(widget.manifest.options, widgetOptions, secrets);
-    // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #hd-mask)
+    // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #dash-mask;
+    // a widget of API 1 gets its old name, #hd-mask)
     for (const [name, def] of Object.entries(widget.manifest.options)) {
       if (def.type !== 'icon' || options[name] === undefined) continue;
       const url = resolveIcon(options[name]);
@@ -158,8 +159,9 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         delete options[name];
         delete publicOptions[name];
       } else {
-        options[name] = url;
-        if (name in publicOptions) publicOptions[name] = url;
+        const marked = widget.manifest.apiVersion >= 2 ? url : url.replace('#dash-mask', '#hd-mask');
+        options[name] = marked;
+        if (name in publicOptions) publicOptions[name] = marked;
       }
     }
     // widget.yaml `frames`: the origins of these (public) options are allowed in frame-src
@@ -195,7 +197,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       errors.push({ ...where, message: `${type}: highlight: expected a map of block key to rules` });
     }
     const highlight = isPlainObject(own.highlight) ? own.highlight : null;
-    instances.set(id, { type, options, secretValues, refreshMs, fields, highlight, errors: optionErrors });
+    instances.set(id, { type, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs, fields, highlight, errors: optionErrors });
     return {
       instanceId: id,
       type,
@@ -280,7 +282,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   // A `filter:` (a parsed tree, of the service or of one of its widgets) bound to the service's
   // widgets and status checks (container.<attr>); the page evaluates it on their attributes. Its
-  // literals go to the browser, so a secret (a filled-in {{HD_VAR_*}}) is refused (hard rule 1).
+  // literals go to the browser, so a secret (a filled-in {{DASHBOARD_VAR_*}}) is refused (hard rule 1).
   // `what` (service or widget) is shown unfiltered after an error.
   const bindFilterFor = (tree, service, statuses, at, what) => {
     if (!tree) return {};
@@ -299,7 +301,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     };
     walk(tree);
     if (literals.some((l) => [...secrets].some((s) => s && s.length >= 3 && l.includes(s)))) {
-      errors.push({ ...at, message: `a filter cannot hold a secret ({{HD_VAR_*}} or {{HD_FILE_*}}); the ${what} is shown unfiltered` });
+      errors.push({ ...at, message: `a filter cannot hold a secret ({{DASHBOARD_VAR_*}} or {{DASHBOARD_FILE_*}}); the ${what} is shown unfiltered` });
       return {};
     }
     const bound = bindFilter(tree, widgets, checks);
@@ -383,6 +385,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     widgetTypes[type] = {
       name: widget.manifest.name,
       version: widget.manifest.version,
+      // the page names its element and events after it: dash-<id> (2) or hd-<id> (1)
+      apiVersion: widget.manifest.apiVersion,
       source: widget.source,
       // relative, so the page also works under settings.base
       client: widget.hasClient ? `./widgets/${type}/client.js?v=${encodeURIComponent(widget.manifest.version)}` : null,

@@ -1,4 +1,4 @@
-// Docker discovery: containers with a `homelab.name` label become services. Containers
+// Docker discovery: containers with a `dashboard.name` label become services. Containers
 // labelled for homepage (`homepage.name` + `homepage.group`) work too, so an existing
 // setup carries over. Only GET calls on the Docker API (hard rule 9).
 
@@ -8,7 +8,7 @@ import https from 'node:https';
 import { serviceFromLabels } from './labels.js';
 
 export const DEFAULT_SOCKET = '/var/run/docker.sock';
-export const LABEL_PREFIX = 'homelab.';
+export const LABEL_PREFIX = 'dashboard.';
 export const HOMEPAGE_PREFIX = 'homepage.';
 
 /**

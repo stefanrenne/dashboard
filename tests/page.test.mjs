@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { renderIndex } from '../src/page.js';
+import { renderIndex, MARK } from '../src/page.js';
 
 const HTML = fs.readFileSync('public/index.html', 'utf8');
 
@@ -14,11 +14,13 @@ test('renderIndex: title, description and favicon in the head, escaped', () => {
   assert.equal((out.match(/<title>/g) ?? []).length, 1);
 });
 
-test('renderIndex: favicon as a dashboard-icons name or a config icon, nothing when unset', () => {
+test('renderIndex: favicon as a dashboard-icons name or a config icon, the mark when unset', () => {
   assert.match(renderIndex(HTML, { title: 'x', favicon: 'proxmox.svg' }), /<link rel="icon" href="https:\/\/cdn\.jsdelivr\.net\/[^"]+\/svg\/proxmox\.svg">/);
   assert.match(renderIndex(HTML, { title: 'x', favicon: '/icons/lab.png' }), /<link rel="icon" href="icons\/lab\.png">/);
   const plain = renderIndex(HTML, { title: 'x' });
-  assert.ok(!plain.includes('rel="icon"') && !plain.includes('name="description"'));
+  assert.ok(plain.includes(`<link rel="icon" type="image/svg+xml" href="${MARK}">`), 'the mark');
+  assert.ok(!plain.includes('name="description"'));
+  assert.match(decodeURIComponent(MARK), /^data:image\/svg\+xml,<svg [^>]*viewBox="0 0 48 48"/);
 });
 
 test('renderIndex: a secret in the description never reaches the page', () => {
@@ -37,7 +39,7 @@ test('SHADE_800 matches shade 800 of every palette in index.html', async () => {
 test('renderManifest: name, start_url, colours, icons from pwa or the favicon, shortcuts', async () => {
   const { renderManifest } = await import('../src/page.js');
   const plain = renderManifest({ title: 'Lab', color: 'emerald', pwa: {} });
-  assert.deepEqual(plain, { name: 'Lab', short_name: 'Lab', start_url: '/', display: 'standalone', theme_color: '#065f46', background_color: '#065f46', icons: [] });
+  assert.deepEqual(plain, { name: 'Lab', short_name: 'Lab', start_url: '/', display: 'standalone', theme_color: '#065f46', background_color: '#065f46', icons: [{ src: MARK, sizes: 'any', type: 'image/svg+xml' }] });
   assert.deepEqual(renderManifest({ title: 'Lab', favicon: '/icons/lab.svg', pwa: {} }).icons, [{ src: 'icons/lab.svg', sizes: 'any' }]);
 
   const full = renderManifest({

@@ -1,14 +1,14 @@
 #!/bin/sh
 # Stages the GitHub Pages site in <out>: docs/ as it is (docs/README.md is the home page).
 # Links that point outside docs/ go to the file on GitHub, since only docs/ is published, and
-# every page is wrapped in {% raw %} so Liquid leaves {{HD_VAR_*}} in the examples alone.
+# every page is wrapped in {% raw %} so Liquid leaves {{DASHBOARD_VAR_*}} in the examples alone.
 # Then, when a checkout of the widgets collection (and its tag) is given, scripts/widget-images.mjs
 # photographs each widget with example data (when Playwright is installed) and
 # scripts/pages-widgets.mjs adds a page per widget.
 #   scripts/pages.sh <out> [owner/repo] [<collection checkout> <tag>]
 set -eu
 out=$1
-repo=${2:-stefanrenne/homelab-dashboard}
+repo=${2:-stefanrenne/dashboard}
 collection=${3:-}
 tag=${4:-}
 tree="https://github.com/$repo/tree/main"

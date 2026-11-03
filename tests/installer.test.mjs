@@ -135,7 +135,7 @@ test('withDefaultPlugins: own entries come first, an entry for the same reposito
   assert.deepEqual(withDefaultPlugins([one], def), [one], 'a subdir is the user\'s choice of one widget');
   assert.deepEqual(withDefaultPlugins([{ source: 'git+https://github.com/b/other', only: ['x'] }], def)[0].only, ['x'], 'another repository keeps its list');
   assert.deepEqual(CORE_WIDGETS, ['http-status', 'ping', 'docker', 'kubernetes-pods', 'proxmoxvm']);
-  assert.equal(DEFAULT_PLUGINS[0].source, 'git+https://github.com/stefanrenne/homelab-dashboard-widgets#latest');
+  assert.equal(DEFAULT_PLUGINS[0].source, 'git+https://github.com/stefanrenne/dashboard-widgets#latest');
 });
 
 test('a sync removes the folders the lock file no longer points at', async () => {
@@ -297,7 +297,7 @@ test('scripts/new-widget: the template under a new id loads, with nothing of exa
   assert.deepEqual([widget.id, widget.manifest.name], ['my-nas', 'My NAS']);
   const all = fs.readdirSync(dir, { recursive: true }).filter((f) => fs.statSync(path.join(dir, f)).isFile()).map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
   assert.ok(!/example-counter|ExampleCounter|Example counter/.test(all));
-  assert.match(all, /customElements\.define\('hd-my-nas', MyNas\)/);
+  assert.match(all, /customElements\.define\('dash-my-nas', MyNas\)/);
   assert.match(fs.readFileSync(path.join(dir, 'README.md'), 'utf8'), /^# My NAS\n/);
   assert.throws(() => renameWidget(dir, 'My Widget'), /not a widget id/);
 });

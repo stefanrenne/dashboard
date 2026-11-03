@@ -14,15 +14,15 @@ const ingresses = JSON.parse(fs.readFileSync(path.resolve('tests/fixtures/k8s-in
 
 test('labels: fields, nested widget options and JSON values', () => {
   const svc = serviceFromLabels({
-    'homelab.name': 'Grafana',
-    'homelab.href': 'http://grafana.lan',
-    'homelab.weight': '5',
-    'homelab.widget.type': 'custom-api',
-    'homelab.widget.url': 'http://grafana:3000/api/health',
-    'homelab.widget.headers.X-Token': 'abc',
-    'homelab.widget.mappings': '[{"field":"version","label":"Version"}]',
+    'dashboard.name': 'Grafana',
+    'dashboard.href': 'http://grafana.lan',
+    'dashboard.weight': '5',
+    'dashboard.widget.type': 'custom-api',
+    'dashboard.widget.url': 'http://grafana:3000/api/health',
+    'dashboard.widget.headers.X-Token': 'abc',
+    'dashboard.widget.mappings': '[{"field":"version","label":"Version"}]',
     'other.label': 'x',
-  }, 'homelab.');
+  }, 'dashboard.');
   assert.deepEqual(svc, {
     group: null, name: 'Grafana', weight: 5,
     def: {
@@ -30,7 +30,7 @@ test('labels: fields, nested widget options and JSON values', () => {
       widget: { type: 'custom-api', url: 'http://grafana:3000/api/health', headers: { 'X-Token': 'abc' }, mappings: [{ field: 'version', label: 'Version' }] },
     },
   });
-  assert.equal(serviceFromLabels({ 'homelab.group': 'x' }, 'homelab.'), null);
+  assert.equal(serviceFromLabels({ 'dashboard.group': 'x' }, 'dashboard.'), null);
 });
 
 test('docker: containers with labels become services with container and server', () => {
@@ -88,7 +88,7 @@ test('docker: a Swarm lists its services, with their (deploy) labels, as in home
     res.end(JSON.stringify([
       { ID: 'a', Spec: { Name: 'media_jellyfin', Labels: { 'homepage.group': 'Media', 'homepage.name': 'Jellyfin', 'homepage.href': 'http://jellyfin.lan', 'com.docker.stack.namespace': 'media' } } },
       { ID: 'b', Spec: { Name: 'media_worker', Labels: { 'com.docker.stack.namespace': 'media' } } },
-      { ID: 'c', Spec: { Name: 'tools_grafana', Labels: { 'homelab.name': 'Grafana' } } },
+      { ID: 'c', Spec: { Name: 'tools_grafana', Labels: { 'dashboard.name': 'Grafana' } } },
     ]));
   }, { socketPath });
   try {
@@ -259,11 +259,11 @@ test('kubernetes: app, pod-selector and external annotations, as in homepage', (
   assert.deepEqual(servicesFromIngresses(ing({ 'gethomepage.dev/external': 'true' }))[0].def, { external: true });
 });
 
-test('kubernetes: a service filter from the homelab.dev/filter annotation', () => {
+test('kubernetes: a service filter from the getdashboard.dev/filter annotation', () => {
   const ing = (annotations) => servicesFromIngresses({ items: [{ metadata: { name: 'shelly', namespace: 'iot', annotations }, spec: {} }] })[0];
-  assert.equal(ing({ 'homelab.dev/enabled': 'true', 'homelab.dev/filter': 'widget.update == false' }).def.filter, 'widget.update == false');
+  assert.equal(ing({ 'getdashboard.dev/enabled': 'true', 'getdashboard.dev/filter': 'widget.update == false' }).def.filter, 'widget.update == false');
   assert.equal(ing({ 'gethomepage.dev/enabled': 'true', 'gethomepage.dev/filter': 'widget.update' }).def.filter, 'widget.update', 'the homepage prefix too');
-  assert.equal(ing({ 'homelab.dev/enabled': 'true' }).def.filter, undefined);
+  assert.equal(ing({ 'getdashboard.dev/enabled': 'true' }).def.filter, undefined);
 });
 
 test('kubernetes: gethomepage.dev annotations work too', () => {
@@ -384,11 +384,11 @@ test('Discovery passes settings.instanceName to the sources', async () => {
 });
 
 test('labels: a service filter', () => {
-  const svc = serviceFromLabels({ 'homelab.name': 'Shelly', 'homelab.filter': 'widget.update == false', 'homelab.widget.type': 'shelly' }, 'homelab.');
+  const svc = serviceFromLabels({ 'dashboard.name': 'Shelly', 'dashboard.filter': 'widget.update == false', 'dashboard.widget.type': 'shelly' }, 'dashboard.');
   assert.equal(svc.def.filter, 'widget.update == false');
-  assert.equal(serviceFromLabels({ 'homelab.name': 'Plex', 'homelab.filter': 'container.attention == false' }, 'homelab.').def.filter, 'container.attention == false');
+  assert.equal(serviceFromLabels({ 'dashboard.name': 'Plex', 'dashboard.filter': 'container.attention == false' }, 'dashboard.').def.filter, 'container.attention == false');
   // a widget's own filter, in homepage's index notation
-  const wud = serviceFromLabels({ 'homelab.name': 'Wud', 'homelab.widgets[0].type': 'whatsupdocker', 'homelab.widgets[1].type': 'button',
-    'homelab.widgets[1].filter': 'widgets.whatsupdocker.updates == 0' }, 'homelab.');
+  const wud = serviceFromLabels({ 'dashboard.name': 'Wud', 'dashboard.widgets[0].type': 'whatsupdocker', 'dashboard.widgets[1].type': 'button',
+    'dashboard.widgets[1].filter': 'widgets.whatsupdocker.updates == 0' }, 'dashboard.');
   assert.deepEqual(wud.def.widgets[1], { type: 'button', filter: 'widgets.whatsupdocker.updates == 0' });
 });

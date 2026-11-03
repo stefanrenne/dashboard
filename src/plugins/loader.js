@@ -11,7 +11,7 @@ import { checkSchema } from './options.js';
 import { parseDuration, isPlainObject } from '../util.js';
 
 /** Widget API versions this core can run. Never drop one without a major release. */
-export const SUPPORTED_API_VERSIONS = [1];
+export const SUPPORTED_API_VERSIONS = [1, 2];
 export const DEFAULT_REFRESH_MS = 30_000;
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
 

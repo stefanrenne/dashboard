@@ -8,6 +8,6 @@
           href: https://hub.docker.com
           icon: docker.svg
 - Docs:
-    - Homelab dashboard widgets:
+    - Dashboard widgets:
         - abbr: WD
           href: https://github.com/

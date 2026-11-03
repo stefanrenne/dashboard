@@ -14,7 +14,7 @@ it shows. For example, a Shelly device that only appears while a firmware update
         widget:
           type: shelly
           url: http://shelly-bureau.lan
-          password: "{{HD_VAR_SHELLY_PASSWORD}}"
+          password: "{{DASHBOARD_VAR_SHELLY_PASSWORD}}"
 ```
 
 ## The expression
@@ -94,7 +94,7 @@ healthcheck is fine. To show a service only while something is wrong with it:
 
 To tell unhealthy from stopped, `container.status` is `warn` for the one and `down` for the
 other. Discovered Docker services have `container:` already, so the label
-`homelab.filter=container.attention == false` works there.
+`dashboard.filter=container.attention == false` works there.
 
 ## Devices that do not answer
 
@@ -144,22 +144,22 @@ has an option named `filter` itself keeps that option.
 
 ## Discovered services
 
-Discovered services take filters too: as the Docker label `homelab.filter` (see
-[Docker](docker.md#discovery)), or as the Kubernetes annotation `homelab.dev/filter` on an
-Ingress (see [Kubernetes](kubernetes.md#discovery); `homelab.dev/` is the annotations' prefix, not
-a web address). A widget's filter is `homelab.widgets[1].filter`:
+Discovered services take filters too: as the Docker label `dashboard.filter` (see
+[Docker](docker.md#discovery)), or as the Kubernetes annotation `getdashboard.dev/filter` on an
+Ingress (see [Kubernetes](kubernetes.md#discovery); `getdashboard.dev/` is the annotations' prefix, not
+a web address). A widget's filter is `dashboard.widgets[1].filter`:
 
 ```yaml
 # compose.yaml: Compose's list form keeps the quotes and && of an expression simple
 labels:
-  - homelab.name=Shelly Bureau
-  - homelab.filter=widget.update == false
+  - dashboard.name=Shelly Bureau
+  - dashboard.filter=widget.update == false
 
 # an Ingress
 metadata:
   annotations:
-    homelab.dev/enabled: "true"
-    homelab.dev/filter: widget.update == false
+    getdashboard.dev/enabled: "true"
+    getdashboard.dev/filter: widget.update == false
 ```
 
 ## Recipes
@@ -171,7 +171,7 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
     - Radarr:                                   # only while it marks something, such as a blocked import
         href: http://radarr.lan:7878
         filter: widget.attention == false       # or "!widget.attention"
-        widget: { type: radarr, url: http://radarr.lan:7878, key: "{{HD_VAR_RADARR_KEY}}" }
+        widget: { type: radarr, url: http://radarr.lan:7878, key: "{{DASHBOARD_VAR_RADARR_KEY}}" }
     - Updates:                                  # only while a container has an update
         filter: widget.updates == 0
         widget: { type: whatsupdocker, url: http://wud.lan:3000 }
@@ -179,7 +179,7 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
     - Proxmox:                                  # only while a VM is stopped
         href: https://pve.lan:8006
         filter: widget.vmsStopped == 0
-        widget: { type: proxmox, url: https://pve.lan:8006, username: "{{HD_VAR_PVE_USER}}", password: "{{HD_VAR_PVE_TOKEN}}" }
+        widget: { type: proxmox, url: https://pve.lan:8006, username: "{{DASHBOARD_VAR_PVE_USER}}", password: "{{DASHBOARD_VAR_PVE_TOKEN}}" }
     - Speedtest:                                # only while the last test was slower than 100 Mbit/s
         filter: widget.download > 100
         widget: { type: speedtest, url: http://speedtest.lan }
@@ -201,4 +201,4 @@ The attributes each widget publishes are on its page under Filter attributes.
 A mistake in the expression (`widget.update false`), a widget that is not on the service
 (`widgets.radarr.queued` on a Shelly), `container.attention` without `container:` or a secret in it
 are config errors; the service (or widget) is then shown unfiltered. An attribute the widget does
-not publish is a warning. The filter goes to the browser, so it cannot hold a `{{HD_VAR_*}}` value.
+not publish is a warning. The filter goes to the browser, so it cannot hold a `{{DASHBOARD_VAR_*}}` value.

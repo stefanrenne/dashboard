@@ -15,7 +15,7 @@ A widget puts live data on the dashboard. There are two kinds, as in homepage:
           widget:
             type: radarr
             url: http://radarr.lan:7878
-            key: "{{HD_VAR_RADARR_KEY}}"
+            key: "{{DASHBOARD_VAR_RADARR_KEY}}"
   ```
 
 - **Header widgets** go in the page's header, in [widgets.yaml](../configuration/header-widgets.md):
@@ -29,6 +29,6 @@ A widget puts live data on the dashboard. There are two kinds, as in homepage:
       longitude: 4.89
   ```
 
-Every widget below comes from the [widgets collection](https://github.com/stefanrenne/homelab-dashboard-widgets),
+Every widget below comes from the [widgets collection](https://github.com/stefanrenne/dashboard-widgets),
 which is always installed. Missing one? Any widget package can be added under `plugins:`; see
 [Extend](../extend/README.md) to write your own.

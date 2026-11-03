@@ -36,16 +36,16 @@ jobs:
         id: collection
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "tag=$(gh release view --repo stefanrenne/homelab-dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
+        run: echo "tag=$(gh release view --repo stefanrenne/dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          repository: stefanrenne/homelab-dashboard-widgets
+          repository: stefanrenne/dashboard-widgets
           ref: ${{ steps.collection.outputs.tag }}
           path: collection
       - run: npm ci --no-audit --no-fund
       - run: npm test
         env:
-          HD_COLLECTION_DIR: collection
+          DASHBOARD_COLLECTION_DIR: collection
 
   # A push to main and a pull request build and smoke-test the image without pushing it: an update
   # of the build actions or the base image is tested before a release. Only releases are pushed.
@@ -118,13 +118,13 @@ jobs:
           platforms: linux/amd64
           pull: true
           load: true
-          tags: homelab-dashboard:ci
+          tags: dashboard:ci
           build-args: VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Smoke test
         run: |
-          docker run -d --name hd -p 3000:3000 homelab-dashboard:ci
+          docker run -d --name hd -p 3000:3000 dashboard:ci
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:3000/api/health && break; sleep 1; done
           curl -fs http://127.0.0.1:3000/api/health | grep -q '"version":"${{ steps.version.outputs.version }}"'
           curl -fs http://127.0.0.1:3000/api/layout | grep -q '"groups"'
