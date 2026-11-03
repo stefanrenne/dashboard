@@ -69,7 +69,7 @@ export function exampleEntry(dir, mockUrl, required = null) {
     return out;
   };
   for (const [, block] of readme.slice(at).matchAll(/```ya?ml\n([\s\S]*?)```/g)) {
-    const files = splitFiles(block.replace(/\{\{(HD|HOMEPAGE)_(VAR|FILE)_\w+\}\}/g, 'test-key'));
+    const files = splitFiles(block.replace(/\{\{(DASHBOARD|HOMEPAGE)_(VAR|FILE)_\w+\}\}/g, 'test-key'));
     let parsed;
     try {
       parsed = Object.fromEntries(Object.entries(files).map(([f, text]) => [f, YAML.parse(text)]));
