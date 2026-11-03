@@ -4,6 +4,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- Filters have a page of their own in the docs, under Configuration.
+
 ### Added
 - `ping.<name>` and `siteMonitor.<name>` in a `filter:` read the service's `ping:` and
   `siteMonitor:` checks, as `container.<name>` reads `container:`: `filter: ping.unavailable`

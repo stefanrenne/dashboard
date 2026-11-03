@@ -115,7 +115,7 @@ export function widgetPage(dir, source, image = null) {
 
   const attributes = attributeRows(yamlText);
   const filterAttributes = attributes.length || readmeAttributes
-    ? `\n## Filter attributes\n\nPublic values a service's \`filter:\` can read, as \`widget.<attribute>\`; see [Filtering services](../../configuration/services.html#filtering-services).\n\n` +
+    ? `\n## Filter attributes\n\nPublic values a service's \`filter:\` can read, as \`widget.<attribute>\`; see [Filters](../../configuration/filters.html).\n\n` +
       (readmeAttributes ? `${readmeAttributes}\n\n` : '') + (attributes.length ? attributesTable(attributes) : '')
     : '';
   const options = `## Configuration options\n\n${optionsTable(optionRows(yamlText))}\nEvery widget also takes \`refresh\` (or \`refreshInterval\` in ms), \`fields\` and \`hideErrors\`; see [Services](../../configuration/services.html).\n${filterAttributes}`;

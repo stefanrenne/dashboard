@@ -12,7 +12,7 @@ skipped and the rest keeps working.
 | [`settings.yaml`](settings.md) | Title, language, theme, layout per group, discovery interval, plugins |
 | [`bookmarks.yaml`](bookmarks.md) | Groups of links |
 | [`widgets.yaml`](header-widgets.md) | Widgets in the header |
-| [`services.yaml`](services.md) | Groups of services |
+| [`services.yaml`](services.md) | Groups of services; [filters](filters.md) hide a card or widget while all is well |
 | [`kubernetes.yaml`](kubernetes.md) | Kubernetes discovery |
 | [`docker.yaml`](docker.md) | Docker servers (status and discovery) |
 | [`proxmox.yaml`](proxmox.md) | Proxmox nodes (VM and container status) |
