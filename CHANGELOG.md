@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-03
+
 ### Changed
 - Filters have a page of their own in the docs, under Configuration.
 - `container.healthy` and `container.unhealthy` are gone with the widgets collection 0.12.3: use
