@@ -32,7 +32,9 @@ it shows. For example, a Shelly device that only appears while a firmware update
   `filter: widget.update == false && widget.queued == 0`.
 
 A bare attribute is true while its value is: `filter: ping.attention` is the same as
-`filter: ping.attention == true`.
+`filter: ping.attention == true`, and `filter: "!ping.attention"` the same as
+`filter: ping.attention == false` (in quotes: YAML reads a leading `!` as a tag). The one
+difference: an attribute nobody sent is `null`, which `!` counts as false and `== false` does not.
 
 ## Attributes of the status checks
 
@@ -87,7 +89,7 @@ healthcheck is fine. To show a service only while something is wrong with it:
     - Plex:
         href: http://plex.lan:32400
         container: plex
-        filter: container.attention == false    # hidden while all is well
+        filter: container.attention == false    # hidden while all is well; "!container.attention" works too
 ```
 
 To tell unhealthy from stopped, `container.status` is `warn` for the one and `down` for the
@@ -107,7 +109,8 @@ not up. To hide a device while it is off:
         filter: ping.attention                 # hidden while it does not answer
 ```
 
-`filter: ping.attention == false` does the opposite: the card only shows while the device is down.
+`filter: ping.attention == false` (or `filter: "!ping.attention"`) does the opposite: the card only
+shows while the device is down.
 
 ## A widget's filter
 
@@ -167,7 +170,7 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
 - Media:
     - Radarr:                                   # only while it marks something, such as a blocked import
         href: http://radarr.lan:7878
-        filter: widget.attention == false
+        filter: widget.attention == false       # or "!widget.attention"
         widget: { type: radarr, url: http://radarr.lan:7878, key: "{{HD_VAR_RADARR_KEY}}" }
     - Updates:                                  # only while a container has an update
         filter: widget.updates == 0
@@ -185,10 +188,10 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
         widget: { type: uptimekuma, url: http://kuma.lan:3001, slug: home }
     - Plex:                                     # only while its container is unhealthy or stopped
         container: plex
-        filter: container.attention == false
+        filter: container.attention == false    # or "!container.attention"
     - NAS:                                      # only while it does not answer
         ping: nas.lan
-        filter: ping.attention == false
+        filter: ping.attention == false         # or "!ping.attention"
 ```
 
 The attributes each widget publishes are on its page under Filter attributes.
