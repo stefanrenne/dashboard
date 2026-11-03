@@ -5,11 +5,12 @@
 //   filter: widget.update == false
 //   filter: widgets.shelly.update == false && widgets[1].count < 3
 //   filter: container.healthy
+//   filter: ping.status == 'down'
 //
 // Paths: widget.<attr> (the attributes of all the service's widgets, merged: the first widget, in
 // the card's order, that publishes it), widgets[<n>].<attr> (one widget by position, from 0),
-// widgets.<type>.<attr> (the first widget of that type), container.<attr> (the service's
-// `container:` status check, not a widget on the card). Literals: true, false, null, numbers,
+// widgets.<type>.<attr> (the first widget of that type), container.<attr>, ping.<attr> and
+// siteMonitor.<attr> (the service's status check of that name, not a widget on the card). Literals: true, false, null, numbers,
 // 'text' or "text". Operators: == != < <= > >= && || ! and parentheses. A missing attribute is
 // null. The page evaluates the parsed form (public/index.html, evalFilter) against the results.
 
@@ -59,8 +60,9 @@ function tokenize(text) {
 
 /** A path word as a reference: { widget: { merged: true } | { index } | { type }, attr } or { status, attr }. */
 function reference(word) {
-  let m = /^container\.([A-Za-z][\w]*)$/.exec(word);
-  if (m) return { status: 'container', attr: m[1] };
+  // a status check, named as the service's key (its kind in layout.js)
+  let m = /^(container|ping|siteMonitor)\.([A-Za-z][\w]*)$/.exec(word);
+  if (m) return { status: m[1], attr: m[2] };
   m = /^widget\.([A-Za-z][\w]*)$/.exec(word);
   if (m) return { widget: { merged: true }, attr: m[1] };
   m = /^widgets\[(\d+)\]\.([A-Za-z][\w]*)$/.exec(word);
@@ -101,7 +103,7 @@ export function parseFilter(text) {
       if (tok.v === 'true' || tok.v === 'false') return { lit: tok.v === 'true' };
       if (tok.v === 'null') return { lit: null };
       const ref = reference(tok.v);
-      if (!ref) throw new Error(`"${tok.v}" is not a value: use widget.<attribute>, widgets[<n>].<attribute>, widgets.<type>.<attribute> or container.<attribute>`);
+      if (!ref) throw new Error(`"${tok.v}" is not a value: use widget.<attribute>, widgets[<n>].<attribute>, widgets.<type>.<attribute>, container.<attribute>, ping.<attribute> or siteMonitor.<attribute>`);
       return { ref };
     }
     throw new Error(`expected a value ${where()}`);
@@ -157,8 +159,8 @@ export function filterRefs(tree, out = []) {
  * order (`{ indexes, attr }`: the first that has the attribute counts),
  * checked against its widgets: [{ type, id?, attributes }] (type as written, id the widget's own
  * when `type` is an alias, attributes from widget.yaml). The service's status checks
- * ([{ kind, type, attributes }]) come after its widgets: container.<attr> reads the `container`
- * one, at position widgets.length + its place. Returns { tree, errors, warnings } as messages.
+ * ([{ kind, type, attributes }]) come after its widgets: container.<attr> (or ping., siteMonitor.)
+ * reads the check of that kind, at position widgets.length + its place. Returns { tree, errors, warnings } as messages.
  */
 export function bindFilter(tree, widgets, statuses = []) {
   const errors = [];

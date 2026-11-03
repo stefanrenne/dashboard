@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- `ping.<name>` and `siteMonitor.<name>` in a `filter:` read the service's `ping:` and
+  `siteMonitor:` checks, as `container.<name>` reads `container:`: `filter: ping.status == 'down'`
+  hides a device while it does not answer.
+
 ## [0.15.1] - 2026-11-02
 
 ### Changed

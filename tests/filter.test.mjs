@@ -82,6 +82,18 @@ test('container.<attr>: the service\'s container: status check, after its widget
   assert.equal(health('!container.unhealthy', { healthy: false, unhealthy: true }), false);
 });
 
+test('ping.<attr> and siteMonitor.<attr>: the service\'s ping: and siteMonitor: checks', () => {
+  const status = { status: { type: 'string' }, latency: { type: 'number' } };
+  const checks = [{ kind: 'siteMonitor', type: 'http-status', attributes: { ...status, code: { type: 'number' } } }, { kind: 'ping', type: 'ping', attributes: status }];
+  assert.deepEqual(parseFilter("ping.status == 'down'"), { op: '==', a: { ref: { status: 'ping', attr: 'status' } }, b: { lit: 'down' } });
+  const bound = bindFilter(parseFilter("ping.status == 'down' || siteMonitor.code >= 500"), shelly, checks);
+  assert.deepEqual([filterRefs(bound.tree), bound.errors], [[{ indexes: [2], attr: 'status' }, { indexes: [1], attr: 'code' }], []]);
+  assert.deepEqual(bindFilter(parseFilter("ping.status == 'down'"), shelly, [checks[0]]).errors, ['the service has no ping: to read "status" from']);
+  const offline = (status) => evalFilter(bindFilter(parseFilter("ping.status == 'down'"), [], [checks[1]]).tree, () => status);
+  assert.deepEqual([offline('down'), offline('up')], [true, false], 'hidden while it does not answer');
+  assert.throws(() => parseFilter('app.status'), /container\.<attribute>, ping\.<attribute> or siteMonitor\.<attribute>/);
+});
+
 test('evalFilter: merged attributes, the first widget in card order that has one counts', () => {
   const two = [{ type: 'shelly', attributes: { update: { type: 'boolean' } } }, { type: 'other', attributes: { update: { type: 'boolean' }, count: { type: 'number' } } }];
   assert.equal(run('widget.count > 2', two, [{ update: false }, { count: 3 }]), true, 'from the second widget');

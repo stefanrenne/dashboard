@@ -131,8 +131,9 @@ example, a Shelly device that only appears while a firmware update is waiting:
   so it works the same with one widget or several. When two widgets publish the same name, the
   first one on the card counts. To read one widget only: `widgets[1].<name>` (by position,
   from 0) or `widgets.shelly.<name>` (the first widget of that type).
-- **The container**: `container.<name>` reads the service's `container:` status check rather than
-  a widget on the card (see [Container health](#container-health)).
+- **A status check**: `container.<name>`, `ping.<name>` and `siteMonitor.<name>` read the
+  service's `container:`, `ping:` or `siteMonitor:` check rather than a widget on the card (see
+  [Container health](#container-health) and [Devices that do not answer](#devices-that-do-not-answer)).
 - **A value**: `true`, `false`, `null`, a number, `'text'` or `"text"`.
 - **Comparing**: `==`, `!=`, `<`, `<=`, `>`, `>=` (`<` and `>` only between numbers).
 - **Combining**: `&&` (and), `||` (or), `!` (not), and parentheses:
@@ -163,6 +164,21 @@ something is wrong with it:
 `filter: container.healthy == true` is the same; `filter: "!container.unhealthy"` also hides
 containers without a healthcheck (in quotes: YAML reads a leading `!` as a tag). Discovered Docker
 services have `container:` already, so the label `homelab.filter=container.healthy` works there.
+
+### Devices that do not answer
+
+`ping.<name>` reads the service's `ping:` check: `status` is `up` or `down`, and `latency` the
+answer time in ms (`null` without an answer). `siteMonitor.<name>` reads the HTTP check the same
+way, with `code` for the HTTP status code. To hide a device while it is off:
+
+```yaml
+- Living room:
+    - Sonos:
+        ping: sonos.lan
+        filter: ping.status == 'down'          # hidden while it does not answer
+```
+
+`filter: ping.status == 'up'` does the opposite: the card only shows while the device is down.
 
 ### A widget's filter
 
