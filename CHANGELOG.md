@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- `providers.yaml`: accounts (keys and logins) in a file of their own, used with `provider: <name>`
+  as `settings.yaml`'s `providers:`. The dashboard warns while every user can read it. The docs
+  have a Providers page under Configuration.
+
 ## [0.16.0] - 2026-11-03
 
 ### Changed

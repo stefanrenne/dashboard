@@ -214,7 +214,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   function applyProvider(schema, name, options, where, type) {
     const provider = providers[name];
     if (provider === undefined) {
-      errors.push({ ...where, message: `${type}: provider "${name}" is not in settings.yaml providers` });
+      errors.push({ ...where, message: `${type}: provider "${name}" is not in providers.yaml or settings.yaml providers` });
     } else if (typeof provider === 'string' || typeof provider === 'number') {
       const key = Object.keys(schema).find((k) => schema[k].secret && options[k] === undefined);
       if (key) options[key] = String(provider);

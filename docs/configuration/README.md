@@ -16,6 +16,7 @@ skipped and the rest keeps working.
 | [`kubernetes.yaml`](kubernetes.md) | Kubernetes discovery |
 | [`docker.yaml`](docker.md) | Docker servers (status and discovery) |
 | [`proxmox.yaml`](proxmox.md) | Proxmox nodes (VM and container status) |
+| [`providers.yaml`](providers.md) | Accounts: keys and logins that widgets use with `provider: <name>`; keep it to yourself |
 | other `.yaml` files | Pulled in with `!include` (see [Including other files](#including-other-files)) |
 | `icons/` | Your own icons, used as `icon: /icons/name.svg` (see [Images](images.md)) |
 | [`custom.css`, `custom.js`](custom-css-js.md) | Your own style and script, loaded after the page's own |

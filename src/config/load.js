@@ -12,7 +12,7 @@ import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
 
-export const CONFIG_FILES = ['settings', 'services', 'widgets', 'bookmarks', 'docker', 'kubernetes', 'proxmox'];
+export const CONFIG_FILES = ['settings', 'services', 'widgets', 'bookmarks', 'docker', 'kubernetes', 'proxmox', 'providers'];
 
 export const DEFAULT_SETTINGS = {
   title: 'Homelab',
@@ -90,8 +90,25 @@ export function loadConfig(dir, opts = {}) {
     warn: (file, p, message) => warnings.push({ file, path: p, message }),
   };
 
+  const settings = normalizeSettings(raw.settings, ctx);
+  const providers = normalizeProviders(raw.providers, ctx);
+  if (providers) {
+    for (const name of Object.keys(providers)) {
+      if (settings.providers?.[name] !== undefined) ctx.warn('providers.yaml', name, 'also in settings.yaml providers; this one is used');
+    }
+    settings.providers = { ...settings.providers, ...providers };
+    // the accounts' file: warn when every user on the machine can read it
+    try {
+      if (process.platform !== 'win32' && fs.statSync(path.join(dir, 'providers.yaml')).mode & 0o004) {
+        ctx.warn('providers.yaml', '', 'readable by every user on this machine; chmod 600 (or 640) it');
+      }
+    } catch {
+      // checked already when it was read
+    }
+  }
+
   return {
-    settings: normalizeSettings(raw.settings, ctx),
+    settings,
     services: normalizeServices(raw.services, ctx),
     widgets: normalizeHeaderWidgets(raw.widgets, ctx),
     bookmarks: normalizeBookmarks(raw.bookmarks, ctx),
@@ -102,6 +119,26 @@ export function loadConfig(dir, opts = {}) {
     warnings,
     secrets,
   };
+}
+
+/**
+ * providers.yaml: accounts that a widget entry uses with `provider: <name>`, as settings.yaml's
+ * `providers:`. A name maps to a text (a key) or a map of options. Returns the valid entries, or
+ * null without the file.
+ */
+export function normalizeProviders(raw, ctx) {
+  const file = 'providers.yaml';
+  if (raw === undefined || raw === null) return null;
+  if (!isPlainObject(raw)) {
+    ctx.error(file, '', 'expected a map of provider name to a key or a map of options');
+    return null;
+  }
+  const out = {};
+  for (const [name, value] of Object.entries(raw)) {
+    if (typeof value === 'string' || typeof value === 'number' || isPlainObject(value)) out[name] = value;
+    else ctx.error(file, name, 'expected a key (text) or a map of options such as url, username and password; skipped');
+  }
+  return out;
 }
 
 /** `- Key: value` entries: a list of single-key maps. Returns [[key, value, index]]. */

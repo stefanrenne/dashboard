@@ -1,0 +1,7 @@
+# Accounts that widgets use with provider: <name> (see the Providers page of the docs).
+# Keep this file to yourself (chmod 600), and prefer variables over passwords written here.
+# radarr: "{{HD_VAR_RADARR_KEY}}"
+# nas:
+#   url: https://nas.lan:5001
+#   username: dashboard
+#   password: "{{HD_VAR_NAS_PASSWORD}}"

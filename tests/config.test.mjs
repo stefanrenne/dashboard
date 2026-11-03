@@ -356,3 +356,41 @@ test('pluginUpdateInterval: every hour by default, a duration, false to turn off
   assert.equal(bad.settings.pluginUpdateMs, 3_600_000);
   assert.match(bad.warnings[0].message, /invalid duration "soon".*checking every hour/);
 });
+
+test('providers.yaml: accounts in their own file, merged with settings.yaml providers', () => {
+  const dir = configDir({
+    'settings.yaml': 'providers:\n  radarr: old-key\n  sonarr: sonarr-key\n',
+    'providers.yaml': [
+      'radarr: "{{HD_VAR_RADARR_KEY}}"',
+      'nas:',
+      '  url: https://nas.lan',
+      '  username: dashboard',
+      '  password: "{{HD_VAR_NAS_PASSWORD}}"',
+      'broken: [1, 2]',
+    ].join('\n') + '\n',
+  });
+  fs.chmodSync(path.join(dir, 'providers.yaml'), 0o600);
+  const cfg = loadConfig(dir, { env: { HD_VAR_RADARR_KEY: 'r4darr-key', HD_VAR_NAS_PASSWORD: 'n4s-pass' } });
+  assert.deepEqual(cfg.settings.providers, {
+    radarr: 'r4darr-key',
+    sonarr: 'sonarr-key',
+    nas: { url: 'https://nas.lan', username: 'dashboard', password: 'n4s-pass' },
+  }, 'both files; providers.yaml wins');
+  assert.ok(cfg.secrets.has('r4darr-key') && cfg.secrets.has('n4s-pass'), 'its variables are secrets');
+  assert.deepEqual(cfg.errors.map((e) => `${e.file} › ${e.path}: ${e.message}`), [
+    'providers.yaml › broken: expected a key (text) or a map of options such as url, username and password; skipped',
+  ]);
+  assert.deepEqual(cfg.warnings.map((w) => `${w.file} › ${w.path}: ${w.message}`), [
+    'providers.yaml › radarr: also in settings.yaml providers; this one is used',
+  ], 'a 0600 file gives no warning');
+  assert.equal(loadConfig(configDir({ 'providers.yaml': '- a\n' })).errors[0].message, 'expected a map of provider name to a key or a map of options');
+  assert.equal(loadConfig(configDir({})).settings.providers, undefined, 'no file, nothing');
+});
+
+test('providers.yaml: a warning while every user can read it', { skip: process.platform === 'win32' }, () => {
+  const dir = configDir({ 'providers.yaml': 'radarr: k3y\n' });
+  fs.chmodSync(path.join(dir, 'providers.yaml'), 0o644);
+  assert.ok(loadConfig(dir).warnings.some((w) => w.file === 'providers.yaml' && /readable by every user on this machine; chmod 600/.test(w.message)));
+  fs.chmodSync(path.join(dir, 'providers.yaml'), 0o640);
+  assert.ok(!loadConfig(dir).warnings.some((w) => w.file === 'providers.yaml'), 'group-readable is fine');
+});

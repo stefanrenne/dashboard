@@ -36,11 +36,12 @@ defaults:
   - { scope: { path: configuration/header-widgets.md }, values: { title: Header widgets, parent: Configuration, nav_order: 3 } }
   - { scope: { path: configuration/services.md }, values: { title: Services, parent: Configuration, nav_order: 4 } }
   - { scope: { path: configuration/filters.md }, values: { title: Filters, parent: Configuration, nav_order: 5 } }
-  - { scope: { path: configuration/kubernetes.md }, values: { title: Kubernetes, parent: Configuration, nav_order: 6 } }
-  - { scope: { path: configuration/docker.md }, values: { title: Docker, parent: Configuration, nav_order: 7, redirect_from: [/discovery.html] } }
-  - { scope: { path: configuration/proxmox.md }, values: { title: Proxmox, parent: Configuration, nav_order: 8 } }
-  - { scope: { path: configuration/images.md }, values: { title: Images, parent: Configuration, nav_order: 9 } }
-  - { scope: { path: configuration/custom-css-js.md }, values: { title: Custom CSS & JS, parent: Configuration, nav_order: 10 } }
+  - { scope: { path: configuration/providers.md }, values: { title: Providers, parent: Configuration, nav_order: 6 } }
+  - { scope: { path: configuration/kubernetes.md }, values: { title: Kubernetes, parent: Configuration, nav_order: 7 } }
+  - { scope: { path: configuration/docker.md }, values: { title: Docker, parent: Configuration, nav_order: 8, redirect_from: [/discovery.html] } }
+  - { scope: { path: configuration/proxmox.md }, values: { title: Proxmox, parent: Configuration, nav_order: 9 } }
+  - { scope: { path: configuration/images.md }, values: { title: Images, parent: Configuration, nav_order: 10 } }
+  - { scope: { path: configuration/custom-css-js.md }, values: { title: Custom CSS & JS, parent: Configuration, nav_order: 11 } }
   - { scope: { path: widgets/README.md }, values: { title: Widgets, nav_order: 3, has_children: true, permalink: /widgets/ } }
   - { scope: { path: extend/README.md }, values: { title: Extend, nav_order: 4, has_children: true, permalink: /extend/ } }
   - { scope: { path: extend/local.md }, values: { title: A local widget, parent: Extend, nav_order: 1, redirect_from: [/widgets/authoring.html] } }

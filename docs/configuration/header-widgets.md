@@ -31,7 +31,7 @@ are not tied to a service. Each widget has its own page with fields and an examp
 | `iframe` | `src` (required; its origin is allowed in the page's CSP), `name`, `height` or homepage's `classes`, `referrerPolicy`, `allowPolicy`, `allowFullscreen`, `loadingStrategy`, `allowScrolling`, `refreshInterval` |
 | `logo` | `icon` (optional; the dashboard's own mark without it) |
 | `kubernetes` | `cluster` (`show`, `cpu`, `memory`, `showLabel`, `label`), `nodes` (`show`, `cpu`, `memory`, `showLabel`); needs metrics-server and RBAC on nodes |
-| `search` | `provider`, `url`, `target`, `filter` (default true: typing filters the services, Enter opens the only match) |
+| `search` | `provider`, `url`, `target`, `filterServices` (default true: typing filters the services, Enter opens the only match) |
 | `resources` | `cpu`, `memory` (both off by default), `disk` (list of mount points), `label` |
 | `http-status` | `url` (required), `method` (`HEAD`/`GET`) |
 | `ping` | `host` (required; a name, IP or URL) |

@@ -822,7 +822,29 @@ test('providers: shared keys and options fill widget entries, and stay secret', 
     const rb = await (await t.get(`/api/widgets/${b.instanceId}`)).json();
     assert.equal(rb.ok, true, 'a map provider fills url');
     assert.equal(auth, 'Bearer own-key', 'options in the entry win');
-    assert.ok(layout.messages.errors.some((e) => /provider "nope" is not in settings\.yaml providers/.test(e.message)));
+    assert.ok(layout.messages.errors.some((e) => /provider "nope" is not in providers\.yaml or settings\.yaml providers/.test(e.message)));
+  } finally {
+    await t.close();
+    await srv.close();
+  }
+});
+
+test('providers.yaml: a widget gets its key from it, and the key stays on the server', async () => {
+  let auth;
+  const srv = await serve((req, res) => { auth = req.headers.authorization; res.end(JSON.stringify({ count: 7 })); });
+  const template = path.resolve('examples/widget-template');
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${template}\n`,
+    'providers.yaml': `counter:\n  url: ${srv.url}/api/\n  key: "{{HD_VAR_COUNTER_KEY}}"\n`,
+    'services.yaml': '- G:\n    - A:\n        widget: { type: example-counter, provider: counter }\n',
+  }, { HD_VAR_COUNTER_KEY: 'pr0vider-file-key' });
+  try {
+    const raw = await (await t.get('/api/layout')).text();
+    assert.ok(!raw.includes('pr0vider-file-key'), 'the key never reaches the browser');
+    const widget = JSON.parse(raw).groups[0].services[0].widgets[0];
+    const result = await (await t.get(`/api/widgets/${widget.instanceId}`)).json();
+    assert.equal(result.ok, true, JSON.stringify(result));
+    assert.equal(auth, 'Bearer pr0vider-file-key');
   } finally {
     await t.close();
     await srv.close();
