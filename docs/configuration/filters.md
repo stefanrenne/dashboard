@@ -34,6 +34,45 @@ it shows. For example, a Shelly device that only appears while a firmware update
 A bare attribute is true while its value is: `filter: container.healthy` is the same as
 `filter: container.healthy == true`.
 
+## Attributes of the status checks
+
+A service's status checks publish these, whatever widgets it has. The attributes of a widget on
+the card differ per widget: see its page under Filter attributes. Most widgets also publish
+`attention` there, true while the card marks something as needing attention.
+
+**`container.<name>`**, the service's `container:` (Docker):
+
+| Attribute | Type | Value |
+|---|---|---|
+| `healthy` | boolean | true while Docker's healthcheck reports healthy; false without a healthcheck or while stopped |
+| `unhealthy` | boolean | true while Docker's healthcheck reports unhealthy |
+| `status` | text | `up`, `warn` (running but unhealthy, or a Swarm service with too few tasks) or `down` |
+| `attention` | boolean | true while the label marks a problem |
+
+**`ping.<name>`**, the service's `ping:`:
+
+| Attribute | Type | Value |
+|---|---|---|
+| `available` | boolean | true while the host answers |
+| `unavailable` | boolean | true while the host does not answer |
+| `latency` | number | the answer time in ms; `null` without an answer |
+| `status` | text | `up` or `down` |
+| `attention` | boolean | true while it does not answer |
+
+**`siteMonitor.<name>`**, the service's `siteMonitor:` (HTTP):
+
+| Attribute | Type | Value |
+|---|---|---|
+| `available` | boolean | true for 2xx, 3xx and 401/403 (a login in front of it) |
+| `unavailable` | boolean | true for 5xx or no connection; another 4xx is neither |
+| `code` | number | the HTTP status code, such as 200; `null` without a connection |
+| `latency` | number | the answer time in ms; `null` without a connection |
+| `status` | text | `up`, `warn` (another 4xx) or `down` |
+| `attention` | boolean | true while it is not up |
+
+Before a check has answered every attribute is `null`, and the card stays hidden; when the check
+itself fails, the card is shown.
+
 ## While it waits, and when it fails
 
 An attribute no widget sent counts as `null`, so `widget.update == false` is not true
