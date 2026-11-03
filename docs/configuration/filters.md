@@ -53,22 +53,18 @@ the card differ per widget: see its page under Filter attributes. Most widgets a
 
 | Attribute | Type | Value |
 |---|---|---|
-| `available` | boolean | true while the host answers |
-| `unavailable` | boolean | true while the host does not answer |
-| `latency` | number | the answer time in ms; `null` without an answer |
+| `attention` | boolean | true while the host does not answer |
 | `status` | text | `up` or `down` |
-| `attention` | boolean | true while it does not answer |
+| `latency` | number | the answer time in ms; `null` without an answer |
 
 **`siteMonitor.<name>`**, the service's `siteMonitor:` (HTTP):
 
 | Attribute | Type | Value |
 |---|---|---|
-| `available` | boolean | true for 2xx, 3xx and 401/403 (a login in front of it) |
-| `unavailable` | boolean | true for 5xx or no connection; another 4xx is neither |
+| `attention` | boolean | true while it is not up: 5xx, another 4xx or no connection (2xx, 3xx and 401/403, a login in front of it, are up) |
+| `status` | text | `up`, `warn` (another 4xx) or `down` |
 | `code` | number | the HTTP status code, such as 200; `null` without a connection |
 | `latency` | number | the answer time in ms; `null` without a connection |
-| `status` | text | `up`, `warn` (another 4xx) or `down` |
-| `attention` | boolean | true while it is not up |
 
 Before a check has answered every attribute is `null`, and the card stays hidden; when the check
 itself fails, the card is shown.
@@ -103,20 +99,18 @@ reads a leading `!` as a tag). Discovered Docker services have `container:` alre
 
 ## Devices that do not answer
 
-`ping.<name>` reads the service's `ping:` check: `available` is true while the host answers and
-`unavailable` while it does not; `latency` is the answer time in ms. `siteMonitor.<name>` reads
-the HTTP check the same way: `available` for 2xx, 3xx and 401/403 (a login in front of it),
-`unavailable` for 5xx or no connection, neither for another 4xx; `code` is the HTTP status code.
-To hide a device while it is off:
+`ping.<name>` reads the service's `ping:` check: `attention` is true while the host does not
+answer. `siteMonitor.<name>` reads the HTTP check the same way: `attention` is true while it is
+not up. To hide a device while it is off:
 
 ```yaml
 - Living room:
     - Sonos:
         ping: sonos.lan
-        filter: ping.unavailable               # hidden while it does not answer
+        filter: ping.attention                 # hidden while it does not answer
 ```
 
-`filter: ping.available` does the opposite: the card only shows while the device is down.
+`filter: ping.attention == false` does the opposite: the card only shows while the device is down.
 
 ## A widget's filter
 
@@ -197,7 +191,7 @@ A filter hides a card while all is well, so the dashboard shows what needs a loo
         filter: container.healthy
     - NAS:                                      # only while it does not answer
         ping: nas.lan
-        filter: ping.available
+        filter: ping.attention == false
 ```
 
 The attributes each widget publishes are on its page under Filter attributes.

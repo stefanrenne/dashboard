@@ -112,5 +112,5 @@ see [Images](images.md).
 ## Filtering services
 
 `filter:` on a service hides its card while an expression is true, such as
-`filter: widget.update == false` or `filter: ping.unavailable`; on one of its widgets it hides that
+`filter: widget.update == false` or `filter: ping.attention`; on one of its widgets it hides that
 widget. See [Filters](filters.md).

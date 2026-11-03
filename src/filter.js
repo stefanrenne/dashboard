@@ -5,7 +5,7 @@
 //   filter: widget.update == false
 //   filter: widgets.shelly.update == false && widgets[1].count < 3
 //   filter: container.healthy
-//   filter: ping.unavailable
+//   filter: ping.attention
 //
 // Paths: widget.<attr> (the attributes of all the service's widgets, merged: the first widget, in
 // the card's order, that publishes it), widgets[<n>].<attr> (one widget by position, from 0),
