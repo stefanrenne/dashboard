@@ -6,8 +6,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ### Added
 - `ping.<name>` and `siteMonitor.<name>` in a `filter:` read the service's `ping:` and
-  `siteMonitor:` checks, as `container.<name>` reads `container:`: `filter: ping.status == 'down'`
-  hides a device while it does not answer.
+  `siteMonitor:` checks, as `container.<name>` reads `container:`: `filter: ping.unavailable`
+  hides a device while it does not answer (`available` and `unavailable` need the widgets
+  collection 0.12.3).
 
 ## [0.15.1] - 2026-11-02
 

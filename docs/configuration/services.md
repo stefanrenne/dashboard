@@ -167,18 +167,20 @@ services have `container:` already, so the label `homelab.filter=container.healt
 
 ### Devices that do not answer
 
-`ping.<name>` reads the service's `ping:` check: `status` is `up` or `down`, and `latency` the
-answer time in ms (`null` without an answer). `siteMonitor.<name>` reads the HTTP check the same
-way, with `code` for the HTTP status code. To hide a device while it is off:
+`ping.<name>` reads the service's `ping:` check: `available` is true while the host answers and
+`unavailable` while it does not; `latency` is the answer time in ms. `siteMonitor.<name>` reads
+the HTTP check the same way: `available` for 2xx, 3xx and 401/403 (a login in front of it),
+`unavailable` for 5xx or no connection, neither for another 4xx; `code` is the HTTP status code.
+To hide a device while it is off:
 
 ```yaml
 - Living room:
     - Sonos:
         ping: sonos.lan
-        filter: ping.status == 'down'          # hidden while it does not answer
+        filter: ping.unavailable               # hidden while it does not answer
 ```
 
-`filter: ping.status == 'up'` does the opposite: the card only shows while the device is down.
+`filter: ping.available` does the opposite: the card only shows while the device is down.
 
 ### A widget's filter
 
