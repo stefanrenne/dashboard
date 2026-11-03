@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-03
+
 ### Changed (breaking)
 - **Homelab Dashboard is now Dashboard**, at getdashboard.dev, with a mark of its own (also the
   default favicon). The image is `ghcr.io/stefanrenne/dashboard`, the repositories
