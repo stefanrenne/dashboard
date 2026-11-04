@@ -51,7 +51,7 @@ attributes:
   ]);
   assert.equal(optionRows(yaml)[0].description, 'The API version', 'a same-named attribute does not take the option\'s comment');
   const dir = tmpDir('hd-attr-page-');
-  fs.writeFileSync(path.join(dir, 'widget.yaml'), `name: X\nversion: 1.0.0\napiVersion: 1\n${yaml}`);
+  fs.writeFileSync(path.join(dir, 'widget.yaml'), `name: X\nversion: 1.0.0\napiVersion: 2\n${yaml}`);
   fs.writeFileSync(path.join(dir, 'README.md'), '# X\n\nIntro.\n\n## Example\n\n```yaml\n- x: {}\n```\n');
   const md = widgetPage(dir, { kind: 'collection', tag: 'v1' }).markdown;
   assert.ok(md.indexOf('## Configuration options') < md.indexOf('## Filter attributes') && md.indexOf('## Filter attributes') < md.indexOf('## Example'));
@@ -61,7 +61,7 @@ attributes:
 
 test('widgetPage: one Filter attributes section, with the README\'s own text merged in', () => {
   const dir = tmpDir('hd-merge-');
-  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: x\nname: X\nversion: 1.0.0\napiVersion: 1\nattributes:\n  update: { type: boolean }   # true while an update waits\n');
+  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: x\nname: X\nversion: 1.0.0\napiVersion: 2\nattributes:\n  update: { type: boolean }   # true while an update waits\n');
   fs.writeFileSync(path.join(dir, 'README.md'), '# X\n\nIntro.\n\n## Fields\n\n`a`, `b`\n\n## Attributes\n\nA note.\n\n## Example\n\n```yaml\n- G:\n    - S:\n        widget:\n          type: x\n```\n');
   const md = widgetPage(dir, { kind: 'collection', tag: 'v1' }).markdown;
   assert.equal(md.match(/^## .*[Aa]ttributes$/gm).length, 1);

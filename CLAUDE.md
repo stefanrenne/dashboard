@@ -58,7 +58,8 @@ the image and smoke-tests it.
    `ctx` fields, the result format (`status`, `latency`, `blocks`), `action(ctx)` and its result,
    the page events and the `client.js` properties (`data`, `options`, `t`, `error`, `busy`) only
    change in a backward-compatible way. A breaking change
-   means a new `apiVersion` next to the old one, which stays supported. Every change goes into
+   means a new `apiVersion`. Before 1.0 the old one is dropped (a breaking CHANGELOG entry); from
+   1.0 it stays supported next to the new one. Every change goes into
    `docs/extend/api-reference.md` (with the version that introduced it).
 3. **The core needs no widget internals.** Widgets live in the collection and use only the public
    widget API. If a widget behind a core feature needs more, the API gets it first (documented,

@@ -58,7 +58,7 @@ export class WidgetSandbox {
   }
 
   /** Runs a widget's fetch (or `kind: 'action'`, its action) in the worker; resolves its data or rejects with its error. */
-  run({ url, instanceId, apiVersion = 1, options, params = {}, kind = 'fetch', configDir = null, signal, log }) {
+  run({ url, instanceId, apiVersion = 2, options, params = {}, kind = 'fetch', configDir = null, signal, log }) {
     this.#worker ??= this.#spawn();
     const worker = this.#worker;
     const id = ++this.#seq;

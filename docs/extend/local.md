@@ -27,7 +27,7 @@ browser even when someone types the key in directly.
 id: my-nas
 name: My NAS
 version: 1.0.0
-apiVersion: 1
+apiVersion: 2
 description: Free space and running jobs of the NAS.
 options:
   url: { type: url, required: true }     # e.g. http://nas.lan:5000

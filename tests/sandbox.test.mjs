@@ -7,7 +7,7 @@ import { WidgetRuntime } from '../src/plugins/runtime.js';
 import { WidgetSandbox } from '../src/plugins/sandbox.js';
 import { tmpDir, writeWidget, serve } from './helpers.mjs';
 
-const base = { name: 'T', version: '1.0.0', apiVersion: 1 };
+const base = { name: 'T', version: '1.0.0', apiVersion: 2 };
 
 async function setup(id, serverJs, { timeoutMs = 5000, memoryMb, source = 'path', options = {}, secretValues = [] } = {}) {
   const widget = await loadWidget(writeWidget(tmpDir(), { ...base, id, options: { url: { type: 'url' }, key: { type: 'string', secret: true } } }, { 'server.js': serverJs }), { source });
@@ -32,7 +32,7 @@ test('sandbox: the ctx of the API, ctx.cache kept per instance, logs and fetch',
     } };`, { options: { url: api.url, key: 'k3y' } });
   try {
     const first = await get();
-    assert.deepEqual(first.data.blocks.map((b) => b.value), [7, 'k3y', 1, 'false', 1]);
+    assert.deepEqual(first.data.blocks.map((b) => b.value), [7, 'k3y', 1, 'false', 2]);
     assert.equal((await get()).data.blocks[2].value, 2, 'ctx.cache lives on in the worker');
     assert.ok(logs.some((l) => l === 'widget iso: called 1'));
   } finally {

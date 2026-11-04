@@ -29,7 +29,7 @@ without `client.js` is rendered by the dashboard from `blocks`.
 | `id` | yes | Lowercase letters, digits and dashes, max 63. Used as `type:` in the config and as `dash-<id>` element name. |
 | `name` | yes | Human-readable name. |
 | `version` | yes | A string, e.g. `"1.2.0"`. Installed as `plugins/<id>@<version>`. |
-| `apiVersion` | yes | The widget API this package targets: `2` (or `1`, see [API 1](#api-1)). |
+| `apiVersion` | yes | The widget API this package targets: `2`. A widget of API 1 is not loaded; see [API 1](#api-1). |
 | `description` | no | One line, for docs and catalogues. |
 | `refresh` | no | Cache time of a result: `500ms`, `10s`, `5m`, `1h` or seconds. Default `30s`. The browser polls at this rate (minimum 2 s). |
 | `options` | no | Map of option name to schema (below). |
@@ -128,7 +128,7 @@ not stop within a second after its timeout gets the worker restarted.
 
 | Field | Meaning |
 |---|---|
-| `ctx.apiVersion` | the widget's `apiVersion`, `2` or `1` |
+| `ctx.apiVersion` | the widget's `apiVersion`: `2` |
 | `ctx.instanceId` | Stable id of this instance (group + service + position). |
 | `ctx.options` | Validated options, secrets included. A copy: changing it has no effect. |
 | `ctx.fetch(url, init)` | The standard `fetch`, plus: relative URLs resolve against `options.url`; the call is aborted with the widget; `init.socketPath` sends the request over a unix socket (used for Docker); `init.insecure: true` accepts a self-signed certificate for that request (only behind an option the user sets, off by default); `init.tls: { ca, cert, key }` (PEM text) trusts that CA and sends that client certificate, as for a Docker daemon with `--tlsverify`. `res.headers.getSetCookie()` lists every cookie. |
@@ -215,10 +215,11 @@ Theme CSS variables inherit into the shadow root: `--dash-text`, `--dash-muted`,
 
 ### API 1
 
-A widget with `apiVersion: 1` keeps working: the dashboard names its element `hd-<id>`, listens
-for its events by their old names (`hd-widget-action`, `hd-widget-params`, `hd-search-input`,
-`hd-search-submit`), gives it every theme property as `--hd-*` too, and marks its `icon` options
-with `#hd-mask`. Everything else is the same in both versions.
+The dashboard no longer loads a widget with `apiVersion: 1`; the configuration messages name it.
+API 2 renamed the page's names and changed nothing else, so moving a widget over is renaming: set
+`apiVersion: 2`, and in its `client.js` the element `hd-<id>` becomes `dash-<id>`, the events
+`hd-widget-action`, `hd-widget-params`, `hd-search-input` and `hd-search-submit` become `dash-…`,
+the theme properties `--hd-*` become `--dash-*` and the icon marker `#hd-mask` becomes `#dash-mask`.
 
 The page's Content-Security-Policy allows `connect-src 'self'`: get data through `server.js`, not
 from the browser. Images may come from anywhere.
@@ -260,6 +261,7 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 
 | API | Dashboard | Change |
 |---|---|---|
+| 2 | next | API 1 is no longer supported: such a widget is not loaded, with a message that says what to rename. |
 | 2 | next | The names of the page: the element `dash-<id>`, the events `dash-widget-action`, `dash-widget-params`, `dash-search-input` and `dash-search-submit`, the theme properties `--dash-*` and the icon marker `#dash-mask`. Nothing else changed: a widget of API 1 goes to 2 by renaming them. |
 | 1 | 0.1.0 | First version (including `vars`, row `status` and `defaultFields`). |
 | 1 | 0.8.0 | `action(ctx)` in server.js, `ctx.configDir`, the `hd-widget-action` event and the element's `busy`; `POST api/widgets/<instanceId>/action`. |

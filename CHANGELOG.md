@@ -4,6 +4,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Removed (breaking)
+- Widget API 1. A widget with `apiVersion: 1` is no longer loaded; the configuration messages
+  name it and what to change: `apiVersion: 2`, and `hd-` to `dash-` in its `client.js` (element,
+  events, `--hd-*` properties, `#hd-mask`). Every widget of the collection is on API 2 since its
+  0.13.0, as is the widget example.
+
 ### Added
 - After a button's action the other widgets and status labels on its card ask again, dimmed
   until they answer: right away, and after 5 and 30 seconds. A button that updates containers

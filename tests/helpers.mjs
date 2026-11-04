@@ -40,7 +40,7 @@ export async function serve(handler, { socketPath } = {}) {
 /** A minimal ctx for calling a widget's fetch() directly in tests. */
 export function fakeCtx(options, overrides = {}) {
   return {
-    apiVersion: 1,
+    apiVersion: 2,
     instanceId: 'test',
     options,
     signal: new AbortController().signal,

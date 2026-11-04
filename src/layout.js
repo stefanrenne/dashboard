@@ -153,8 +153,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const { own, options: widgetOptions } = splitInstanceKeys(widget.manifest.options, withConnection(widget.id, rawOptions, where));
     if (own.provider !== undefined) applyProvider(widget.manifest.options, String(own.provider), widgetOptions, where, type);
     const { options, publicOptions, errors: optionErrors } = validateOptions(widget.manifest.options, widgetOptions, secrets);
-    // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #dash-mask;
-    // a widget of API 1 gets its old name, #hd-mask)
+    // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #dash-mask)
     for (const [name, def] of Object.entries(widget.manifest.options)) {
       if (def.type !== 'icon' || options[name] === undefined) continue;
       const url = resolveIcon(options[name]);
@@ -163,9 +162,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         delete options[name];
         delete publicOptions[name];
       } else {
-        const marked = widget.manifest.apiVersion >= 2 ? url : url.replace('#dash-mask', '#hd-mask');
-        options[name] = marked;
-        if (name in publicOptions) publicOptions[name] = marked;
+        options[name] = url;
+        if (name in publicOptions) publicOptions[name] = url;
       }
     }
     // widget.yaml `frames`: the origins of these (public) options are allowed in frame-src
@@ -392,7 +390,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     widgetTypes[type] = {
       name: widget.manifest.name,
       version: widget.manifest.version,
-      // the page names its element and events after it: dash-<id> (2) or hd-<id> (1)
       apiVersion: widget.manifest.apiVersion,
       source: widget.source,
       // relative, so the page also works under settings.base

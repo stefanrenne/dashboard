@@ -198,7 +198,7 @@ export class WidgetRuntime {
     if (!this.stores.has(instanceId)) this.stores.set(instanceId, new Map());
     const log = this.#log(instance);
     return Object.freeze({
-      apiVersion: instance.apiVersion ?? 1,
+      apiVersion: instance.apiVersion ?? 2,
       instanceId,
       options: structuredClone(instance.options),
       params: Object.freeze({ ...params }),

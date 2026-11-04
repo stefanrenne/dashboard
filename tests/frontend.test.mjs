@@ -195,7 +195,7 @@ test('groups fold and unfold, remember it per viewer, and open while searching',
   assert.equal(section.classList.contains('collapsed'), false);
   assert.deepEqual(JSON.parse(w.localStorage.getItem('dash-collapsed')), { Network: false });
   toggle.click();
-  doc.dispatchEvent(new w.CustomEvent('hd-search-input', { detail: { query: 'router' } }));
+  doc.dispatchEvent(new w.CustomEvent('dash-search-input', { detail: { query: 'router' } }));
   assert.ok(doc.getElementById('groups').classList.contains('searching'), 'search looks inside folded groups');
   assert.equal(doc.querySelector('[data-group="Hidden title"] .group-toggle'), null, 'no toggle without a visible header');
   w.close();
@@ -242,18 +242,18 @@ test('search events filter services, and Enter with one match opens it', async (
   const w = await page();
   const doc = w.document;
   const send = (name, query) => doc.dispatchEvent(new w.CustomEvent(name, { detail: { query }, cancelable: true }));
-  send('hd-search-input', 'rout');
+  send('dash-search-input', 'rout');
   const visible = () => [...doc.querySelectorAll('.card')].filter((c) => !c.hidden).map((c) => c.dataset.name);
   assert.deepEqual(visible(), ['Router']);
   assert.equal(doc.querySelector('[data-group="Hidden title"]').hidden, true, 'groups without matches disappear');
   assert.equal(doc.getElementById('search-status').textContent, '1 services gevonden');
   let opened = null;
   doc.querySelector('[data-service="svc-1"] a').addEventListener('click', (e) => { e.preventDefault(); opened = 'router'; });
-  assert.equal(send('hd-search-submit', 'rout'), false, 'the dashboard handled it');
+  assert.equal(send('dash-search-submit', 'rout'), false, 'the dashboard handled it');
   assert.equal(opened, 'router');
-  assert.equal(send('hd-search-submit', 'zzz'), true, 'no match: the widget searches the web');
+  assert.equal(send('dash-search-submit', 'zzz'), true, 'no match: the widget searches the web');
   assert.equal(doc.getElementById('search-status').textContent, 'Geen services gevonden');
-  send('hd-search-input', '');
+  send('dash-search-input', '');
   assert.equal(visible().length, 4);
   w.close();
 });
@@ -681,45 +681,40 @@ test('quicklaunch shows search suggestions with showSearchSuggestions', async ()
 });
 
 
-test('widget API 2: dash-widget-params and dash-search-*, API 1 keeps hd-*; v1 reads --hd-* aliases', async () => {
-  const layout = structuredClone(LAYOUT);
-  layout.widgetTypes.resources = { ...layout.widgetTypes.resources, apiVersion: 2 };
+test('widget API 2 only: dash-widget-params and dash-search-*; the hd-* names and --hd-* properties are gone', async () => {
   const calls = [];
-  const w = await page({ ...RESULTS, '/api/layout': layout }, calls);
+  const w = await page(RESULTS, calls);
   const box = w.document.querySelector('[data-service="svc-1"] .widget');
   box.dispatchEvent(new w.CustomEvent('hd-widget-params', { detail: { city: 'old' }, bubbles: true }));
   box.dispatchEvent(new w.CustomEvent('dash-widget-params', { detail: { city: 'new' }, bubbles: true }));
   await new Promise((r) => setTimeout(r, 10));
   assert.ok(calls.includes('api/widgets/w-1?city=new'), calls.join('\n'));
-  assert.ok(!calls.some((c) => c.includes('city=old')), 'an API 2 widget does not listen to hd-*');
-  // the search widget's events, by either name
-  for (const name of ['dash-search-input', 'hd-search-input']) {
-    w.document.dispatchEvent(new w.CustomEvent(name, { detail: { query: 'radarr' } }));
-    assert.equal(w.document.querySelector('[data-service="svc-1"]').hidden, true, name);
-    w.document.dispatchEvent(new w.CustomEvent(name, { detail: { query: '' } }));
-  }
-  // an API 1 widget's shadow DOM reads the old custom property names
+  assert.ok(!calls.some((c) => c.includes('city=old')), 'hd-* is not listened to');
+  w.document.dispatchEvent(new w.CustomEvent('dash-search-input', { detail: { query: 'radarr' } }));
+  assert.equal(w.document.querySelector('[data-service="svc-1"]').hidden, true);
+  w.document.dispatchEvent(new w.CustomEvent('dash-search-input', { detail: { query: '' } }));
+  w.document.dispatchEvent(new w.CustomEvent('hd-search-input', { detail: { query: 'radarr' } }));
+  assert.equal(w.document.querySelector('[data-service="svc-1"]').hidden, false, 'hd-search-input does nothing');
   const css = [...w.document.querySelectorAll('style')].map((s) => s.textContent).join('\n');
-  const aliases = /\.widget \{([^}]*)\}/.exec(css)?.[1] ?? '';
-  for (const name of ['text', 'card', 'card-blur', 'ok', 'error']) assert.ok(aliases.includes(`--hd-${name}: var(--dash-${name});`), name);
+  assert.ok(!css.includes('--hd-'), 'no --hd-* aliases');
 });
 
-test('a widget\'s hd-widget-params makes the page ask again with those params', async () => {
+test('a widget\'s dash-widget-params makes the page ask again with those params', async () => {
   const calls = [];
   const w = await page(RESULTS, calls);
   const box = w.document.querySelector('[data-service="svc-1"] .widget');
-  box.dispatchEvent(new w.CustomEvent('hd-widget-params', { detail: { latitude: '52.37', longitude: '4.89' }, bubbles: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-params', { detail: { latitude: '52.37', longitude: '4.89' }, bubbles: true }));
   await new Promise((r) => setTimeout(r, 10));
   assert.ok(calls.includes('api/widgets/w-1?latitude=52.37&longitude=4.89'), calls.join('\n'));
 });
 
-test('hd-widget-action: one POST at a time, then a dialog with how it went, the exit code and the output', async () => {
+test('dash-widget-action: one POST at a time, then a dialog with how it went, the exit code and the output', async () => {
   const calls = [];
   const results = { ...RESULTS, '/api/widgets/w-1/action': { ok: true, data: { status: 'error', output: 'line 1\n<b>line 2</b>', exitCode: 3 } } };
   const w = await page(results, calls);
   const box = w.document.querySelector('[data-service="svc-1"] .widget');
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag' } }));
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag' } }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag' } }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag' } }));
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(calls.filter((c) => c.endsWith('/action')).length, 1, 'a second press while it runs is ignored');
   const dialog = w.document.querySelector('dialog.action-result');
@@ -734,13 +729,13 @@ test('hd-widget-action: one POST at a time, then a dialog with how it went, the 
   assert.equal(w.document.querySelector('dialog.action-result'), null, 'Close removes it');
 
   results['/api/widgets/w-1/action'] = { ok: true, data: { status: 'ok', exitCode: 0 } };
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   await new Promise((r) => setTimeout(r, 20));
   const ok = w.document.querySelector('dialog.action-result');
   assert.equal(ok.querySelector('.status').textContent, 'Router: klaar · Exitcode 0', 'no title: the service name');
   assert.equal(ok.querySelector('.empty').textContent, 'Geen uitvoer');
   results['/api/widgets/w-1/action'] = { ok: false, busy: true, error: 'already running' };
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(w.document.querySelectorAll('dialog.action-result').length, 1, 'one dialog at a time');
   assert.equal(w.document.querySelector('dialog.action-result .status').textContent, 'Router mislukt: het draait nog');
@@ -754,7 +749,7 @@ test('after a button\'s action the other widgets and status labels on its card a
   const card = w.document.querySelector('[data-service="svc-3"]');
   const [own, ...others] = card.querySelectorAll(':scope > .widget');
   const before = calls.length;
-  own.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  own.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   assert.ok(others.every((b) => b.classList.contains('settling')), 'the other widgets dim while it runs');
   assert.ok(card.querySelector('.tags').classList.contains('settling'), 'the status labels too');
   assert.ok(!own.classList.contains('settling'), 'the button itself shows busy');
@@ -766,7 +761,7 @@ test('after a button\'s action the other widgets and status labels on its card a
   // busy: nothing changed, nothing to ask
   results['/api/widgets/w-3/action'] = { ok: false, busy: true, error: 'already running' };
   const again = calls.length;
-  own.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  own.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   await new Promise((r) => setTimeout(r, 30));
   assert.deepEqual(calls.slice(again), ['api/widgets/w-3/action']);
   w.close();
@@ -778,7 +773,7 @@ test('the action dialog copies the output to the clipboard, and has no copy butt
   const copied = [];
   Object.defineProperty(w.navigator, 'clipboard', { value: { writeText: async (t) => { copied.push(t); } }, configurable: true });
   const box = w.document.querySelector('[data-service="svc-1"] .widget');
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   await new Promise((r) => setTimeout(r, 20));
   const copy = w.document.querySelector('dialog.action-result .output .copy');
   assert.equal(copy.getAttribute('aria-label'), 'Uitvoer kopiëren', 'an icon in the output block, with a name');
@@ -790,18 +785,18 @@ test('the action dialog copies the output to the clipboard, and has no copy butt
   w.document.querySelector('dialog.action-result .close').click();
 
   results['/api/widgets/w-1/action'] = { ok: true, data: { status: 'ok', exitCode: 0 } };
-  box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(w.document.querySelector('dialog.action-result .copy'), null, 'nothing to copy');
   w.close();
 });
 
-test('hd-widget-action with showResult failure: no toast or dialog on success, the dialog on failure', async () => {
+test('dash-widget-action with showResult failure: no toast or dialog on success, the dialog on failure', async () => {
   const calls = [];
   const results = { ...RESULTS, '/api/widgets/w-1/action': { ok: true, data: { status: 'ok', output: 'fine', exitCode: 0 } } };
   const w = await page(results, calls);
   const box = w.document.querySelector('[data-service="svc-1"] .widget');
-  const press = () => box.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag', showResult: 'failure' } }));
+  const press = () => box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true, detail: { title: 'Gen Swag', showResult: 'failure' } }));
   press();
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(calls.filter((c) => c.endsWith('/action')).length, 1);

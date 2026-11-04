@@ -233,7 +233,7 @@ test('app, namespace and podSelector: a pods status label, as in homepage; exter
 
 test('service_group and service_name pull another service\'s widget options in, on the server only', async () => {
   const dir = tmpDir('hd-refs-');
-  writeWidget(dir, { id: 'agenda', name: 'Agenda', version: '1.0.0', apiVersion: 1, options: { integrations: { type: 'list', secret: true } } },
+  writeWidget(dir, { id: 'agenda', name: 'Agenda', version: '1.0.0', apiVersion: 2, options: { integrations: { type: 'list', secret: true } } },
     { 'server.js': 'export default { fetch: (ctx) => ({ blocks: [{ label: "n", value: JSON.stringify(ctx.options.integrations) }] }) };' });
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${dir}\n`,
@@ -297,7 +297,7 @@ test('refreshInterval, fields and hide_errors belong to the dashboard, not the w
 test('without fields, a widget shows its defaultFields; fields in the entry win', async () => {
   const dir = path.join(tmpDir('hd-df-'), 'df');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: df\nname: DF\nversion: 1.0.0\napiVersion: 1\ndefaultFields: [a, c]\n');
+  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: df\nname: DF\nversion: 1.0.0\napiVersion: 2\ndefaultFields: [a, c]\n');
   fs.writeFileSync(path.join(dir, 'server.js'), 'export default { async fetch() { return { blocks: [{ key: "a", label: "A", value: 1 }, { key: "b", label: "B", value: 2 }, { key: "c", label: "C", value: 3 }] } } }');
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${dir}\n`,
@@ -985,7 +985,7 @@ test('homepage\'s widget names work as aliases: type customapi is the custom-api
 
 test('a widget action: POST with the header, one at a time, secrets scrubbed, 404 without one', async () => {
   const plugin = path.join(tmpDir('hd-act-'), 'act');
-  writeWidget(plugin, { id: 'act', name: 'Act', version: '1.0.0', apiVersion: 1, options: { key: { type: 'string', secret: true }, wait: { type: 'number' } } }, {
+  writeWidget(plugin, { id: 'act', name: 'Act', version: '1.0.0', apiVersion: 2, options: { key: { type: 'string', secret: true }, wait: { type: 'number' } } }, {
     'server.js': `export default {
   async fetch() { return { blocks: [] }; },
   async action(ctx) {
@@ -1059,7 +1059,7 @@ test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSIO
 test('filter: bound to the service\'s widgets in /api/layout; mistakes and secrets are messages', async () => {
   const dir = path.join(tmpDir('hd-attr-'), 'attr');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: attr\nname: Attr\nversion: 1.0.0\napiVersion: 1\nattributes:\n  update: { type: boolean }\n');
+  fs.writeFileSync(path.join(dir, 'widget.yaml'), 'id: attr\nname: Attr\nversion: 1.0.0\napiVersion: 2\nattributes:\n  update: { type: boolean }\n');
   fs.writeFileSync(path.join(dir, 'server.js'), 'export default { async fetch() { return { blocks: [], attributes: { update: false } } } }');
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${dir}\n`,
@@ -1106,10 +1106,10 @@ test('a widget\'s own filter: bound like the service\'s, taken out of its option
   const own = path.join(root, 'own');
   fs.mkdirSync(attr, { recursive: true });
   fs.mkdirSync(own, { recursive: true });
-  fs.writeFileSync(path.join(attr, 'widget.yaml'), 'id: attr\nname: Attr\nversion: 1.0.0\napiVersion: 1\nattributes:\n  updates: { type: number }\n');
+  fs.writeFileSync(path.join(attr, 'widget.yaml'), 'id: attr\nname: Attr\nversion: 1.0.0\napiVersion: 2\nattributes:\n  updates: { type: number }\n');
   fs.writeFileSync(path.join(attr, 'server.js'), 'export default { async fetch() { return { blocks: [], attributes: { updates: 2 } } } }');
   // a widget with an option named filter keeps it
-  fs.writeFileSync(path.join(own, 'widget.yaml'), 'id: own\nname: Own\nversion: 1.0.0\napiVersion: 1\noptions:\n  filter: { type: boolean }\n');
+  fs.writeFileSync(path.join(own, 'widget.yaml'), 'id: own\nname: Own\nversion: 1.0.0\napiVersion: 2\noptions:\n  filter: { type: boolean }\n');
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${attr}\n  - path: ${own}\n`,
     'services.yaml': [
@@ -1143,7 +1143,7 @@ test('a widget\'s own filter: bound like the service\'s, taken out of its option
   }
 });
 
-test('widget API 2 next to 1: icon options marked #dash-mask or #hd-mask, ctx.apiVersion the widget\'s own', async () => {
+test('widget API 2 only: an API 1 widget is refused with what to change; icons marked #dash-mask, ctx.apiVersion 2', async () => {
   const root = tmpDir('dash-api-');
   for (const v of [1, 2]) {
     const dir = path.join(root, `v${v}`);
@@ -1158,13 +1158,12 @@ test('widget API 2 next to 1: icon options marked #dash-mask or #hd-mask, ctx.ap
   try {
     const layout = await t.json('/api/layout');
     const [one, two] = layout.groups[0].services.map((s) => s.widgets[0]);
-    assert.match(one.options.icon, /home\.svg#hd-mask$/, 'API 1: the old marker');
-    assert.match(two.options.icon, /home\.svg#dash-mask$/, 'API 2: the new marker');
-    assert.deepEqual([layout.widgetTypes.v1.apiVersion, layout.widgetTypes.v2.apiVersion], [1, 2]);
-    for (const [w, v] of [[one, 1], [two, 2]]) {
-      const result = await t.json(`/api/widgets/${w.instanceId}`);
-      assert.equal(result.data.blocks[0].value, v, `ctx.apiVersion ${v}`);
-    }
+    assert.equal(one.known, false, 'API 1 is not loaded');
+    const message = layout.messages.errors.map((m) => m.message).join('\n');
+    assert.match(message, /widget "v1" is written for widget API 1.*apiVersion: 2.*hd- to dash-/, message);
+    assert.match(two.options.icon, /home\.svg#dash-mask$/);
+    assert.equal(layout.widgetTypes.v2.apiVersion, 2);
+    assert.equal((await t.json(`/api/widgets/${two.instanceId}`)).data.blocks[0].value, 2, 'ctx.apiVersion');
   } finally {
     await t.close();
   }

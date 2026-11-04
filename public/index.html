@@ -190,8 +190,6 @@
 
   /* widget content */
   .widget:empty { display: none; }
-  /* a widget of API 1 reads the custom properties by their old names (--hd-*) */
-  .widget { --hd-accent: var(--dash-accent); --hd-bg: var(--dash-bg); --hd-block: var(--dash-block); --hd-border: var(--dash-border); --hd-card: var(--dash-card); --hd-card-blur: var(--dash-card-blur); --hd-card-border: var(--dash-card-border); --hd-card-hover: var(--dash-card-hover); --hd-error: var(--dash-error); --hd-error-bg: var(--dash-error-bg); --hd-heading: var(--dash-heading); --hd-icon-from: var(--dash-icon-from); --hd-icon-to: var(--dash-icon-to); --hd-muted: var(--dash-muted); --hd-ok: var(--dash-ok); --hd-shadow: var(--dash-shadow); --hd-tab: var(--dash-tab); --hd-text: var(--dash-text); --hd-warn: var(--dash-warn); }
   .blocks { display: flex; flex-wrap: wrap; }
   .block { flex: 1 1 0; min-width: 64px; margin: 4px; padding: 4px; border-radius: 4px; background: var(--dash-block);
     display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 44px; }
@@ -827,12 +825,10 @@ function mountWidget(instance, extraClass, name, onResult) {
       custom.data = result.ok ? result.data : null;
     } else if (!type.client) renderResult(box, instance, result, name);
   };
-  // API 2 names the element and its events dash-*, API 1 hd-*
-  const prefix = (type.apiVersion ?? 1) >= 2 ? 'dash' : 'hd';
   if (type.client) {
     if (!clientModules.has(instance.type)) clientModules.set(instance.type, import(type.client));
     clientModules.get(instance.type).then(() => {
-      custom = document.createElement(`${prefix}-${instance.type}`);
+      custom = document.createElement(`dash-${instance.type}`);
       custom.options = instance.options;
       custom.instanceId = instance.instanceId;
       custom.t = widgetT(instance.type);
@@ -847,13 +843,13 @@ function mountWidget(instance, extraClass, name, onResult) {
   if (instance.server) {
     const run = poll(instance, apply);
     // a client.js sends dash-widget-params (e.g. the viewer's location) for its server.js
-    box.addEventListener(`${prefix}-widget-params`, (e) => {
+    box.addEventListener('dash-widget-params', (e) => {
       e.stopPropagation();
       instance.params = Object.fromEntries(Object.entries(e.detail ?? {}).map(([k, v]) => [k, String(v)]));
       run();
     });
     // a client.js sends dash-widget-action (a button press): server.js's action runs, the result shows in a dialog
-    box.addEventListener(`${prefix}-widget-action`, (e) => {
+    box.addEventListener('dash-widget-action', (e) => {
       e.stopPropagation();
       const title = typeof e.detail?.title === 'string' && e.detail.title ? e.detail.title : name || widgetName(instance.type);
       runWidgetAction(instance, custom, title, e.detail?.showResult === 'failure' ? 'failure' : 'always', box);
@@ -1726,7 +1722,7 @@ function filterServices(query) {
   return matches;
 }
 
-// a search widget's events: dash-search-* (API 2) or hd-search-* (API 1)
+// a search widget's events
 const onSearchSubmit = (e) => {
   // One service left: open it instead of searching the web.
   const matches = filterServices(e.detail && e.detail.query);
@@ -1735,10 +1731,8 @@ const onSearchSubmit = (e) => {
   e.preventDefault();
   link.click();
 };
-for (const prefix of ['dash', 'hd']) {
-  document.addEventListener(`${prefix}-search-input`, (e) => filterServices(e.detail && e.detail.query));
-  document.addEventListener(`${prefix}-search-submit`, onSearchSubmit);
-}
+document.addEventListener('dash-search-input', (e) => filterServices(e.detail && e.detail.query));
+document.addEventListener('dash-search-submit', onSearchSubmit);
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) for (const p of pollers) p.run();

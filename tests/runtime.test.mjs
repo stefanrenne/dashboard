@@ -6,7 +6,7 @@ import { validateOptions } from '../src/plugins/options.js';
 import { WidgetRuntime, blockAttributes, checkData, scrub, selectAttributes, widgetFetch } from '../src/plugins/runtime.js';
 import { tmpDir, writeWidget, silentLog, serve, COLLECTION_WIDGETS } from './helpers.mjs';
 
-const base = { name: 'T', version: '1.0.0', apiVersion: 1 };
+const base = { name: 'T', version: '1.0.0', apiVersion: 2 };
 
 test('a broken manifest names every problem', () => {
   const dir = writeWidget(tmpDir(), { id: 'Bad Id', apiVersion: 'one', options: { x: { type: 'color' } } });
@@ -22,7 +22,9 @@ test('frames: only url options of the widget', () => {
 
 test('an unsupported apiVersion is refused with a clear message', async () => {
   const dir = writeWidget(tmpDir(), { ...base, id: 'future', apiVersion: 99 });
-  await assert.rejects(loadWidget(dir), /needs widget API 99, this dashboard supports 1/);
+  await assert.rejects(loadWidget(dir), /needs widget API 99, this dashboard supports 2/);
+  const old = writeWidget(tmpDir(), { ...base, id: 'old', apiVersion: 1 });
+  await assert.rejects(loadWidget(old), /written for widget API 1, which this dashboard no longer supports: set apiVersion: 2/);
 });
 
 test('server.js must export a fetch function', async () => {
@@ -222,7 +224,7 @@ test('registry: aliases point to the same widget, after every id, and never take
   const root = tmpDir('hd-alias-');
   const make = (id, aliases) => {
     fs.mkdirSync(path.join(root, id));
-    fs.writeFileSync(path.join(root, id, 'widget.yaml'), `id: ${id}\nname: ${id}\nversion: 1.0.0\napiVersion: 1\naliases: ${JSON.stringify(aliases)}\noptions: {}\n`);
+    fs.writeFileSync(path.join(root, id, 'widget.yaml'), `id: ${id}\nname: ${id}\nversion: 1.0.0\napiVersion: 2\naliases: ${JSON.stringify(aliases)}\noptions: {}\n`);
     return { dir: path.join(root, id), source: `path:${id}` };
   };
   const { widgets, errors } = await loadRegistry({ builtinDir: COLLECTION_WIDGETS, external: [make('acme', ['acme_console', 'ping']), make('other', [])] });

@@ -11,7 +11,7 @@ import { checkSchema } from './options.js';
 import { parseDuration, isPlainObject } from '../util.js';
 
 /** Widget API versions this core can run. Never drop one without a major release. */
-export const SUPPORTED_API_VERSIONS = [1, 2];
+export const SUPPORTED_API_VERSIONS = [2];
 export const DEFAULT_REFRESH_MS = 30_000;
 export const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
@@ -88,6 +88,12 @@ export function checkAttributes(attributes) {
  */
 export async function loadWidget(dir, { source = 'builtin' } = {}) {
   const manifest = readManifest(dir);
+  if (manifest.apiVersion === 1) {
+    throw new Error(
+      `widget "${manifest.id}" is written for widget API 1, which this dashboard no longer supports: ` +
+        'set apiVersion: 2 and rename hd- to dash- in its client.js (element, events, --hd-* properties)',
+    );
+  }
   if (!SUPPORTED_API_VERSIONS.includes(manifest.apiVersion)) {
     throw new Error(
       `widget "${manifest.id}" needs widget API ${manifest.apiVersion}, ` +
