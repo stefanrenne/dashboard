@@ -8,13 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Critical: one request crashes the dashboard.** `src/app.js` calls
-  `decodeURIComponent(url.pathname)` before the handler's `try`, so a path with a broken escape
-  (`GET /%E0%A4%A`) throws outside it; the rejection is unhandled and Node ends the process.
-  Anyone who can reach the port (or the reverse proxy in front of it) takes the dashboard down,
-  and keeps it down by repeating it. Verified: the server exits on that one request. Fix: decode
-  inside the `try` and answer 400 on a `URIError`; add a test; consider a
-  `process.on('unhandledRejection')` that logs instead of exiting, as a last line.
 - [ ] **High: a Docker label (or Kubernetes annotation) can run commands on the dashboard.**
   Discovery passes every `dashboard.widget.*` / `homepage.widget.*` label into the widget's
   options, so `dashboard.widget.type=button` with `dashboard.widget.command=…` (and

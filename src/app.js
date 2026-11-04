@@ -259,8 +259,16 @@ export async function createApp({
       log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in DASHBOARD_ALLOWED_HOSTS)`);
       return send(res, 403, 'Host not allowed; add it to DASHBOARD_ALLOWED_HOSTS', 'text/plain; charset=utf-8');
     }
-    const url = new URL(req.url, 'http://localhost');
-    const p = decodeURIComponent(url.pathname);
+    // A request target that is no URL, or a path with a broken escape (/%E0%A4%A), is the
+    // client's mistake: 400, never an exception outside the try below (it would end the process).
+    let url;
+    let p;
+    try {
+      url = new URL(req.url, 'http://localhost');
+      p = decodeURIComponent(url.pathname);
+    } catch {
+      return send(res, 400, { error: 'bad request' });
+    }
     // HEAD is answered like GET (status checks of this dashboard use it); Node drops the body.
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     try {

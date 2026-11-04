@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+- **Security:** a request with a broken path (`/%E0%A4%A`) or a request target that is no URL
+  ended the dashboard's process, so anyone who could reach it could take it down. Such a request
+  is now a 400, and no failing request can end the process any more.
+
 ## [0.20.0] - 2026-11-04
 
 ### Added

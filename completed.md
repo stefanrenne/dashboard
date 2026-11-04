@@ -87,3 +87,4 @@ Finished work, newest first.
 - 2026-11-02: Widget images on the docs site in the light appearance, as the docs theme.
 - 2026-11-02: Widget example repo release v1.2.0 (Reset button, attributes `value` and `full`).
 - 2026-11-02: A filter per widget: `filter:` on a service widget hides that widget (an update button only while there are updates); bound and checked like the service filter.
+- 2026-11-04: Security: a broken request path or target is a 400 instead of ending the process; server.js catches every failing request.

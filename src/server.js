@@ -21,7 +21,14 @@ const configDir = path.resolve(values.config);
 const log = createLogger(); // stdout, and a file when settings.yaml has logpath
 
 const app = await createApp({ configDir, log, watch: true });
-const server = http.createServer(app.handler);
+// the last line of defence: a request that fails is answered and logged, never ends the process
+const server = http.createServer((req, res) => {
+  app.handler(req, res).catch((err) => {
+    log.error(`${req.method} ${String(req.url).slice(0, 200)}: ${err.stack ?? err}`);
+    if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ error: 'internal error' }));
+  });
+});
 server.listen(Number(values.port), values.host, () => {
   log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
 });

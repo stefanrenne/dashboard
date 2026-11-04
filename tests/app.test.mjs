@@ -1122,3 +1122,31 @@ test('widget API 2 next to 1: icon options marked #dash-mask or #hd-mask, ctx.ap
     await t.close();
   }
 });
+
+test('a broken request target is a 400, and the dashboard keeps answering', async () => {
+  const net = await import('node:net');
+  const t = await startApp({});
+  const server = http.createServer((req, res) => {
+    t.app.handler(req, res).catch(() => {});
+  });
+  // the handler alone, without server.js's catch: it must not throw for these
+  const raw = (target) => new Promise((resolve) => {
+    const { port } = server.address();
+    const sock = net.connect(port, '127.0.0.1', () => sock.write(`GET ${target} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`));
+    let out = '';
+    sock.on('data', (c) => (out += c));
+    sock.on('close', () => resolve(out.split('\r\n')[0]));
+    sock.on('error', () => resolve('error'));
+    sock.setTimeout(2000, () => { resolve('no answer'); sock.destroy(); });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  try {
+    assert.equal(await raw('/%E0%A4%A'), 'HTTP/1.1 400 Bad Request', 'a broken escape');
+    assert.equal(await raw('/api/widgets/%ZZ'), 'HTTP/1.1 400 Bad Request');
+    assert.match(await raw('http://[/'), /^HTTP\/1\.1 400 /, 'an absolute target that is no URL');
+    assert.equal(await raw('/api/health'), 'HTTP/1.1 200 OK', 'still answering');
+  } finally {
+    server.close();
+    await t.close();
+  }
+});
