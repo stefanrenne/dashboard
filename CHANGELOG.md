@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-04
+
 ### Added
 - The icon name `dashboard` shows Dashboard's own mark, built in: for a service, a bookmark, a
   group, `favicon` or a widget's icon option.
