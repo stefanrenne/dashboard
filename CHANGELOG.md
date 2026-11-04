@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-04
+
 ### Fixed
 - **Security:** a request with a broken path (`/%E0%A4%A`) or a request target that is no URL
   ended the dashboard's process, so anyone who could reach it could take it down. Such a request
