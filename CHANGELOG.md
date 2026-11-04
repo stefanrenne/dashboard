@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-04
+
 ### Changed (breaking)
 - **Security:** host names are checked by default. Without `DASHBOARD_ALLOWED_HOSTS` the dashboard
   answers `localhost` and IP addresses only; a host name (also the one a reverse proxy passes
