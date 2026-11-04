@@ -10,6 +10,7 @@ import { stableId, parseDuration, isPlainObject } from './util.js';
 import { DEFAULT_LEVELS } from './highlight.js';
 import { parseFilter, bindFilter, filterRefs } from './filter.js';
 import { k8sConnection } from './discovery/kubeconfig.js';
+import { MARK } from './mark.js';
 
 /**
  * Keys of a widget entry that belong to the dashboard, not to the widget (unless the
@@ -39,11 +40,14 @@ export const SELFHST_ICONS = 'https://cdn.jsdelivr.net/gh/selfhst/icons';
  * `plex.svg` / `plex.png` / `plex.webp` -> dashboard-icons CDN, a bare `plex` -> its png
  * (as in homepage), `si-plex` -> Simple Icons, `mdi-flask` -> Material Design Icons (both with
  * an optional colour, `mdi-flask-#f0d453`), `sh-plex` / `sh-plex.svg` -> selfh.st icons,
- * `/icons/x.svg` -> the config's icons folder, `http(s)://...` as is. Anything else has no image.
+ * `/icons/x.svg` -> the config's icons folder, `http(s)://...` as is, `dashboard` -> Dashboard's own
+ * mark (src/mark.js). Anything else has no image.
  */
 export function resolveIcon(icon) {
   if (!icon) return null;
   if (/^https?:\/\//.test(icon) || icon.startsWith('/icons/')) return icon;
+  // Dashboard's own mark, built in
+  if (icon === 'dashboard') return MARK;
   // Single-colour icons (Material Design, Simple Icons) are drawn as a mask in the page; the
   // #dash-mask fragment says so, with an optional colour (homepage's mdi-name-#f0d453).
   const mono = /^(mdi|si)-([a-z0-9][a-z0-9-]*?)(?:-#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8}))?$/i.exec(icon);

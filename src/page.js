@@ -5,6 +5,9 @@
 // (hard rule 1); nothing else is templated.
 
 import { resolveIcon } from './layout.js';
+import { MARK } from './mark.js';
+
+export { MARK };
 
 // Shade 800 of each colour palette (PALETTES in index.html; a test keeps them equal): the
 // manifest's theme and background colour, as the dark theme shows it.
@@ -18,8 +21,6 @@ export const SHADE_800 = {
 /** An icon URL without the page's #dash-mask marker, and /icons/… relative (for settings.base). */
 const plainIcon = (icon) => resolveIcon(icon)?.split('#')[0].replace(/^\/icons\//, 'icons/') ?? null;
 
-// Dashboard's mark (docs/images/logo.svg): the favicon and app icon unless settings.favicon names another
-export const MARK = `data:image/svg+xml,${encodeURIComponent("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 48 48\" fill=\"#0ea5e9\"><rect x=\"6\" y=\"6\" width=\"16\" height=\"16\" rx=\"4\"/><rect x=\"26\" y=\"6\" width=\"16\" height=\"10\" rx=\"4\" opacity=\".55\"/><rect x=\"26\" y=\"20\" width=\"16\" height=\"22\" rx=\"4\"/><rect x=\"6\" y=\"26\" width=\"16\" height=\"16\" rx=\"4\" opacity=\".55\"/></svg>")}`;
 
 const scrub = (value, secrets) => [...secrets].reduce((s, secret) => s.split(secret).join('***'), String(value));
 

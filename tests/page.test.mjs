@@ -17,6 +17,7 @@ test('renderIndex: title, description and favicon in the head, escaped', () => {
 test('renderIndex: favicon as a dashboard-icons name or a config icon, the mark when unset', () => {
   assert.match(renderIndex(HTML, { title: 'x', favicon: 'proxmox.svg' }), /<link rel="icon" href="https:\/\/cdn\.jsdelivr\.net\/[^"]+\/svg\/proxmox\.svg">/);
   assert.match(renderIndex(HTML, { title: 'x', favicon: '/icons/lab.png' }), /<link rel="icon" href="icons\/lab\.png">/);
+  assert.ok(renderIndex(HTML, { title: 'x', favicon: 'dashboard' }).includes(`<link rel="icon" href="${MARK}">`), 'favicon: dashboard');
   const plain = renderIndex(HTML, { title: 'x' });
   assert.ok(plain.includes(`<link rel="icon" type="image/svg+xml" href="${MARK}">`), 'the mark');
   assert.ok(!plain.includes('name="description"'));

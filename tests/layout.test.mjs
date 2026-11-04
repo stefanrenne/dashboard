@@ -1,11 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveIcon } from '../src/layout.js';
+import { MARK } from '../src/mark.js';
 
 test('icons: names, extensions, Simple Icons, Material Design, selfh.st, colours, local and URLs', () => {
   const base = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons';
   assert.equal(resolveIcon('unraid'), `${base}/png/unraid.png`);
   assert.equal(resolveIcon('plex.svg'), `${base}/svg/plex.svg`);
+  assert.equal(resolveIcon('dashboard'), MARK, 'Dashboard\'s own mark, built in');
+  assert.equal(resolveIcon('dashboard.svg').startsWith('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/'), true, 'only the bare name');
   assert.equal(resolveIcon('si-sonos'), 'https://cdn.jsdelivr.net/npm/simple-icons@v13/icons/sonos.svg#dash-mask');
   assert.equal(resolveIcon('si-sonos-#A712A2'), 'https://cdn.jsdelivr.net/npm/simple-icons@v13/icons/sonos.svg#dash-mask=a712a2');
   assert.equal(resolveIcon('mdi-flask-outline'), 'https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/flask-outline.svg#dash-mask');

@@ -4,6 +4,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- The icon name `dashboard` shows Dashboard's own mark, built in: for a service, a bookmark, a
+  group, `favicon` or a widget's icon option.
+
 ### Changed
 - The docs' Migration section is replaced by a guide for moving from homepage, From homepage under
   Configuration; what changed per version stays in this file.
