@@ -1020,6 +1020,33 @@ test('a widget action: POST with the header, one at a time, secrets scrubbed, 40
   }
 });
 
+test('a widget action refreshes the other widgets on its card, not those elsewhere', async () => {
+  const root = tmpDir('hd-card-');
+  writeWidget(path.join(root, 'cnt'), { id: 'cnt', name: 'Cnt', version: '1.0.0', apiVersion: 2, refresh: '5m' }, {
+    'server.js': 'let n = 0;\nexport default { async fetch() { n += 1; return { blocks: [{ key: "n", label: "n", value: n }] }; } };\n',
+  });
+  writeWidget(path.join(root, 'go'), { id: 'go', name: 'Go', version: '1.0.0', apiVersion: 2 }, {
+    'server.js': 'export default { async fetch() { return { blocks: [] }; }, async action() { return { status: "ok" }; } };\n',
+  });
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${path.join(root, 'cnt')}\n  - path: ${path.join(root, 'go')}\n`,
+    'services.yaml': '- G:\n    - A:\n        widgets:\n          - type: cnt\n          - type: go\n    - B:\n        widget: { type: cnt }\n',
+  });
+  try {
+    const [a, b] = t.app.layout.groups[0].services;
+    const value = async (id) => (await (await t.get(`/api/widgets/${id}`)).json()).data.blocks[0].value;
+    const first = await value(a.widgets[0].instanceId);
+    const other = await value(b.widgets[0].instanceId);
+    assert.equal(await value(a.widgets[0].instanceId), first, 'cached for its refresh');
+    const res = await fetch(`${t.base}/api/widgets/${a.widgets[1].instanceId}/action`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } });
+    assert.equal((await res.json()).data.status, 'ok');
+    assert.ok(await value(a.widgets[0].instanceId) > first, 'the widget on the button\'s card asks again');
+    assert.equal(await value(b.widgets[0].instanceId), other, 'another card keeps its cache');
+  } finally {
+    await t.close();
+  }
+});
+
 test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSION, then package.json', () => {
   const root = tmpDir('hd-version-');
   fs.writeFileSync(path.join(root, 'package.json'), '{ "version": "1.0.0" }');

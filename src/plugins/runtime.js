@@ -10,6 +10,10 @@ export const DEFAULT_TIMEOUT_MS = 10_000;
 export const ACTION_TIMEOUT_MS = 60 * 60 * 1000;
 // what an action shows is cut to this many characters (the end is kept)
 export const ACTION_OUTPUT_MAX = 64 * 1024;
+// After an action, the other instances on its card answer fresh for a while (the page asks right
+// away, after 5 and after 30 seconds): their results are kept this short meanwhile.
+export const SETTLE_MS = 35_000;
+export const SETTLE_CACHE_MS = 4_000;
 export const BLOCK_STATUSES = ['ok', 'warn', 'error', 'unknown'];
 export const SERVICE_STATUSES = ['up', 'down', 'warn', 'unknown'];
 export const ROW_ICONS = ['play', 'pause'];
@@ -32,6 +36,7 @@ export class WidgetRuntime {
     this.instances = new Map(); // instanceId -> { type, options, secretValues, refreshMs }
     this.cache = new Map(); // instanceId -> { result, expires }
     this.pending = new Map(); // instanceId -> Promise
+    this.settling = new Map(); // instanceId -> { round, until }: refreshed after an action on its card
     this.stores = new Map(); // instanceId -> Map for ctx.cache
     this.attributeWarnings = new Set(); // widget types already warned about an attribute they did not declare
   }
@@ -42,6 +47,7 @@ export class WidgetRuntime {
     this.instances = instances;
     this.secrets = [...secrets];
     this.cache.clear();
+    this.settling.clear();
     for (const id of this.stores.keys()) if (!instances.has(id)) this.stores.delete(id);
     this.sandbox?.keep(instances.keys());
   }
@@ -60,13 +66,16 @@ export class WidgetRuntime {
     const cached = this.cache.get(key);
     if (cached && cached.expires > this.now()) return cached.result;
     if (this.pending.has(key)) return this.pending.get(key);
-    const promise = this.#run(instanceId, instance, clean, key).finally(() => this.pending.delete(key));
+    const promise = this.#run(instanceId, instance, clean, key).finally(() => {
+      if (this.pending.get(key) === promise) this.pending.delete(key);
+    });
     this.pending.set(key, promise);
     return promise;
   }
 
   async #run(instanceId, instance, params = {}, key = instanceId) {
     const widget = this.registry.get(instance.type);
+    const round = this.settling.get(instanceId)?.round ?? 0;
     let result;
     if (!widget) {
       result = { ok: false, error: `unknown widget type "${instance.type}"` };
@@ -105,10 +114,13 @@ export class WidgetRuntime {
         controller.abort();
       }
     }
-    if (this.instances.get(instanceId) === instance) {
+    const settling = this.settling.get(instanceId);
+    // a run that began before an action on the card ended may hold the old state: not kept
+    if (this.instances.get(instanceId) === instance && (settling?.round ?? 0) === round) {
       // many viewers' params could pile up: drop what has expired once the cache grows
       if (this.cache.size > 500) for (const [k, v] of this.cache) if (v.expires <= this.now()) this.cache.delete(k);
-      this.cache.set(key, { result, expires: this.now() + instance.refreshMs });
+      const keep = settling && settling.until > this.now() ? Math.min(instance.refreshMs, SETTLE_CACHE_MS) : instance.refreshMs;
+      this.cache.set(key, { result, expires: this.now() + keep });
     }
     return result;
   }
@@ -147,7 +159,30 @@ export class WidgetRuntime {
       clearTimeout(timer);
       controller.abort();
       this.running.delete(instanceId);
+      this.#settleCard(instanceId);
     }
+  }
+
+  /**
+   * An action may have changed what the other instances on its card show (a button that
+   * updates containers, next to the widget counting updates): their cached results go, and for
+   * SETTLE_MS they are kept only SETTLE_CACHE_MS. Returns the ids of those instances.
+   */
+  #settleCard(instanceId) {
+    const card = this.instances.get(instanceId)?.card;
+    if (!card) return [];
+    const now = this.now();
+    const ids = [...this.instances].filter(([id, i]) => id !== instanceId && i.card === card).map(([id]) => id);
+    for (const id of ids) {
+      this.settling.set(id, { round: (this.settling.get(id)?.round ?? 0) + 1, until: now + SETTLE_MS });
+      for (const k of [...this.cache.keys(), ...this.pending.keys()]) {
+        if (k === id || k.startsWith(`${id}?`)) {
+          this.cache.delete(k);
+          this.pending.delete(k);
+        }
+      }
+    }
+    return ids;
   }
 
   #log(instance) {

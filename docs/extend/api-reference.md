@@ -101,7 +101,11 @@ export default {
 Optional. Runs when the widget's `client.js` sends `dash-widget-action` (a button press): the page
 POSTs `api/widgets/<instanceId>/action` and shows the result in a dialog. Same `ctx` as `fetch`;
 `ctx.signal` aborts after an hour at most (keep your own, shorter limit). One action at a time per
-instance: a second press while one runs is refused. The result:
+instance: a second press while one runs is refused. Afterwards the other widgets and status labels
+on the same card ask again, dimmed until they answer: right away, and after 5 and 30 seconds for
+services that take a moment to notice (the server keeps their results 4 seconds meanwhile). So a
+button that updates containers, next to a widget that counts updates, shows the new count. The
+result:
 
 | Field | Meaning |
 |---|---|

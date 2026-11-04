@@ -346,7 +346,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       const target = service.target ?? config.settings.target;
       if (target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '')) actions.set(id, { name: service.name, href: service.href });
       const statuses = statusesFor(group, service, where);
-      return {
+      const card = {
         id,
         name: service.name,
         ...serviceFilter(service, statuses, where),
@@ -364,6 +364,9 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
           return { ...addInstance(stableId('w', group.name, service.name, String(i)), w.type, options, at), ...(filter ? { filter } : {}) };
         }),
       };
+      // which card an instance is on: a button's action refreshes the others on it (runtime.js)
+      for (const w of [...card.statuses, ...card.widgets]) if (instances.has(w.instanceId)) instances.get(w.instanceId).card = id;
+      return card;
     });
 
   // Groups follow the order of the layout block (homepage's sorting); the others come after,

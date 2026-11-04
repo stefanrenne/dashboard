@@ -151,6 +151,8 @@
   .show-filtered .card.filtered { opacity: .55; }
   /* a widget's own filter: always hidden while true; the footer is about whole cards */
   .card .widget.filtered { display: none; }
+  /* the other widgets of a card while its button's action runs, until they have answered again */
+  .card .widget.settling, .card .tags.settling { opacity: .5; transition: opacity .2s; }
   .card { position: relative; margin-bottom: 8px; padding: 4px; border-radius: 6px; background: var(--dash-card); transition: background .15s; min-width: 0;
     border: 1px solid var(--dash-card-border, transparent); }
   .card .names { padding-inline-end: calc(var(--tag-count, 0) * 68px + 8px); } /* keep long names clear of the status labels */
@@ -685,7 +687,10 @@ function applyTheme(settings) {
 
 // ---------------------------------------------------------------- widgets
 const clientModules = new Map(); // type -> Promise
-const pollers = []; // { run(), timer }
+const pollers = []; // { id, run(), timer }
+const cardInstances = new WeakMap(); // card element -> ids of its instances with a server.js
+// after a button's action the other widgets on its card ask again: right away, then after these
+const SETTLE_POLLS_MS = [5000, 30000];
 let layout = null;
 
 function widgetName(type) {
@@ -851,7 +856,7 @@ function mountWidget(instance, extraClass, name, onResult) {
     box.addEventListener(`${prefix}-widget-action`, (e) => {
       e.stopPropagation();
       const title = typeof e.detail?.title === 'string' && e.detail.title ? e.detail.title : name || widgetName(instance.type);
-      runWidgetAction(instance, custom, title, e.detail?.showResult === 'failure' ? 'failure' : 'always');
+      runWidgetAction(instance, custom, title, e.detail?.showResult === 'failure' ? 'failure' : 'always', box);
     });
   }
   return box;
@@ -864,10 +869,13 @@ const runningActions = new Set();
  * `actionResult` gets the outcome. `showResult: 'failure'` (the widget shows its own progress)
  * skips the running toast and shows the dialog only when the action failed.
  */
-async function runWidgetAction(instance, element, title, showResult = 'always') {
+async function runWidgetAction(instance, element, title, showResult = 'always', box = null) {
   if (runningActions.has(instance.instanceId)) return;
   runningActions.add(instance.instanceId);
   if (element) element.busy = true;
+  const card = box?.closest('.card') ?? null;
+  const others = card ? [...card.children].filter((n) => n !== box && (n.classList.contains('widget') || n.classList.contains('tags'))) : [];
+  for (const n of others) n.classList.add('settling');
   if (showResult === 'always') toast(translate('running', { name: title }));
   let out;
   try {
@@ -885,6 +893,20 @@ async function runWidgetAction(instance, element, title, showResult = 'always') 
   }
   if (showResult === 'always') hideToast();
   if (showResult === 'always' || !ok) showActionResult(title, out);
+  if (card && !out.busy) await refreshCard(card, instance.instanceId);
+  for (const n of others) n.classList.remove('settling');
+}
+
+/**
+ * An action may have changed what the other widgets on its card show (the server dropped their
+ * cached results): they ask again now, and after SETTLE_POLLS_MS for services that take a
+ * moment to notice. Resolves once the first answers are in.
+ */
+function refreshCard(card, except) {
+  const ids = (cardInstances.get(card) ?? []).filter((id) => id !== except);
+  const runs = () => pollers.filter((p) => ids.includes(p.id)).map((p) => p.run());
+  for (const ms of SETTLE_POLLS_MS) setTimeout(() => { if (card.isConnected) runs(); }, ms);
+  return Promise.all(runs());
 }
 
 // line icons for the result dialog (24×24, stroked)
@@ -987,7 +1009,7 @@ function poll(instance, onResult) {
     }
   };
   const every = Math.max(1000, instance.refreshMs || 30000);
-  pollers.push({ run, timer: setInterval(() => { if (!document.hidden) run(); }, every) });
+  pollers.push({ id: instance.instanceId, run, timer: setInterval(() => { if (!document.hidden) run(); }, every) });
   run();
   return run;
 }
@@ -1199,6 +1221,7 @@ function renderService(service) {
   // once the card is on the page: widgets without a server.js never answer, so evaluate now
   if (filters) queueMicrotask(() => applyFilter(card, service, results, boxes));
   card.style.setProperty('--tag-count', String(service.statuses.length));
+  cardInstances.set(card, [...service.widgets, ...service.statuses].filter((w) => w.server).map((w) => w.instanceId));
   return card;
 }
 

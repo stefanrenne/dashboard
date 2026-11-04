@@ -294,6 +294,44 @@ test('runtime: params reach ctx.params only when the widget declares them, each 
   assert.deepEqual(seen.at(-1), {}, 'long values are dropped');
 });
 
+test('runtime.action refreshes the other instances on its card: their cache goes, and stays short for a while', async () => {
+  let clock = 1_000_000;
+  let state = 3;
+  const counter = { manifest: { attributes: {} }, server: { fetch: async () => ({ blocks: [{ key: 'updates', label: 'updates', value: state }] }) } };
+  const button = { manifest: { attributes: {} }, hasAction: true, server: { fetch: async () => ({}), action: async () => { state = 0; return { status: 'ok' }; } } };
+  const rt = new WidgetRuntime({ registry: new Map([['counter', counter], ['button', button]]), log: silentLog, now: () => clock });
+  const inst = (type, card) => ({ type, options: {}, secretValues: [], refreshMs: 300_000, ...(card ? { card } : {}) });
+  rt.setInstances(new Map([['count', inst('counter', 'svc-a')], ['btn', inst('button', 'svc-a')], ['elsewhere', inst('counter', 'svc-b')], ['header', inst('counter')]]));
+  const value = async (id) => (await rt.get(id)).data.blocks[0].value;
+  assert.deepEqual([await value('count'), await value('elsewhere'), await value('header')], [3, 3, 3]);
+  assert.equal((await rt.action('btn')).data.status, 'ok');
+  assert.equal(await value('count'), 0, 'the widget on the same card answers fresh');
+  assert.equal(await value('elsewhere'), 3, 'another card keeps its cache');
+  assert.equal(await value('header'), 3, 'an instance on no card too');
+  state = 1;
+  clock += 2_000;
+  assert.equal(await value('count'), 0, 'kept a few seconds meanwhile');
+  clock += 3_000;
+  assert.equal(await value('count'), 1, 'and asked again after them (the page asks after 5 s)');
+  clock += 40_000;
+  state = 2;
+  assert.equal(await value('count'), 2, 'settled: asked again');
+  state = 4;
+  clock += 60_000;
+  assert.equal(await value('count'), 2, 'and kept for its refresh again');
+  // a run that started before the action ended is not kept
+  let release;
+  counter.server.fetch = () => new Promise((r) => { release = () => r({ blocks: [{ key: 'updates', label: 'updates', value: 'old' }] }); });
+  clock += 400_000;
+  const early = rt.get('count');
+  await new Promise((r) => setImmediate(r));
+  counter.server.fetch = async () => ({ blocks: [{ key: 'updates', label: 'updates', value: state }] });
+  await rt.action('btn');
+  release();
+  assert.equal((await early).data.blocks[0].value, 'old', 'who asked before still gets that answer');
+  assert.equal(await value('count'), 0, 'but it is not cached: the next one asks anew');
+});
+
 test('runtime.action in the process: ctx.configDir, the result reduced to status/output/exitCode/error, a cap', async () => {
   const dir = writeWidget(tmpDir(), { ...base, id: 'act2' }, { 'server.js': 'export default { async fetch() { return {}; }, async action(ctx) { return { status: "weird", output: "x".repeat(70000) + ctx.configDir, exitCode: 2.5, error: 7 }; } };' });
   const widget = await loadWidget(dir);

@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- After a button's action the other widgets and status labels on its card ask again, dimmed
+  until they answer: right away, and after 5 and 30 seconds. A button that updates containers
+  next to a widget that counts updates shows the new count at once, not after its refresh.
+
 ## [0.21.0] - 2026-11-04
 
 ### Changed (breaking)

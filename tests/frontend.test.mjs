@@ -747,6 +747,31 @@ test('hd-widget-action: one POST at a time, then a dialog with how it went, the 
   w.close();
 });
 
+test('after a button\'s action the other widgets and status labels on its card ask again, dimmed until then', async () => {
+  const calls = [];
+  const results = { ...RESULTS, '/api/widgets/w-3/action': { ok: true, data: { status: 'ok' } } };
+  const w = await page(results, calls);
+  const card = w.document.querySelector('[data-service="svc-3"]');
+  const [own, ...others] = card.querySelectorAll(':scope > .widget');
+  const before = calls.length;
+  own.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  assert.ok(others.every((b) => b.classList.contains('settling')), 'the other widgets dim while it runs');
+  assert.ok(card.querySelector('.tags').classList.contains('settling'), 'the status labels too');
+  assert.ok(!own.classList.contains('settling'), 'the button itself shows busy');
+  await new Promise((r) => setTimeout(r, 30));
+  const asked = calls.slice(before).filter((c) => !c.endsWith('/action')).sort();
+  assert.deepEqual(asked, ['api/widgets/s-3', 'api/widgets/w-4', 'api/widgets/w-5', 'api/widgets/w-6'], 'all on the card but the button; nothing elsewhere');
+  assert.ok(others.every((b) => !b.classList.contains('settling')), 'no longer dimmed once they answered');
+  w.document.querySelector('dialog.action-result .close').click();
+  // busy: nothing changed, nothing to ask
+  results['/api/widgets/w-3/action'] = { ok: false, busy: true, error: 'already running' };
+  const again = calls.length;
+  own.dispatchEvent(new w.CustomEvent('hd-widget-action', { bubbles: true, composed: true }));
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(calls.slice(again), ['api/widgets/w-3/action']);
+  w.close();
+});
+
 test('the action dialog copies the output to the clipboard, and has no copy button without output', async () => {
   const results = { ...RESULTS, '/api/widgets/w-1/action': { ok: true, data: { status: 'ok', output: 'line 1\nline 2', exitCode: 0 } } };
   const w = await page(results);
