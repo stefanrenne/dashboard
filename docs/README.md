@@ -39,7 +39,8 @@ browser; widgets run in a worker with a timeout, so one broken service never tak
 [Security](extend/security.md).
 
 **Feels at home.** Coming from [homepage](https://gethomepage.dev)? Its `services.yaml`,
-`widgets.yaml`, Docker labels and `{{HOMEPAGE_VAR_*}}` variables work as they are. Dark and
+`widgets.yaml`, Docker labels and `{{HOMEPAGE_VAR_*}}` variables work as they are (see
+[From homepage](configuration/homepage.md)). Dark and
 light themes, 22 accent colours, tabs, 17 languages, and it installs as an app on your phone.
 
 ## Get started in a minute

@@ -71,9 +71,9 @@ the image and smoke-tests it.
    (downloaded packages and `plugins.lock.yaml`), and a log file under `logpath` when the user
    sets one (`src/log.js`).
 6. **Config files are a contract** with existing installations. Before 1.0 a renamed or removed
-   key needs no fallback, but every such change is listed under "Migration" in
-   `docs/configuration/README.md` (what the old form becomes) and in the CHANGELOG. From 1.0 on the
-   old form keeps working with a warning, covered by a test with config in the old form.
+   key needs no fallback, but every such change is in the CHANGELOG with what the old form
+   becomes. From 1.0 on the old form keeps working with a warning, covered by a test with config
+   in the old form. homepage's forms (`docs/configuration/homepage.md`) keep working always.
 7. **Minimal dependencies.** Runtime: only `yaml`. Anything else needs a reason in `docs/extend/contributing/decisions.md`.
 8. **Host paths, sockets and API URLs via module constants or parameters** (`DEFAULT_SOCKET`,
    `K8S_SA_DIR`, `configDir`, ...) so tests can replace them.
@@ -96,8 +96,8 @@ the image and smoke-tests it.
   check that the page of each new or changed widget is there
   (`https://getdashboard.dev/widgets/collection/<id>.html`).
 - **No version requirements in the docs before 1.0**: no "(dashboard 0.12.0 or newer)", "since
-  0.8.0" or "needs collection 0.4.0". Versions belong in `CHANGELOG.md`, the Migration section of
-  `docs/configuration/README.md` and the Changes table of the API reference. Versions of the
+  0.8.0" or "needs collection 0.4.0". Versions belong in `CHANGELOG.md` and the Changes table of the API
+  reference. Versions of the
   services a widget talks to ("Immich 1.118 or later") are fine.
 - Everything is **English**: code comments, log lines, Markdown docs, this file. Only UI texts in
   `I18N` (and widget `i18n.json`) are translated.

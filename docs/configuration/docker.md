@@ -117,6 +117,7 @@ or `ping` when those are set.
 **Coming from homepage?** Containers labelled for homepage (`homepage.group` + `homepage.name`,
 `homepage.widget.*`, ...) are discovered as they are, and `{{HOMEPAGE_VAR_*}}` in their
 labels is filled in from the environment. `dashboard.*` labels win when a container has both.
+See [From homepage](homepage.md) for the rest of a move.
 
 **Access.** The dashboard only calls `GET /containers/json` and `GET /containers/<name>/json|stats`
 (with `swarm: true` also `GET /services` and `/tasks`).

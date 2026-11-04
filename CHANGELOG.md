@@ -4,6 +4,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- The docs' Migration section is replaced by a guide for moving from homepage, From homepage under
+  Configuration; what changed per version stays in this file.
+
 ## [0.19.0] - 2026-11-03
 
 ### Changed (breaking)

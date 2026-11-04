@@ -5,7 +5,8 @@ otherwise). Every file is optional. The page reloads by itself when a `.yaml` fi
 On a network share (NFS, SMB) changes made on another machine are not noticed; set
 `DASHBOARD_WATCH_POLL` to a number of seconds to check the files that often instead.
 Problems are shown at the top of the page with the file and a path into it. A broken entry is
-skipped and the rest keeps working.
+skipped and the rest keeps working. Coming from homepage? Its configuration works as it is: see
+[From homepage](homepage.md).
 
 | File | What |
 |---|---|
@@ -147,46 +148,3 @@ services:
     environment:
       DASHBOARD_ALLOW_ROOT_SCRIPTS: "true"
 ```
-
-## Migration
-
-Each renamed or changed key is listed here with the version, what the old form becomes, and the
-test that covers it. Before 1.0 an old form may stop working; from 1.0 on it keeps working with a
-warning.
-
-### Next: Homelab Dashboard is now Dashboard
-
-The project is renamed **Dashboard** (getdashboard.dev). Before 1.0 the old names are not kept,
-so an existing installation changes these:
-
-| Was | Now |
-|---|---|
-| image `ghcr.io/stefanrenne/homelab-dashboard` | `ghcr.io/stefanrenne/dashboard` (the old path is gone) |
-| `{{HD_VAR_*}}`, `{{HD_FILE_*}}` | `{{DASHBOARD_VAR_*}}`, `{{DASHBOARD_FILE_*}}`, with the environment variables renamed too; the dashboard warns about an old one, naming the new form |
-| `HD_CONFIG_DIR`, `HD_ALLOWED_HOSTS`, `HD_WATCH_POLL`, `HD_ALLOW_ROOT_SCRIPTS`, `HD_WIDGET_ISOLATION`, `HD_WIDGET_MEMORY_MB` | `DASHBOARD_…` with the same rest |
-| Docker labels `homelab.*` | `dashboard.*` (homepage's `homepage.*` keep working) |
-| Kubernetes annotations `homelab.dev/*` | `getdashboard.dev/*` (homepage's `gethomepage.dev/*` keep working) |
-| a button's `X-Requested-With: homelab-dashboard` | `X-Requested-With: dashboard` |
-| `custom.css` with `--hd-*` | `--dash-*` |
-
-The widgets collection moved to `github.com/stefanrenne/dashboard-widgets`; a `plugins:` entry
-with the old address keeps working through GitHub's redirect. Widgets of API 1 keep working (see
-the API reference). Covered by `tests/config.test.mjs` (variables), `tests/discovery.test.mjs`
-(labels and annotations) and `tests/frontend.test.mjs` (API 1 next to 2).
-
-### 0.7.2: the version is shown by default
-
-The footer shows the version unless `hideVersion: true` (before: only with `hideVersion: false`,
-which keeps working and changes nothing now). With the version shown the dashboard asks GitHub
-once a day for a newer release; add `disableUpdateCheck: true` to keep it from doing so. Covered by
-`tests/app.test.mjs` (the version is shown and checked for updates by default).
-
-### 0.6.0: the built-in widgets moved to the widgets collection
-
-Nothing to change. The dashboard has no built-in widgets any more: `datetime`, `search`,
-`resources`, `http-status`, `ping`, `docker`, `custom-api` and the others are in the widgets
-collection, which is always installed (0.4.0 or newer needed). Their types and options are the
-same. With your own `plugins:` entry for the collection, `only:` gets the five widgets behind the
-service fields added, and a pinned tag must be 0.4.0 or newer. Covered by
-`tests/installer.test.mjs` (withDefaultPlugins) and `tests/app.test.mjs` (without the widgets
-collection a service field says where its widget comes from).
