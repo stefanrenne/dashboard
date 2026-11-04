@@ -110,6 +110,7 @@ Settings of the container rather than of the page.
 | `DASHBOARD_ALLOWED_HOSTS` | The host names you open the dashboard by; without it only `localhost` and IP addresses work (see [Allowed hosts](#allowed-hosts)) |
 | `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
 | `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
+| `DASHBOARD_ACTION_PASSWORD`, `DASHBOARD_ACTION_PASSWORD_FILE` | A password a press asks for (see [Action password](#action-password)) |
 | `DASHBOARD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
 | `DASHBOARD_CONFIG_DIR` | The config folder, when not run from the image |
 | `LOG_TARGETS` | `both`, `stdout` or `file` (with `logpath` in [settings.yaml](settings.md)) |
@@ -140,6 +141,71 @@ services:
 This stops DNS rebinding: a web page that points a name of its own at your network would
 otherwise be the same site as the dashboard to your browser, and could read it and press its
 buttons. Such a page always uses its own name, never an IP address, so IP addresses stay safe.
+
+### Action password
+
+With `DASHBOARD_ACTION_PASSWORD` set, presses that run something ask for that password first:
+
+- **Buttons that run as root** (`user: root`) ask by default; `confirm: none` on the entry turns
+  that off.
+- **Other buttons** ask when their entry says `confirm: password`.
+- **`target: hidden-iframe` services** (a webhook the dashboard calls) ask; `confirm: none` on the
+  service turns that off.
+- **The widget sync** (`POST /api/plugins/sync`) asks too.
+
+`confirm: always` asks on every press. Otherwise a correct password unlocks that browser for 15
+minutes (`actions: { remember: 30m }` in [settings.yaml](settings.md), `0` asks every time); the
+lock in the footer locks it again, and a restart of the dashboard locks every browser.
+
+```yaml
+# services.yaml
+- Admin:
+    - Update:
+        widgets:
+          - type: button
+            text: Update containers
+            command: docker compose -f /stack/compose.yaml up -d --pull always
+            confirm: password   # ask, then remember for 15 minutes
+          - type: button
+            text: Reboot
+            user: root          # asks by default
+            command: reboot
+            confirm: always     # every press
+```
+
+The dialog has a username (`dashboard`) and a password field, so a password manager or the
+browser's own keychain (with Face ID or Touch ID) fills it in.
+
+**Store a hash, not the password.** `node src/hash-password.mjs` in the container asks for the
+password and prints a `scrypt:` hash; put that in the variable, or in a file named by
+`DASHBOARD_ACTION_PASSWORD_FILE` (a Docker secret):
+
+```sh
+docker exec -it dashboard node src/hash-password.mjs
+```
+
+```yaml
+# compose.yaml
+services:
+  dashboard:
+    environment:
+      DASHBOARD_ACTION_PASSWORD: "scrypt:16384:8:1:..."   # the printed line, or the password itself
+```
+
+- **Scripts inside the container** (a button's `curl http://127.0.0.1:3000/api/...`) are not
+  asked: a request from 127.0.0.1 without a proxy header comes from the container itself. A
+  reverse proxy on the same machine with host networking must send `X-Forwarded-For` (they all
+  do by default), or its visitors count as the container too.
+- **Guessing is slowed down:** after five wrong passwords from one address it waits 30 seconds,
+  doubled each time (up to 15 minutes). Each wrong one is in the log.
+- **Open the dashboard over HTTPS** when it asks for a password: over plain HTTP the password
+  crosses the network as it is.
+- A file named by `DASHBOARD_ACTION_PASSWORD_FILE` that cannot be read keeps these presses
+  locked (the log says why), rather than leaving them open.
+- Labels of a discovered container cannot set `confirm: none`.
+
+It guards the presses, not the page: anyone who can open the dashboard still sees it. Put it
+behind a login (a forward-auth proxy) to keep the page itself private.
 
 ### Widget worker
 

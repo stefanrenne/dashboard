@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 const SERVICE_KEYS = new Set([
-  'href', 'icon', 'description', 'siteMonitor', 'ping', 'container', 'server', 'widget', 'widgets', 'target', 'statusStyle', 'showStats', 'weight', 'filter',
+  'href', 'icon', 'description', 'siteMonitor', 'ping', 'container', 'server', 'widget', 'widgets', 'target', 'statusStyle', 'showStats', 'weight', 'filter', 'confirm',
   'proxmoxNode', 'proxmoxVMID', 'proxmoxType', 'app', 'namespace', 'podSelector', 'external',
 ]);
 export const STATUS_STYLES = ['dot', 'basic'];
@@ -37,6 +37,24 @@ export const STATUS_STYLES = ['dot', 'basic'];
 const MIN_PLUGIN_UPDATE_MS = 60_000;
 
 /** pluginUpdateInterval: how often #latest and branch plugins are checked; false or 0 turns it off. */
+/** settings.yaml `actions: { remember }`: how long a correct action password unlocks a browser; 0 asks every time. */
+function actionRememberMs(actions, file, ctx) {
+  const fallback = 15 * 60 * 1000;
+  if (actions === undefined) return fallback;
+  if (!isPlainObject(actions)) {
+    ctx.warn(file, 'actions', 'expected a map such as { remember: 15m }, ignored');
+    return fallback;
+  }
+  for (const key of Object.keys(actions)) if (key !== 'remember') ctx.warn(file, `actions.${key}`, 'unknown key, ignored');
+  if (actions.remember === 0 || actions.remember === '0' || actions.remember === false) return 0;
+  try {
+    return parseDuration(actions.remember, fallback);
+  } catch (err) {
+    ctx.warn(file, 'actions.remember', `${err.message}; remembering 15 minutes`);
+    return fallback;
+  }
+}
+
 function pluginUpdateMs(value, file, ctx) {
   if (value === false || value === 0 || value === '0') return 0;
   let ms;
@@ -161,6 +179,8 @@ export function normalizeSettings(raw, ctx) {
   } else if (settings.base && !settings.base.endsWith('/')) settings.base += '/';
   settings.pwa = normalizePwa(settings.pwa, file, ctx);
   settings.pluginUpdateMs = pluginUpdateMs(settings.pluginUpdateInterval, file, ctx);
+  settings.actionRememberMs = actionRememberMs(settings.actions, file, ctx);
+  delete settings.actions;
   for (const key of ['fullWidth', 'useEqualHeights', 'disableCollapse', 'groupsInitiallyCollapsed', 'showStats', 'hideVersion', 'disableUpdateCheck', 'disableIndexing']) {
     if (settings[key] !== undefined && typeof settings[key] !== 'boolean') {
       ctx.warn(file, key, 'expected true or false, ignored');
@@ -353,6 +373,10 @@ export function normalizeService(name, def, file, p, ctx) {
     if (!SERVICE_KEYS.has(key)) ctx.warn(file, `${p}.${key}`, 'unknown key, ignored');
   }
   const service = { name: String(name) };
+  if (def.confirm !== undefined) {
+    if (['password', 'always', 'none'].includes(def.confirm)) service.confirm = def.confirm;
+    else ctx.warn(file, `${p}.confirm`, 'expected password, always or none, ignored');
+  }
   if (def.showStats !== undefined) {
     if (typeof def.showStats === 'boolean') service.showStats = def.showStats;
     else ctx.warn(file, `${p}.showStats`, 'expected true or false, ignored');

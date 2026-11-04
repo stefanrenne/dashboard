@@ -767,6 +767,75 @@ test('after a button\'s action the other widgets and status labels on its card a
   w.close();
 });
 
+test('action password: a dialog that password managers fill, the header on the POST, a wrong one asks again, closing runs nothing', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.settings.actionsProtected = true;
+  layout.groups[0].services[0].widgets[0].confirm = 'password';
+  const w = await page({ ...RESULTS, '/api/layout': layout });
+  const posts = [];
+  let answers = [];
+  w.fetch = async (url, init = {}) => {
+    const p = new URL(url, 'http://localhost/').pathname;
+    if (init.method === 'POST') posts.push({ p, password: init.headers?.['x-dashboard-password'] });
+    const body = p === '/api/lock' ? { protected: true, unlocked: posts.some((x) => x.password === 'goed') } : p.endsWith('/action') ? answers.shift() : RESULTS[p] ?? { ok: false };
+    return { json: async () => structuredClone(body) };
+  };
+  const box = w.document.querySelector('[data-service="svc-1"] .widget');
+  const press = () => box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
+  const tick = () => new Promise((r) => setTimeout(r, 20));
+  const dialog = () => w.document.querySelector('dialog.password-dialog');
+  const submit = (value) => {
+    dialog().querySelector('input[type=password]').value = value;
+    dialog().querySelector('form').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  };
+  // closing the dialog runs nothing
+  press();
+  await tick();
+  assert.ok(dialog(), 'asked first');
+  assert.equal(dialog().querySelector('h2').textContent, 'Wachtwoord voor Router');
+  assert.equal(dialog().querySelector('input[type=password]').getAttribute('autocomplete'), 'current-password');
+  assert.equal(dialog().querySelector('input[autocomplete=username]').value, 'dashboard', 'a username for password managers');
+  dialog().querySelector('.close').click();
+  await tick();
+  assert.deepEqual(posts, [], 'closed: nothing posted');
+  assert.equal(dialog(), null);
+  // a wrong password asks again, with a message; the right one runs and unlocks
+  answers = [{ ok: false, needsPassword: true, wrongPassword: true }, { ok: true, data: { status: 'ok' } }];
+  press();
+  await tick();
+  submit('fout');
+  await tick();
+  assert.equal(dialog().querySelector('.status').textContent, 'Onjuist wachtwoord');
+  submit('goed');
+  await tick();
+  assert.deepEqual(posts.map((x) => x.password), ['fout', 'goed']);
+  assert.equal(w.document.getElementById('lock-btn').hidden, false, 'unlocked: the lock button shows');
+  assert.equal(w.document.getElementById('lock-btn').getAttribute('aria-label'), 'Acties vergrendelen');
+  w.document.querySelector('dialog.action-result:not(.password-dialog) .close')?.click();
+  // unlocked: the next press asks nothing; an expired unlock (401) asks again
+  answers = [{ ok: false, needsPassword: true }, { ok: true, data: { status: 'ok' } }];
+  press();
+  await tick();
+  assert.equal(posts.at(-1).password, undefined, 'no dialog while unlocked');
+  assert.ok(dialog(), 'the server said it expired: asked');
+  submit('goed');
+  await tick();
+  assert.equal(posts.at(-1).password, 'goed');
+  // too many tries: the wait shows
+  answers = [{ ok: false, needsPassword: true, retryAfter: 30 }];
+  w.document.querySelectorAll('dialog').forEach((d) => d.remove());
+  press();
+  await tick();
+  assert.equal(dialog().querySelector('.status').textContent, 'Te veel pogingen; wacht 30 s');
+  dialog().querySelector('.close').click();
+  await tick();
+  // the lock button locks
+  w.document.getElementById('lock-btn').click();
+  await tick();
+  assert.equal(posts.at(-1).p, '/api/lock');
+  w.close();
+});
+
 test('the action dialog copies the output to the clipboard, and has no copy button without output', async () => {
   const results = { ...RESULTS, '/api/widgets/w-1/action': { ok: true, data: { status: 'ok', output: 'line 1\nline 2', exitCode: 0 } } };
   const w = await page(results);

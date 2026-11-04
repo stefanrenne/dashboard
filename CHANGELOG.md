@@ -4,16 +4,28 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
-### Removed (breaking)
-- Widget API 1. A widget with `apiVersion: 1` is no longer loaded; the configuration messages
-  name it and what to change: `apiVersion: 2`, and `hd-` to `dash-` in its `client.js` (element,
-  events, `--hd-*` properties, `#hd-mask`). Every widget of the collection is on API 2 since its
-  0.13.0, as is the widget example.
+## [0.22.0] - 2026-11-04
 
 ### Added
 - After a button's action the other widgets and status labels on its card ask again, dimmed
   until they answer: right away, and after 5 and 30 seconds. A button that updates containers
   next to a widget that counts updates shows the new count at once, not after its refresh.
+- **Action password:** with `DASHBOARD_ACTION_PASSWORD` (or `DASHBOARD_ACTION_PASSWORD_FILE`;
+  plain text or a `scrypt:` hash from `node src/hash-password.mjs`), presses that run something ask
+  for it first: buttons with `user: root` (`confirm: none` turns it off), entries with
+  `confirm: password` or `confirm: always`, `target: hidden-iframe` webhooks and
+  `POST /api/plugins/sync`. A correct password unlocks that browser for 15 minutes
+  (`actions: { remember }` in settings.yaml) through an HttpOnly cookie; the lock in the footer
+  locks it again. The dialog is filled by password managers. Five wrong tries from one address
+  start a wait of 30 s, doubled each time. Scripts inside the container (127.0.0.1 without a
+  proxy header) are not asked. Without the variable nothing changes, and the configuration
+  messages name the buttons that would ask. Widget API 2 gets `confirmWhen` in widget.yaml.
+
+### Removed (breaking)
+- Widget API 1. A widget with `apiVersion: 1` is no longer loaded; the configuration messages
+  name it and what to change: `apiVersion: 2`, and `hd-` to `dash-` in its `client.js` (element,
+  events, `--hd-*` properties, `#hd-mask`). Every widget of the collection is on API 2 since its
+  0.13.0, as is the widget example.
 
 ## [0.21.0] - 2026-11-04
 

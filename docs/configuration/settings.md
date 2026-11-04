@@ -44,6 +44,8 @@ instanceName: internal   # for discovery labels meant for one dashboard (dashboa
 hideVersion: true   # hide the versions in the footer (shown by default, as in homepage):
                     # `core v0.7.3 | widgets v0.4.1`, each linking to its release or commit
 pluginUpdateInterval: 1h   # how often #latest and branch plugins are checked for a newer version (false: never)
+actions:
+  remember: 15m            # a correct action password unlocks the browser this long (0: ask every press); see Action password
 disableUpdateCheck: true   # do not ask GitHub once a day for a newer release (only asked while the version is shown)
 disableIndexing: true      # ask search engines not to index the page (robots.txt and a robots meta tag)
 base: https://lab.example.com/dashboard/   # behind a reverse proxy under a sub path: the page's address

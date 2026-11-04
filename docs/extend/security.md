@@ -21,11 +21,15 @@ choosing a Docker image. The dashboard limits the damage where it can:
   [Allowed hosts](../configuration/README.md#allowed-hosts)): a web page that points a name of its
   own at your network (DNS rebinding) gets a refusal instead of the dashboard, so it cannot read
   it or press its buttons through your browser. `*` turns this off.
-- **Actions run for anyone who can open the page.** There is no login: a widget with an
-  `action` (the collection's `button` running a script) does its thing for every visitor who
-  presses it. Put the dashboard behind your proxy's authentication, or keep such buttons off a
-  dashboard that is reachable from outside. Only the configured script or command runs; nothing
-  in the request reaches it.
+- **Actions run for anyone who can open the page, unless they ask for a password.** There is
+  no login: a widget with an `action` (the collection's `button` running a script) does its thing
+  for every visitor who presses it. With `DASHBOARD_ACTION_PASSWORD` set, root buttons, webhooks,
+  the widget sync and every entry with `confirm: password` or `always` ask for it first (see
+  [Action password](../configuration/README.md#action-password)); a correct one unlocks that
+  browser for a while through an HttpOnly cookie the server keeps in memory, and guessing is slowed
+  down per address. The page itself stays readable: put the dashboard behind your proxy's
+  authentication, or keep such buttons off a dashboard that is reachable from outside. Only the
+  configured script or command runs; nothing in the request reaches it.
 - **Root scripts are off unless you ask for them.** Only with `DASHBOARD_ALLOW_ROOT_SCRIPTS=true` on
   the container does the image let `node` run `/usr/local/bin/dashboard-root` (bash as root) through
   sudo, for a `button` with `user: root`. Then every widget could, so a plugin you install can

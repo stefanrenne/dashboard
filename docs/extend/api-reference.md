@@ -35,6 +35,7 @@ without `client.js` is rendered by the dashboard from `blocks`.
 | `options` | no | Map of option name to schema (below). |
 | `aliases` | no | Other names the widget answers to in `type:`, e.g. homepage's (`[customapi]`). Added after every real id, only where still free; the widget's `id` stays the one the page uses. |
 | `defaultFields` | no | Block keys shown when the entry has no `fields`, e.g. `[cpu, memoryPercent]`. Without it every block shows. |
+| `confirmWhen` | no | Option values for which a press of the widget's `action` asks for the action password by default, e.g. `{ user: root }`. An entry's `confirm:` (`password`, `always`, `none`) overrides it. Only counts when the dashboard has `DASHBOARD_ACTION_PASSWORD`. |
 | `frames` | no | `url` options whose page the `client.js` shows in an `<iframe>`, e.g. `[src]`. The page's CSP allows the origin of each one's value (`frame-src`); only public options count, so a URL from a variable or a secret option is never framed. |
 | `attributes` | no | Public values the widget publishes for a service's `filter:`, each `name: { type: <type>, from? }` with `boolean`, `number` or `string`. A line comment says what it means; the docs page lists them. See [Filter attributes](#filter-attributes). |
 | `params` | no | Names a `client.js` may send its `server.js` through the `dash-widget-params` page event, e.g. `[latitude, longitude]`. They reach `ctx.params`; anything else is dropped. |
@@ -101,7 +102,8 @@ export default {
 Optional. Runs when the widget's `client.js` sends `dash-widget-action` (a button press): the page
 POSTs `api/widgets/<instanceId>/action` and shows the result in a dialog. Same `ctx` as `fetch`;
 `ctx.signal` aborts after an hour at most (keep your own, shorter limit). One action at a time per
-instance: a second press while one runs is refused. Afterwards the other widgets and status labels
+instance: a second press while one runs is refused. With an action password on the dashboard,
+the page first asks for it when the entry or widget.yaml `confirmWhen` says so. Afterwards the other widgets and status labels
 on the same card ask again, dimmed until they answer: right away, and after 5 and 30 seconds for
 services that take a moment to notice (the server keeps their results 4 seconds meanwhile). So a
 button that updates containers, next to a widget that counts updates, shows the new count. The
@@ -261,6 +263,7 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 
 | API | Dashboard | Change |
 |---|---|---|
+| 2 | next | `confirmWhen` in widget.yaml, and the action password: `POST api/widgets/<instanceId>/action` answers 401 `{ needsPassword: true }` (or 429 with `retryAfter`) until it has one; the page asks for it. Widgets need no change. |
 | 2 | next | API 1 is no longer supported: such a widget is not loaded, with a message that says what to rename. |
 | 2 | next | The names of the page: the element `dash-<id>`, the events `dash-widget-action`, `dash-widget-params`, `dash-search-input` and `dash-search-submit`, the theme properties `--dash-*` and the icon marker `#dash-mask`. Nothing else changed: a widget of API 1 goes to 2 by renaming them. |
 | 1 | 0.1.0 | First version (including `vars`, row `status` and `defaultFields`). |

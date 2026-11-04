@@ -1047,6 +1047,95 @@ test('a widget action refreshes the other widgets on its card, not those elsewhe
   }
 });
 
+/** A widget with an action that asks by default for user: root (as the collection's button). */
+function actionWidget() {
+  const dir = path.join(tmpDir('dash-pw-'), 'runner');
+  writeWidget(dir, { id: 'runner', name: 'Runner', version: '1.0.0', apiVersion: 2, options: { user: { type: 'enum', values: ['node', 'root'], default: 'node' } }, confirmWhen: { user: 'root' } }, {
+    'server.js': 'export default { async fetch() { return { blocks: [] }; }, async action(ctx) { return { status: "ok", output: "ran as " + ctx.options.user }; } };\n',
+  });
+  return dir;
+}
+const ACTION_SERVICES = [
+  '- G:',
+  '    - Root: { widget: { type: runner, user: root } }',
+  '    - Plain: { widget: { type: runner } }',
+  '    - Asked: { widget: { type: runner, confirm: password } }',
+  '    - Always: { widget: { type: runner, confirm: always } }',
+  '    - Open: { widget: { type: runner, user: root, confirm: none } }',
+  '    - Hook: { href: "http://127.0.0.1:9/", target: hidden-iframe }',
+  '',
+].join('\n');
+
+test('action password: root asks by default, others when they say so; a header or the unlock cookie; webhooks and the sync too', async () => {
+  const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\nactions: { remember: 10m }\n`, 'services.yaml': ACTION_SERVICES }, { DASHBOARD_ACTION_PASSWORD: 'Sesam-123' });
+  // from outside: a proxy passed it on (a loopback request without one is a script in the container)
+  const outside = { 'x-requested-with': 'dashboard', 'x-forwarded-for': '203.0.113.7' };
+  const post = (p, headers = {}) => fetch(`${t.base}${p}`, { method: 'POST', headers: { ...outside, ...headers } });
+  try {
+    const layout = await t.json('/api/layout');
+    const ids = Object.fromEntries(layout.groups[0].services.map((s) => [s.name, s.widgets[0]?.instanceId ?? s.id]));
+    const confirms = Object.fromEntries(layout.groups[0].services.map((s) => [s.name, s.widgets[0]?.confirm ?? s.confirm ?? null]));
+    assert.deepEqual(confirms, { Root: 'password', Plain: null, Asked: 'password', Always: 'always', Open: null, Hook: 'password' });
+    assert.equal(layout.settings.actionsProtected, true);
+    assert.ok(!JSON.stringify(layout).includes('Sesam-123'), 'the password never reaches the page');
+    const act = (name, headers) => post(`/api/widgets/${ids[name]}/action`, headers);
+
+    assert.equal((await act('Plain')).status, 200, 'a node button asks nothing');
+    assert.equal((await act('Open')).status, 200, 'confirm: none');
+    const refused = await act('Root');
+    assert.equal(refused.status, 401);
+    assert.deepEqual(await refused.json(), { ok: false, needsPassword: true, always: false, error: 'password needed' });
+    const wrong = await act('Root', { 'x-dashboard-password': 'nope' });
+    assert.deepEqual([wrong.status, (await wrong.json()).wrongPassword], [401, true]);
+    const ran = await act('Root', { 'x-dashboard-password': 'Sesam-123' });
+    assert.equal(ran.status, 200);
+    assert.equal((await ran.json()).data.output, 'ran as root');
+    const cookie = ran.headers.get('set-cookie');
+    assert.match(cookie, /^dash_unlock=[\w-]+; Path=\/; Max-Age=600; HttpOnly; SameSite=Strict$/);
+    const unlock = { cookie: cookie.split(';')[0] };
+    assert.equal((await act('Asked', unlock)).status, 200, 'the cookie unlocks the next press');
+    assert.equal((await act('Always', unlock)).status, 401, 'but not confirm: always');
+    assert.equal((await act('Always', { 'x-dashboard-password': 'Sesam-123' })).status, 200);
+    assert.deepEqual(await (await fetch(`${t.base}/api/lock`, { headers: unlock })).json(), { protected: true, unlocked: true });
+    assert.equal((await post('/api/run/' + ids.Hook)).status, 401, 'a hidden-iframe webhook asks');
+    assert.equal((await post('/api/run/' + ids.Hook, unlock)).status, 200);
+    assert.equal((await post('/api/plugins/sync')).status, 401, 'the widget sync asks');
+    assert.equal((await post('/api/plugins/sync', unlock)).status, 200);
+    assert.equal((await fetch(`${t.base}/api/plugins/sync`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } })).status, 200, 'a script in the container (curl 127.0.0.1) is not asked');
+    const locked = await post('/api/lock', unlock);
+    assert.match(locked.headers.get('set-cookie'), /^dash_unlock=; Path=\/; Max-Age=0/);
+    assert.equal((await act('Asked', unlock)).status, 401, 'locked again');
+    assert.equal((await post('/api/lock', { 'x-requested-with': 'nope' })).status, 403, 'the header keeps other sites out');
+  } finally {
+    await t.close();
+  }
+});
+
+test('action password: without one everything runs as before, with warnings for what would ask; a file that cannot be read locks', async () => {
+  const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES });
+  const outside = { 'x-requested-with': 'dashboard', 'x-forwarded-for': '203.0.113.7' };
+  try {
+    const layout = await t.json('/api/layout');
+    assert.equal(layout.settings.actionsProtected, false);
+    assert.ok(layout.groups[0].services.every((s) => !s.confirm && !s.widgets[0]?.confirm), 'nothing asks');
+    const warnings = layout.messages.warnings.map((m) => `${m.path}: ${m.message}`);
+    assert.ok(warnings.some((w) => w.includes('Root.widget: runner: anyone who can open the page can run this; set DASHBOARD_ACTION_PASSWORD')), warnings.join('\n'));
+    assert.ok(warnings.some((w) => w.includes('Always.widget: runner: confirm: always needs DASHBOARD_ACTION_PASSWORD')), warnings.join('\n'));
+    assert.ok(!warnings.some((w) => w.includes('Open.widget') || w.includes('Plain.widget')), 'confirm: none and a plain button say nothing');
+    const root = layout.groups[0].services[0].widgets[0].instanceId;
+    assert.equal((await fetch(`${t.base}/api/widgets/${root}/action`, { method: 'POST', headers: outside })).status, 200);
+  } finally {
+    await t.close();
+  }
+  const broken = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES }, { DASHBOARD_ACTION_PASSWORD_FILE: '/nonexistent/password' });
+  try {
+    const root = (await broken.json('/api/layout')).groups[0].services[0].widgets[0].instanceId;
+    assert.equal((await fetch(`${broken.base}/api/widgets/${root}/action`, { method: 'POST', headers: outside })).status, 401, 'a password meant but unreadable keeps it locked');
+  } finally {
+    await broken.close();
+  }
+});
+
 test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSION, then package.json', () => {
   const root = tmpDir('hd-version-');
   fs.writeFileSync(path.join(root, 'package.json'), '{ "version": "1.0.0" }');

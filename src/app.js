@@ -1,6 +1,7 @@
 // The dashboard application: state (config, widgets, discovery) and the HTTP handler.
 // src/server.js only parses arguments and listens; tests use createApp directly.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,7 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
+import { ActionGate, loadPassword } from './actionauth.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];
@@ -145,6 +147,16 @@ export async function createApp({
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
   const discovery = new Discovery({ log, env, onChange: () => state.config && rebuild(), ...discoveryOptions });
   let chain = Promise.resolve();
+  // DASHBOARD_ACTION_PASSWORD(_FILE): one that cannot be read keeps the actions locked (never open)
+  let password = null;
+  try {
+    password = loadPassword(env);
+  } catch (err) {
+    log.error(`${err.message}: actions that ask for the password are refused until it is fixed`);
+    password = { value: crypto.randomBytes(32).toString('hex'), hashed: false, broken: true };
+  }
+  const gate = new ActionGate({ password, log });
+  const passwordSecrets = password && !password.hashed ? [password.value] : [];
 
   function rebuild() {
     const merged = mergeDiscovered(state.config.services, discovery.found);
@@ -156,9 +168,11 @@ export async function createApp({
       groups: merged.groups,
       extraErrors: [...pluginMessages(state.pluginResult.errors), ...pluginMessages(state.registryErrors), ...discovery.errors],
       extraWarnings: [...pluginMessages(state.pluginResult.warnings), ...merged.warnings],
-      secrets: new Set([...state.config.secrets, ...discovery.secrets]),
+      secrets: new Set([...state.config.secrets, ...discovery.secrets, ...passwordSecrets]),
+      actionsProtected: gate.protected,
     });
-    runtime.setInstances(instances, state.registry, new Set([...state.config.secrets, ...discovery.secrets]));
+    runtime.setInstances(instances, state.registry, new Set([...state.config.secrets, ...discovery.secrets, ...passwordSecrets]));
+    gate.rememberMs = state.config.settings.actionRememberMs;
     state.actions = actions;
     state.frames = frames;
     // the version is shown unless hideVersion: true, as in homepage
@@ -330,21 +344,34 @@ export async function createApp({
       if (method === 'POST' && p === '/api/plugins/sync') {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+        const allowed = await gate.check(req, 'password', { what: 'the widget sync' });
+        if (!allowed.ok) return send(res, allowed.status, allowed.body);
         await reload({ update: url.searchParams.get('update') === '1' });
-        return send(res, 200, { errors: state.pluginResult.errors, warnings: state.pluginResult.warnings });
+        return send(res, 200, { errors: state.pluginResult.errors, warnings: state.pluginResult.warnings }, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
       }
       if (method === 'POST' && /^\/api\/widgets\/[^/]+\/action$/.test(p)) {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
-        const out = await runtime.action(p.split('/')[3]);
-        return send(res, out.busy ? 409 : out.missing ? 404 : 200, out);
+        const id = p.split('/')[3];
+        const allowed = await gate.check(req, runtime.instances.get(id)?.confirm ?? null, { what: `widget ${runtime.instances.get(id)?.type ?? id}` });
+        if (!allowed.ok) return send(res, allowed.status, allowed.body);
+        const out = await runtime.action(id);
+        return send(res, out.busy ? 409 : out.missing ? 404 : 200, out, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
       }
       if (method === 'POST' && p.startsWith('/api/run/')) {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const action = state.actions.get(p.slice('/api/run/'.length));
         if (!action) return send(res, 404, { error: 'no such action' });
-        return send(res, 200, await runAction(action));
+        const allowed = await gate.check(req, action.confirm ?? null, { what: `the webhook of ${action.name}` });
+        if (!allowed.ok) return send(res, allowed.status, allowed.body);
+        return send(res, 200, await runAction(action), 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
+      }
+      // whether this browser is unlocked (the page's lock icon), and locking it again
+      if (method === 'GET' && p === '/api/lock') return send(res, 200, { protected: gate.protected, unlocked: gate.unlocked(req) });
+      if (method === 'POST' && p === '/api/lock') {
+        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+        return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...gate.lock(req) });
       }
       if (method === 'GET' && p.startsWith('/widgets/')) {
         const [, , type, ...rest] = p.split('/');

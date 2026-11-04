@@ -16,6 +16,8 @@ and any number of [widgets](../widgets/README.md). Services can also be
         filter: widget.update == false  # hide the card while this is true (see Filters)
         target: _self                 # overrides settings.target; hidden-iframe: the dashboard
                                       # server calls the URL (a webhook) and shows how it went
+        confirm: none                 # a hidden-iframe webhook asks for the action password; none: it does not
+                                      # (also on a widget entry: password, always or none; see Action password)
         # status check, the first one that is set:
         siteMonitor: http://app.lan   # HTTP check (http-status widget)
         ping: app.lan                 # ICMP ping (ping widget)

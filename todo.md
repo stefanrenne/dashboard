@@ -35,11 +35,10 @@ the page, most severe first. "Verified" means reproduced against the code as it 
   default now (only `localhost`, IP addresses and `DASHBOARD_ALLOWED_HOSTS`), which stops it. With
   `DASHBOARD_ALLOWED_HOSTS=*` a rebound page is same-origin again and may send
   `X-Requested-With: dashboard`. Fix: the POST endpoints also check that `Origin` matches `Host`.
-- [ ] **Medium: no authentication.** Every viewer can read everything and press every button
-  (scripts, root scripts, webhooks); the docs say to put the dashboard behind authentication, but
-  nothing enforces or helps it. Consider an optional built-in gate for the POST endpoints (a
-  token or password in `settings.yaml` via `{{DASHBOARD_VAR_*}}`), and a docs page for
-  forward-auth (Authelia, Authentik, Cloudflare Access) in front of it.
+- [ ] **Medium: no authentication for reading.** Presses can ask for the action password now
+  (`DASHBOARD_ACTION_PASSWORD`), but every viewer still reads everything, and buttons without
+  `confirm:` run for anyone. A docs page for forward-auth (Authelia, Authentik, Cloudflare Access)
+  in front of the dashboard; maybe a passkey (WebAuthn) next to the password for HTTPS.
 - [ ] **Medium: an installed widget reads every secret.** `src/plugins/sandbox.js` starts the
   worker without an `env` option, so it shares the process environment: any widget's `server.js`
   can read all `DASHBOARD_VAR_*` / `DASHBOARD_FILE_*` values and, with `fs`, the config folder

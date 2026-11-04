@@ -17,7 +17,8 @@ import { MARK } from './mark.js';
  * widget declares an option with that name): how often to refresh, which blocks to show
  * and whether to hide errors. `refreshInterval` (ms) and `hide_errors` are homepage's names.
  */
-export const INSTANCE_KEYS = ['refresh', 'refreshInterval', 'fields', 'hideErrors', 'hide_errors', 'highlight', 'provider'];
+export const INSTANCE_KEYS = ['refresh', 'refreshInterval', 'fields', 'hideErrors', 'hide_errors', 'highlight', 'provider', 'confirm'];
+export const CONFIRM_VALUES = ['password', 'always', 'none'];
 export const MIN_REFRESH_MS = 1000;
 
 function splitInstanceKeys(schema, raw) {
@@ -73,7 +74,7 @@ export function frameOrigin(value) {
   }
 }
 
-export function buildState({ config, registry, groups, extraErrors = [], extraWarnings = [], secrets: knownSecrets = config.secrets }) {
+export function buildState({ config, registry, groups, extraErrors = [], extraWarnings = [], secrets: knownSecrets = config.secrets, actionsProtected = false }) {
   // every value under settings.providers is a secret, also when written there literally
   const providers = isPlainObject(config.settings.providers) ? config.settings.providers : {};
   const secrets = new Set([...knownSecrets, ...stringsIn(providers).filter((s) => s.length >= 4)]);
@@ -187,6 +188,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     // No `fields` in the entry: the blocks the widget shows by default (widget.yaml defaultFields).
     const fields = Array.isArray(own.fields) ? own.fields.map(String) : widget.manifest.defaultFields ?? null;
     const hideErrors = own.hideErrors === true || own.hide_errors === true;
+    const confirm = confirmFor(widget, options, own.confirm, where, type);
     for (const e of optionErrors) errors.push({ ...where, message: `${type}: ${e}` });
     const secretValues = [...secrets];
     for (const [name, def] of Object.entries(widget.manifest.options)) {
@@ -199,7 +201,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       errors.push({ ...where, message: `${type}: highlight: expected a map of block key to rules` });
     }
     const highlight = isPlainObject(own.highlight) ? own.highlight : null;
-    instances.set(id, { type, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs, fields, highlight, errors: optionErrors });
+    instances.set(id, { type, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs, fields, highlight, errors: optionErrors, confirm });
     return {
       instanceId: id,
       type,
@@ -208,8 +210,36 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       server: Boolean(widget.server),
       refreshMs,
       ...(hideErrors ? { hideErrors } : {}),
+      ...(confirm && actionsProtected ? { confirm } : {}),
     };
   };
+
+  /**
+   * Whether an action widget's press needs the action password: the entry's `confirm:`
+   * (password, always, none), else widget.yaml `confirmWhen` (option values that ask by default,
+   * the button's `user: root`). A discovered service cannot turn it off: its labels come from
+   * whoever starts a container.
+   */
+  function confirmFor(widget, options, own, where, type) {
+    if (!widget.hasAction) {
+      if (own !== undefined) warnings.push({ ...where, message: `${type}: confirm: this widget runs nothing, ignored` });
+      return null;
+    }
+    const when = isPlainObject(widget.manifest.confirmWhen) ? Object.entries(widget.manifest.confirmWhen) : [];
+    const asked = when.length > 0 && when.every(([k, v]) => (options[k] ?? widget.manifest.options[k]?.default) === v);
+    let confirm = asked ? 'password' : null;
+    if (own !== undefined) {
+      if (!CONFIRM_VALUES.includes(own)) errors.push({ ...where, message: `${type}: confirm: expected password, always or none` });
+      else if (own === 'none' && asked && where.discovered) warnings.push({ ...where, message: `${type}: confirm: none is not taken from a discovered service; it asks for the action password` });
+      else confirm = own === 'none' ? null : own;
+    }
+    if (!actionsProtected && (confirm || (asked && own !== 'none'))) {
+      warnings.push({ ...where, message: own === 'password' || own === 'always'
+        ? `${type}: confirm: ${own} needs DASHBOARD_ACTION_PASSWORD on the dashboard; it runs without a password now`
+        : `${type}: anyone who can open the page can run this; set DASHBOARD_ACTION_PASSWORD to ask for a password first (or confirm: none to keep it as is)` });
+    }
+    return confirm;
+  }
 
   /**
    * homepage's `provider: <name>`: settings.providers.<name> fills options the entry left out.
@@ -338,11 +368,14 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   const layoutServices = (group) =>
     group.services.map((service) => {
-      const where = { file: service.discovered ?? 'services.yaml', path: `${group.name}.${service.name}` };
+      const where = { file: service.discovered ?? 'services.yaml', path: `${group.name}.${service.name}`, ...(service.discovered ? { discovered: true } : {}) };
       const id = stableId('svc', group.name, service.name);
       // homepage's `target: hidden-iframe` (a webhook): the server calls it and reports back.
       const target = service.target ?? config.settings.target;
-      if (target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '')) actions.set(id, { name: service.name, href: service.href });
+      // the webhook asks for the action password unless the (configured, not discovered) service says confirm: none
+      const hook = target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '');
+      const hookConfirm = !hook ? null : service.confirm === 'none' && !service.discovered ? null : service.confirm === 'always' ? 'always' : 'password';
+      if (hook) actions.set(id, { name: service.name, href: service.href, confirm: hookConfirm });
       const statuses = statusesFor(group, service, where);
       const card = {
         id,
@@ -353,11 +386,12 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         icon: resolveIcon(service.icon),
         description: service.description ?? null,
         discovered: service.discovered ?? null,
+        ...(hookConfirm && actionsProtected ? { confirm: hookConfirm } : {}),
         statusStyle: service.statusStyle ?? config.settings.statusStyle ?? null,
         showStats: service.showStats ?? config.settings.showStats ?? false,
         statuses,
         widgets: service.widgets.map((w, i) => {
-          const at = { file: where.file, path: w.path ?? where.path };
+          const at = { file: where.file, path: w.path ?? where.path, ...(where.discovered ? { discovered: true } : {}) };
           const { options, filter } = widgetFilter(w, service, statuses, { ...at, path: `${at.path}.filter` });
           return { ...addInstance(stableId('w', group.name, service.name, String(i)), w.type, options, at), ...(filter ? { filter } : {}) };
         }),
@@ -399,7 +433,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   }
 
   const scrubbed = (list) =>
-    list.map((m) => ({ ...m, message: [...secrets].reduce((s, secret) => s.split(secret).join('***'), m.message) }));
+    // `discovered` only steers confirm: (see confirmFor), it is no part of a message
+    list.map(({ discovered, ...m }) => ({ ...m, message: [...secrets].reduce((s, secret) => s.split(secret).join('***'), m.message) }));
 
   // homepage's tabs: on when a layout group has `tab`, in the order of the layout block
   const tabs = [...new Set(Object.values(config.settings.layout).map((l) => l?.tab).filter((t) => typeof t === 'string' && t))];
@@ -426,6 +461,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       useEqualHeights: config.settings.useEqualHeights === true,
       disableCollapse: config.settings.disableCollapse === true,
       groupsInitiallyCollapsed: config.settings.groupsInitiallyCollapsed === true,
+      actionsProtected,
       showTitle: config.settings.showTitle,
       headerStyle: config.settings.headerStyle,
     },
