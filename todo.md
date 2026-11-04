@@ -31,16 +31,10 @@ the page, most severe first. "Verified" means reproduced against the code as it 
   attacker's server does. Fix: no variable substitution in discovered labels by default (opt in
   per server in `docker.yaml`, or per name: `allowVariables: [GRAFANA]`); same fix as above for
   which options a label may set.
-- [ ] **High (default config): DNS rebinding gets past the CSRF check.** Without
-  `DASHBOARD_ALLOWED_HOSTS` every `Host` is answered. A web page the user visits can rebind its
-  own name to the dashboard's LAN address; its script is then same-origin, so it may send
-  `X-Requested-With: dashboard` and run every button (also root scripts), `/api/run` actions and
-  `POST /api/plugins/sync?update=1`, and read `/api/layout` (internal addresses, service names).
-  The comment "a custom header cannot be sent cross-site" holds only while the host is checked.
-  homepage checks hosts by default for this reason. Fix: refuse the POST endpoints unless the
-  request's `Host` is an IP address, a loopback name or in `DASHBOARD_ALLOWED_HOSTS` (a rebound
-  page always sends its own name), and its `Origin` matches; warn at startup while the list is
-  unset; consider checking every request's `Host` by default, as homepage.
+- [ ] **Low (with `*` only): DNS rebinding past the CSRF check.** Host names are checked by
+  default now (only `localhost`, IP addresses and `DASHBOARD_ALLOWED_HOSTS`), which stops it. With
+  `DASHBOARD_ALLOWED_HOSTS=*` a rebound page is same-origin again and may send
+  `X-Requested-With: dashboard`. Fix: the POST endpoints also check that `Origin` matches `Host`.
 - [ ] **Medium: no authentication.** Every viewer can read everything and press every button
   (scripts, root scripts, webhooks); the docs say to put the dashboard behind authentication, but
   nothing enforces or helps it. Consider an optional built-in gate for the POST endpoints (a

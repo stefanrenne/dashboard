@@ -4,6 +4,13 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **Security:** host names are checked by default. Without `DASHBOARD_ALLOWED_HOSTS` the dashboard
+  answers `localhost` and IP addresses only; a host name (also the one a reverse proxy passes
+  on) gets a page that says which line to add. Set `DASHBOARD_ALLOWED_HOSTS` to the names you open
+  it by, or `*` for the old behaviour. This stops DNS rebinding, which could otherwise press the
+  dashboard's buttons through a viewer's browser.
+
 ## [0.20.1] - 2026-11-04
 
 ### Fixed

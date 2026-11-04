@@ -167,7 +167,7 @@ test('pages.sh: links that leave docs/ go to GitHub, from every depth', () => {
   assert.ok(local.includes('](https://github.com/someone/repo/tree/main/examples/widget-template)'));
   assert.ok(local.includes('](api-reference.md#clientjs)'), 'links inside docs/ stay');
   const home = fs.readFileSync(path.join(out, 'README.md'), 'utf8');
-  assert.ok(home.includes('](https://github.com/someone/repo/tree/main/docker-compose.example.yml)'));
+  assert.ok(home.includes('](https://github.com/someone/repo/tree/main/CHANGELOG.md)'));
   assert.ok(home.includes('<details markdown="1">'));
   assert.match(home, /^---\n---\n\{% raw %\}\n/);
 });

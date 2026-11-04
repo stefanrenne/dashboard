@@ -70,23 +70,49 @@ export function securityHeaders(frames = []) {
 const SECURITY_HEADERS = securityHeaders();
 
 /**
- * DASHBOARD_ALLOWED_HOSTS (or homepage's HOMEPAGE_ALLOWED_HOSTS): the Host headers the dashboard answers,
- * comma-separated, against DNS rebinding. An entry without a port allows every port. Unset or
- * `*`: every host, as before. Loopback addresses are always allowed (the image's health check).
+ * DASHBOARD_ALLOWED_HOSTS (or homepage's HOMEPAGE_ALLOWED_HOSTS): the host names the dashboard
+ * answers, comma-separated, against DNS rebinding. An entry without a port allows every port.
+ * Loopback names and IP addresses are always answered: a rebinding page always sends a host
+ * name of its own. Unset: only those ([]); `*`: every host (null).
  */
 export function allowedHosts(env = process.env) {
   const raw = env.DASHBOARD_ALLOWED_HOSTS ?? env.HOMEPAGE_ALLOWED_HOSTS;
-  if (raw === undefined || raw.trim() === '') return null;
+  if (raw === undefined || raw.trim() === '') return [];
   const list = raw.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
   return list.includes('*') ? null : list;
 }
 
 const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
+/** A Host header's name without its port: "dash.lan", "192.168.1.10", "[fd00::1]". */
+export function hostName(header) {
+  const host = String(header ?? '').trim().toLowerCase();
+  return host.startsWith('[') ? host.replace(/^(\[[^\]]*\]).*$/, '$1') : host.replace(/:\d*$/, '');
+}
+const isIp = (name) => /^\d{1,3}(\.\d{1,3}){3}$/.test(name) || /^\[[0-9a-f:.]+\]$/.test(name);
 export function hostAllowed(header, list) {
   if (!list) return true;
   const host = String(header ?? '').trim().toLowerCase();
-  const name = host.replace(/:\d+$/, '');
-  return LOOPBACK.includes(name) || list.includes(host) || list.includes(name);
+  const name = hostName(host);
+  return LOOPBACK.includes(name) || isIp(name) || list.includes(host) || list.includes(name);
+}
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+/** The page a refused host gets: what to set, with the name it was opened by. */
+export function hostRefusedPage(header, list) {
+  const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');
+  const env = list.length ? `${list.join(',')},${name}` : name;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Host not allowed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#0f172a}
+code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.75rem 1rem;overflow-x:auto}
+@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}code,pre{background:#1e293b}}</style></head><body>
+<h1>Host not allowed</h1>
+<p>This dashboard was opened as <code>${name}</code>, which is not in <code>DASHBOARD_ALLOWED_HOSTS</code>. Without it the
+dashboard answers only <code>localhost</code> and IP addresses, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
+<p>Add the name to the dashboard container's environment and restart it:</p>
+<pre>DASHBOARD_ALLOWED_HOSTS=${env}</pre>
+<p>Several names are comma-separated; <code>*</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
+</body></html>`;
 }
 
 /** The release (1.2.3) or commit (main-<sha>) page of this dashboard's version, or null. */
@@ -253,11 +279,14 @@ export async function createApp({
   }
 
   const hosts = allowedHosts(env);
+  if (hosts?.length === 0) log.info('DASHBOARD_ALLOWED_HOSTS is not set: answering localhost and IP addresses only; set it to the host names you open the dashboard by');
 
   async function handler(req, res) {
     if (!hostAllowed(req.headers.host, hosts)) {
       log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in DASHBOARD_ALLOWED_HOSTS)`);
-      return send(res, 403, 'Host not allowed; add it to DASHBOARD_ALLOWED_HOSTS', 'text/plain; charset=utf-8');
+      // a browser gets a page that says what to set; the API a short text
+      if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
+      return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to DASHBOARD_ALLOWED_HOSTS`, 'text/plain; charset=utf-8');
     }
     // A request target that is no URL, or a path with a broken escape (/%E0%A4%A), is the
     // client's mistake: 400, never an exception outside the try below (it would end the process).

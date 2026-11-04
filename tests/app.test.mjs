@@ -378,24 +378,44 @@ test('the iframe widget: its origin, and only that, in frame-src', async () => {
   }
 });
 
-test('DASHBOARD_ALLOWED_HOSTS: only the listed Host headers (and loopback) get an answer', async () => {
-  const { allowedHosts, hostAllowed } = await import('../src/app.js');
-  assert.equal(allowedHosts({}), null);
-  assert.equal(allowedHosts({ DASHBOARD_ALLOWED_HOSTS: 'a.lan, *' }), null);
+test('DASHBOARD_ALLOWED_HOSTS: listed host names, loopback and IP addresses get an answer; unset, no other name', async () => {
+  const { allowedHosts, hostAllowed, hostName } = await import('../src/app.js');
+  assert.deepEqual(allowedHosts({}), [], 'unset: only loopback and IP addresses');
+  assert.equal(allowedHosts({ DASHBOARD_ALLOWED_HOSTS: 'a.lan, *' }), null, '* allows every host');
   assert.deepEqual(allowedHosts({ HOMEPAGE_ALLOWED_HOSTS: 'Dash.lan:3000' }), ['dash.lan:3000'], 'homepage\'s name works too');
+  assert.deepEqual(['dash.lan:3000', '192.168.1.10', '[fd00::1]:3000', 'x'].map(hostName), ['dash.lan', '192.168.1.10', '[fd00::1]', 'x']);
   const list = ['dash.lan', 'dash.example.com:8443'];
-  assert.deepEqual(['dash.lan:3000', 'DASH.lan', 'dash.example.com:8443', 'dash.example.com:443', 'evil.example', '127.0.0.1:3000', '[::1]:3000', undefined].map((h) => hostAllowed(h, list)),
-    [true, true, true, false, false, true, true, false]);
-  const t = await startApp({}, { DASHBOARD_ALLOWED_HOSTS: 'dash.lan' });
-  const get = (host) => new Promise((resolve, reject) => {
-    const req = http.request(`${t.base}/api/health`, { headers: { host } }, (res) => { res.resume(); resolve(res.statusCode); });
+  assert.deepEqual(['dash.lan:3000', 'DASH.lan', 'dash.example.com:8443', 'dash.example.com:443', 'evil.example', '127.0.0.1:3000', '[::1]:3000', '192.168.1.10:3000', '[fd00::1]:3000', undefined].map((h) => hostAllowed(h, list)),
+    [true, true, true, false, false, true, true, true, true, false]);
+  assert.deepEqual(['localhost:3000', '10.0.0.5', 'dash.lan', 'rebind.example.com', '1.2.3.4.evil.example'].map((h) => hostAllowed(h, [])), [true, true, false, false, false], 'unset');
+  const request = (t, host, accept) => new Promise((resolve, reject) => {
+    const req = http.request(`${t.base}/api/health`, { headers: { host, ...(accept ? { accept } : {}) } }, (res) => {
+      let body = '';
+      res.on('data', (c) => (body += c));
+      res.on('end', () => resolve({ status: res.statusCode, type: res.headers['content-type'], body }));
+    });
     req.on('error', reject);
     req.end();
   });
+  const listed = await startApp({}, { DASHBOARD_ALLOWED_HOSTS: 'dash.lan' });
   try {
-    assert.deepEqual([await get('dash.lan:3000'), await get('rebind.example.com'), await get('localhost:3000')], [200, 403, 200]);
+    assert.deepEqual([(await request(listed, 'dash.lan:3000')).status, (await request(listed, 'rebind.example.com')).status, (await request(listed, 'localhost:3000')).status], [200, 403, 200]);
   } finally {
-    await t.close();
+    await listed.close();
+  }
+  const unset = await startApp({});
+  try {
+    assert.equal((await request(unset, '192.168.1.10:3000')).status, 200, 'an IP address works without the variable');
+    const page = await request(unset, 'www.example.lan', 'text/html,application/xhtml+xml');
+    assert.equal(page.status, 403);
+    assert.match(page.type, /text\/html/);
+    assert.match(page.body, /<pre>DASHBOARD_ALLOWED_HOSTS=www\.example\.lan<\/pre>/, 'the line to set, with the name it was opened by');
+    const api = await request(unset, 'www.example.lan');
+    assert.deepEqual([api.status, api.body], [403, 'Host not allowed; add "www.example.lan" to DASHBOARD_ALLOWED_HOSTS']);
+    const nasty = await request(unset, '<script>x</script>.lan', 'text/html');
+    assert.ok(!nasty.body.includes('<script>x'), 'the host name is escaped');
+  } finally {
+    await unset.close();
   }
 });
 

@@ -107,7 +107,7 @@ Settings of the container rather than of the page.
 | Variable | What |
 |---|---|
 | `DASHBOARD_VAR_*`, `DASHBOARD_FILE_*` | Values for `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` (see [Variables](#variables)) |
-| `DASHBOARD_ALLOWED_HOSTS` | The host names the dashboard answers to (see [Allowed hosts](#allowed-hosts)) |
+| `DASHBOARD_ALLOWED_HOSTS` | The host names you open the dashboard by; without it only `localhost` and IP addresses work (see [Allowed hosts](#allowed-hosts)) |
 | `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
 | `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
 | `DASHBOARD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
@@ -116,12 +116,30 @@ Settings of the container rather than of the page.
 
 ### Allowed hosts
 
-`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) lists the host names the dashboard
-answers to, comma-separated, e.g. `DASHBOARD_ALLOWED_HOSTS=dash.lan,dash.example.com:8443`. Any other
-`Host` header gets a 403, which stops DNS rebinding: a web page that points its own domain at
-your network cannot read the dashboard through your browser. An entry without a port allows any
-port; `localhost` and `127.0.0.1` always work (the image's health check uses them). Unset, or
-`*`, answers every host, as before. Unlike homepage the check is off until you set it.
+`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) lists the host names you open the
+dashboard by, comma-separated:
+
+```yaml
+# compose.yaml
+services:
+  dashboard:
+    environment:
+      DASHBOARD_ALLOWED_HOSTS: dash.lan,dash.example.com   # every name you open it by
+```
+
+- **Always answered**: `localhost`, `127.0.0.1`, `[::1]` (the image's health check uses them)
+  and any IP address (`http://192.168.1.10:3000`), with or without the variable.
+- **A host name** (`dash.lan`, the name your reverse proxy passes on) is only answered when it is
+  in the list. Without the variable no name is: the browser shows a page that says which line to
+  add, with the name it was opened by. An API call gets a 403.
+- **Ports**: an entry without a port allows every port (`dash.lan`); with one, only that port
+  (`dash.example.com:8443`).
+- **`*`** answers every host, as before this check. Only use it when something else checks the
+  host, such as a reverse proxy that answers your names only.
+
+This stops DNS rebinding: a web page that points a name of its own at your network would
+otherwise be the same site as the dashboard to your browser, and could read it and press its
+buttons. Such a page always uses its own name, never an IP address, so IP addresses stay safe.
 
 ### Widget worker
 

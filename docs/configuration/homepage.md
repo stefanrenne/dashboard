@@ -53,8 +53,9 @@ also homepage's own spellings such as `customapi`, `overseerr`, `jellyseerr`, `u
   one: selectors written for homepage's markup do not match. Rewrite them against the dashboard's
   theme properties (`--dash-card`, `--dash-text`, ...) and classes (see
   [Custom CSS & JS](custom-css-js.md)).
-- **Allowed hosts** are only checked once `HOMEPAGE_ALLOWED_HOSTS` (or `DASHBOARD_ALLOWED_HOSTS`)
-  is set; homepage checks them by default (see [Allowed hosts](README.md#allowed-hosts)).
+- **Allowed hosts** are checked as in homepage: a host name you open the dashboard by must be in
+  `HOMEPAGE_ALLOWED_HOSTS` (or `DASHBOARD_ALLOWED_HOSTS`). Unlike homepage, IP addresses always
+  work without it (see [Allowed hosts](README.md#allowed-hosts)).
 - **Widgets are packages.** They come from the widgets collection, which updates itself to its
   newest release; `plugins:` in `settings.yaml` pins a release or adds widgets of others (see
   [Settings](settings.md)).

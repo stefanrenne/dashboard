@@ -78,16 +78,19 @@ services:
       - ./config:/config
       - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: Docker status and discovery
     environment:
+      DASHBOARD_ALLOWED_HOSTS: dash.lan      # the names you open it by; localhost and IP addresses always work
       DASHBOARD_VAR_RADARR_KEY: your-api-key
     restart: unless-stopped
 ```
 
-For Docker discovery through a read-only socket proxy, see
-[docker-compose.example.yml](../docker-compose.example.yml).
+To open the dashboard by a name, add it to
+[`DASHBOARD_ALLOWED_HOSTS`](configuration/README.md#allowed-hosts). For Docker discovery through
+a read-only socket proxy, see [Docker](configuration/docker.md#discovery).
 
 </details>
 
 Images are built for amd64 and arm64 for every release: `latest` is the newest release, and each has its own tag (`0.14.0`, `0.14`).
+What changed in each release is in the [CHANGELOG](../CHANGELOG.md).
 
 ## Where to next
 

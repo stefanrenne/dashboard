@@ -17,6 +17,10 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - `git`, `npm` and `ping` get validated arguments without a shell (no `-`-prefixed refs or names).
 - The default collection yields: a widget id from your own `plugins:` wins over the collection's,
   and two of your own sources cannot share an id.
+- **Host names are checked** (`DASHBOARD_ALLOWED_HOSTS`, see
+  [Allowed hosts](../configuration/README.md#allowed-hosts)): a web page that points a name of its
+  own at your network (DNS rebinding) gets a refusal instead of the dashboard, so it cannot read
+  it or press its buttons through your browser. `*` turns this off.
 - **Actions run for anyone who can open the page.** There is no login: a widget with an
   `action` (the collection's `button` running a script) does its thing for every visitor who
   presses it. Put the dashboard behind your proxy's authentication, or keep such buttons off a
