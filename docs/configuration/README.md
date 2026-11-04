@@ -161,7 +161,7 @@ so an existing installation changes these:
 
 | Was | Now |
 |---|---|
-| image `ghcr.io/stefanrenne/homelab-dashboard` | `ghcr.io/stefanrenne/dashboard` (the old path stays at its last release) |
+| image `ghcr.io/stefanrenne/homelab-dashboard` | `ghcr.io/stefanrenne/dashboard` (the old path is gone) |
 | `{{HD_VAR_*}}`, `{{HD_FILE_*}}` | `{{DASHBOARD_VAR_*}}`, `{{DASHBOARD_FILE_*}}`, with the environment variables renamed too; the dashboard warns about an old one, naming the new form |
 | `HD_CONFIG_DIR`, `HD_ALLOWED_HOSTS`, `HD_WATCH_POLL`, `HD_ALLOW_ROOT_SCRIPTS`, `HD_WIDGET_ISOLATION`, `HD_WIDGET_MEMORY_MB` | `DASHBOARD_…` with the same rest |
 | Docker labels `homelab.*` | `dashboard.*` (homepage's `homepage.*` keep working) |
