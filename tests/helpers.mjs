@@ -50,3 +50,25 @@ export function fakeCtx(options, overrides = {}) {
     ...overrides,
   };
 }
+
+// The page's languages. English and Dutch are written with every change; the others may miss a
+// text (it falls back to English) and are filled in a pass of their own (npm run i18n-missing).
+export const LANGUAGES = ['en', 'nl', 'fr', 'de', 'es', 'ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant'];
+export const COMPLETE_LANGUAGES = ['en', 'nl'];
+
+/**
+ * A page's I18N: every language there; English and Dutch complete; the others no keys English
+ * lacks, and the same {placeholders} in what they have.
+ */
+export function checkLanguages(assert, I18N) {
+  const dict = JSON.parse(JSON.stringify(I18N)); // a jsdom page's objects are of another realm
+  assert.deepEqual(Object.keys(dict).sort(), [...LANGUAGES].sort(), 'the languages');
+  const keys = Object.keys(dict.en).sort();
+  const marks = (s) => (String(s).match(/\{\w+\}/g) ?? []).sort().join();
+  for (const lang of LANGUAGES) {
+    const own = Object.keys(dict[lang]);
+    if (COMPLETE_LANGUAGES.includes(lang)) assert.deepEqual([...own].sort(), keys, `${lang}: every text`);
+    assert.deepEqual(own.filter((k) => !(k in dict.en)), [], `${lang}: no keys English lacks`);
+    for (const k of own) assert.equal(marks(dict[lang][k]), marks(dict.en[k]), `${lang}.${k}: the same placeholders`);
+  }
+}

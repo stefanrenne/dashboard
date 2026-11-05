@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
+import { checkLanguages } from './helpers.mjs';
 
 const HTML = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
 
@@ -287,11 +288,10 @@ test('an empty dashboard shows how to add services', async () => {
   w.close();
 });
 
-test('every UI text exists in every language', async () => {
+test('every UI text in English and Dutch; the other languages fall back to English', async () => {
   const w = await page();
   const { I18N, PALETTES } = w.HD;
-  const keys = Object.keys(I18N.en).sort();
-  for (const lang of ['en', 'nl', 'fr', 'de', 'es']) assert.deepEqual(Object.keys(I18N[lang]).sort(), keys, lang);
+  checkLanguages(assert, I18N);
   for (const [name, shades] of Object.entries(PALETTES)) assert.equal(shades.split(' ').length, 11, name);
   assert.equal(w.HD.safeHref(' JavaScript:alert(1)'), null);
   assert.equal(w.HD.safeHref('smb://nas/share'), 'smb://nas/share');
@@ -663,11 +663,7 @@ test('a develop or main build shows its commit, as the widgets show theirs', asy
 });
 
 test('17 languages: Hebrew turns the page right-to-left, the others left-to-right', async () => {
-  const keys = Object.keys((await page()).HD.I18N.en).sort();
   const w = await page();
-  for (const lang of ['ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant']) {
-    assert.deepEqual(Object.keys(w.HD.I18N[lang] ?? {}).sort(), keys, lang);
-  }
   const he = structuredClone(LAYOUT);
   he.settings.language = 'he';
   const r = await page({ ...RESULTS, '/api/layout': he });

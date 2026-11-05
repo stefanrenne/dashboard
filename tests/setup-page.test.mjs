@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
+import { checkLanguages } from './helpers.mjs';
 
 const HTML = fs.readFileSync(path.resolve('public/setup.html'), 'utf8');
 const SCRIPT = fs.readFileSync(path.resolve('public/setup.js'), 'utf8');
@@ -54,18 +55,11 @@ async function page({ allowed = true, answers = {} } = {}) {
 const tick = () => new Promise((r) => setTimeout(r, 30));
 const next = (doc) => doc.querySelector('.actions button.primary').click();
 
-test('the palettes are the page\'s own, and every language has every text with its placeholders', async () => {
+test('the palettes are the page\'s own; English and Dutch complete, the other languages fall back to English', async () => {
   const { w } = await page();
   const block = /const PALETTES = (\{[\s\S]*?\n\});/.exec(INDEX)[1];
   assert.deepEqual(JSON.parse(JSON.stringify(w.HD_SETUP.PALETTES)), new Function(`return ${block}`)());
-  const { I18N } = w.HD_SETUP;
-  const languages = ['en', 'nl', 'fr', 'de', 'es', 'ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant'];
-  assert.deepEqual(Object.keys(I18N).sort(), [...languages].sort());
-  const marks = (s) => (s.match(/\{\w+\}/g) ?? []).sort().join();
-  for (const lang of languages) {
-    assert.deepEqual(Object.keys(I18N[lang]).sort(), Object.keys(I18N.en).sort(), lang);
-    for (const [k, v] of Object.entries(I18N.en)) assert.equal(marks(I18N[lang][k]), marks(v), `${lang}.${k}`);
-  }
+  checkLanguages(assert, w.HD_SETUP.I18N);
 });
 
 test('from outside the local network it asks for the code first', async () => {

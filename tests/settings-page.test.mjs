@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
+import { checkLanguages } from './helpers.mjs';
 
 const HTML = fs.readFileSync(path.resolve('public/settings.html'), 'utf8').replace('<script src="settings.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/settings.js'), 'utf8');
@@ -45,8 +46,7 @@ const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plu
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });
   const { I18N, PALETTES } = w.HD_SETTINGS;
-  assert.equal(Object.keys(I18N).length, 17);
-  for (const [lang, d] of Object.entries(I18N)) assert.deepEqual(Object.keys(d).sort(), Object.keys(I18N.en).sort(), lang);
+  checkLanguages(assert, I18N);
   const block = /const PALETTES = (\{[\s\S]*?\n\});/.exec(INDEX)[1];
   assert.deepEqual(JSON.parse(JSON.stringify(PALETTES)), new Function(`return ${block}`)());
 });
