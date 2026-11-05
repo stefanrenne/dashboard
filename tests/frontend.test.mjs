@@ -233,8 +233,10 @@ test('appearance: light, dark and back to following the system; colour remembere
   assert.deepEqual(pressed(), ['auto']);
   assert.equal(doc.documentElement.dataset.theme, 'dark', 'jsdom has no light system preference');
   for (const b of doc.querySelectorAll('[data-appearance]')) assert.ok(b.getAttribute('aria-label'), 'icon-only buttons are labelled');
-  doc.querySelector('.swatch[title="rose"]').click();
-  assert.equal(doc.documentElement.style.getPropertyValue('--t800'), '#9f1239');
+  assert.equal(doc.querySelector('.swatch, #color-btn'), null, 'no colour picker: the settings page sets the colour');
+  w.localStorage.setItem('dash-color', 'rose');
+  doc.querySelector('[data-appearance="dark"]').click();
+  assert.equal(doc.documentElement.style.getPropertyValue('--t800'), '#065f46', 'a colour once picked in this browser no longer counts');
   w.close();
 });
 

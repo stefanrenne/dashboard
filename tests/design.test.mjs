@@ -65,7 +65,6 @@ test('every font size is relative (rem/em), so text follows the browser setting'
 
 test('controls meet the minimum target sizes', () => {
   assert.match(block('  .icon-btn {'), /min-width: 32px; min-height: 32px/);
-  assert.match(block('  .swatch {'), /width: 24px; height: 24px/);
   assert.match(block('  button.tag::before {'), /inset: -4px -4px -12px/, 'container labels get a ≥ 28px hit area');
 });
 

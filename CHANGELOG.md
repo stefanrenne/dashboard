@@ -21,6 +21,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   keys. It opens with the admin password (a login counts); without one yet, the local network sets
   one first.
 - Durations take days too: `7d`.
+
 - **`allowedHosts` in settings.yaml**, next to `DASHBOARD_ALLOWED_HOSTS`: the host names the
   dashboard answers. A change counts at once; the page for a refused host names the line to add.
 - The setup wizard's security step sets all three: the admin password (required; only its hash is
@@ -38,6 +39,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   `ghcr.io/stefanrenne/dashboard:develop` (version `develop-<sha>`), which installs the widgets
   collection from its `develop` branch. `latest` and the version tags stay on releases, which are
   tagged on `main` only.
+
+### Removed
+- The colour picker in the footer: the settings page sets the colour, in settings.yaml. A colour
+  picked there in a browser before no longer counts.
 
 ## [0.22.0] - 2026-11-04
 
