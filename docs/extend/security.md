@@ -23,12 +23,18 @@ choosing a Docker image. The dashboard limits the damage where it can:
   it or press its buttons through your browser. `*` turns this off.
 - **Actions run for anyone who can open the page, unless they ask for a password.** There is
   no login: a widget with an `action` (the collection's `button` running a script) does its thing
-  for every visitor who presses it. With `DASHBOARD_ACTION_PASSWORD` set, root buttons, webhooks,
-  the widget sync and every entry with `confirm: password` or `always` ask for it first (see
-  [Action password](../configuration/README.md#action-password)); a correct one unlocks that
+  for every visitor who presses it. With an admin password (settings.yaml `adminPassword`, a scrypt
+  hash, or `DASHBOARD_ADMIN_PASSWORD`), root buttons, webhooks, the widget sync and every entry
+  with `confirm: password` or `always` ask for it first (see
+  [Admin password](../configuration/README.md#admin-password)); a correct one unlocks that
   browser for a while through an HttpOnly cookie the server keeps in memory, and guessing is slowed
-  down per address. The page itself stays readable: put the dashboard behind your proxy's
-  authentication, or keep such buttons off a dashboard that is reachable from outside. Only the
+  down per address.
+- **`login: true` closes the page itself** (see [Login page](../configuration/README.md#login-page)):
+  every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
+  mode 600) and checks each time; a logout or a new admin password ends it for good. Only
+  `/api/health`, `robots.txt` and the login page stay open. Without it, anyone who can open the
+  page reads it: put the dashboard behind your proxy's authentication, or keep such buttons off a
+  dashboard that is reachable from outside. Only the
   configured script or command runs; nothing in the request reaches it.
 - **Root scripts are off unless you ask for them.** Only with `DASHBOARD_ALLOW_ROOT_SCRIPTS=true` on
   the container does the image let `node` run `/usr/local/bin/dashboard-root` (bash as root) through

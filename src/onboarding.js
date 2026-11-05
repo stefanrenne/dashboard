@@ -272,8 +272,22 @@ export function widgetList(registry) {
 
 const yamlValue = (v) => YAML.stringify(v, { lineWidth: 0 }).trimEnd();
 
-/** settings.yaml for the wizard's basics, with the comments of the example config. */
-export function settingsYaml({ title, language, theme, color }) {
+/** The security part of settings.yaml; also added below homepage's settings.yaml, which has none of it. */
+export function securityYaml({ allowedHosts = [], adminPassword = null, login = false }) {
+  return [
+    '# Security. See https://getdashboard.dev/configuration/#admin-password',
+    `allowedHosts: [${allowedHosts.map(yamlValue).join(', ')}]   # the names you open the dashboard by (IP addresses always work)`,
+    ...(adminPassword ? [`adminPassword: ${yamlValue(adminPassword)}   # a scrypt hash: node src/hash-password.mjs makes a new one`] : []),
+    `login: ${login ? 'true ' : 'false'}           # true: the page asks for the admin password; false: only presses that ask (user: root, confirm:)`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * settings.yaml for the wizard's basics and security: the allowed hosts, the admin password's
+ * hash (never the password) and whether the page asks for it at the door.
+ */
+export function settingsYaml({ title, language, theme, color, allowedHosts = [], adminPassword = null, login = false }) {
   return [
     '# Dashboard settings. See https://getdashboard.dev/configuration/settings.html',
     `title: ${yamlValue(title)}`,
@@ -284,6 +298,7 @@ export function settingsYaml({ title, language, theme, color }) {
     'headerStyle: boxed    # boxed: header widgets in a box; clean: without',
     'target: _blank        # where service links open',
     '',
+    securityYaml({ allowedHosts, adminPassword, login }),
     '# Widgets from outside the widgets collection. Pin a tag/commit (or #latest) or exact version.',
     'plugins: []',
     '',

@@ -19,12 +19,14 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
-import { ActionGate, loadPassword, hashPassword } from './actionauth.js';
-import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
+import { ActionGate, loadPassword, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
+import { SessionStore, OPEN_PATHS } from './login.js';
+import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
 import { validateOptions } from './plugins/options.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];
+export const MIN_PASSWORD = 8; // the setup wizard's admin password, at least
 import { safeJoin } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -106,17 +108,17 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '
 /** The page a refused host gets: what to set, with the name it was opened by. */
 export function hostRefusedPage(header, list) {
   const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');
-  const env = list.length ? `${list.join(',')},${name}` : name;
+  const all = list.length ? `[${list.join(', ')}, ${name}]` : `[${name}]`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Host not allowed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#0f172a}
 code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.75rem 1rem;overflow-x:auto}
 @media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}code,pre{background:#1e293b}}</style></head><body>
 <h1>Host not allowed</h1>
-<p>This dashboard was opened as <code>${name}</code>, which is not in <code>DASHBOARD_ALLOWED_HOSTS</code>. Without it the
-dashboard answers only <code>localhost</code> and IP addresses, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
-<p>Add the name to the dashboard container's environment and restart it:</p>
-<pre>DASHBOARD_ALLOWED_HOSTS=${env}</pre>
-<p>Several names are comma-separated; <code>*</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
+<p>This dashboard was opened as <code>${name}</code>, which is not one of its allowed hosts. It answers only
+<code>localhost</code>, IP addresses and the names you allow, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
+<p>Add the name to <code>settings.yaml</code> in the config folder (the page follows once it is saved):</p>
+<pre>allowedHosts: ${all}</pre>
+<p>or to the container's environment as <code>DASHBOARD_ALLOWED_HOSTS</code> (comma-separated). <code>*</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
 </body></html>`;
 }
 
@@ -150,19 +152,22 @@ export async function createApp({
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
   const discovery = new Discovery({ log, env, onChange: () => state.config && rebuild(), ...discoveryOptions });
   let chain = Promise.resolve();
-  // DASHBOARD_ACTION_PASSWORD(_FILE): one that cannot be read keeps the actions locked (never open)
-  let password = null;
+  // DASHBOARD_ADMIN_PASSWORD(_FILE) wins over settings.yaml adminPassword; one that cannot be read
+  // keeps what it guards locked (never open)
+  let envPassword = null;
   try {
-    password = loadPassword(env);
+    envPassword = loadPassword(env);
   } catch (err) {
-    log.error(`${err.message}: actions that ask for the password are refused until it is fixed`);
-    password = { value: crypto.randomBytes(32).toString('hex'), hashed: false, broken: true };
+    log.error(`${err.message}: what asks for the admin password is refused until it is fixed`);
+    envPassword = { broken: true };
   }
-  const gate = new ActionGate({ password, log });
+  const gate = new ActionGate({ password: envPassword, log });
   const onboarding = new Onboarding({ configDir, log });
-  const passwordSecrets = password && !password.hashed ? [password.value] : [];
+  const sessions = new SessionStore({ configDir, log });
+  const passwordSecrets = envPassword?.value && !envPassword.hashed ? [envPassword.value] : [];
 
   function rebuild() {
+    gate.password = envPassword ?? state.config.settings.adminPassword ?? null;
     const merged = mergeDiscovered(state.config.services, discovery.found);
     const pluginMessages = (list) =>
       list.map((e) => ({ file: 'settings.yaml', path: `plugins: ${e.source}`, message: e.message }));
@@ -187,7 +192,17 @@ export async function createApp({
     const update = latest && isNewer(latest.version, VERSION) ? latest : null;
     // the installed plugins (name and version) next to the version, behind the same setting
     const plugins = showVersion ? state.pluginResult.packages ?? [] : [];
-    state.layout = { ...layout, version: VERSION, versionUrl: showVersion ? versionUrl(VERSION) : null, showVersion, update, plugins };
+    // the login page needs an admin password; without one the page stays open, and says so
+    const loginOn = Boolean(state.config.settings.login?.required && gate.password);
+    const messages = state.config.settings.login?.required && !gate.password
+      ? { ...layout.messages, warnings: [...layout.messages.warnings, { file: 'settings.yaml', path: 'login', message: 'needs an admin password (adminPassword, or DASHBOARD_ADMIN_PASSWORD); the page opens without a login now' }] }
+      : layout.messages;
+    state.layout = { ...layout, settings: { ...layout.settings, login: loginOn }, messages, version: VERSION, versionUrl: showVersion ? versionUrl(VERSION) : null, showVersion, update, plugins };
+    const hosts = hostsNow();
+    if (hosts?.length === 0 && !state.hostsNoted) {
+      state.hostsNoted = true;
+      log.info('no allowed hosts set: answering localhost and IP addresses only; add the host names you open the dashboard by to allowedHosts in settings.yaml (or DASHBOARD_ALLOWED_HOSTS)');
+    }
     broadcast('reload');
   }
 
@@ -296,15 +311,21 @@ export async function createApp({
     });
   }
 
-  const hosts = allowedHosts(env);
-  if (hosts?.length === 0) log.info('DASHBOARD_ALLOWED_HOSTS is not set: answering localhost and IP addresses only; set it to the host names you open the dashboard by');
+  // the allowed hosts: DASHBOARD_ALLOWED_HOSTS and settings.yaml allowedHosts together; `*` in either allows every host
+  const envHosts = allowedHosts(env);
+  const hostsNow = () => {
+    const own = state.config?.settings.allowedHosts ?? [];
+    if (envHosts === null || own.includes('*')) return null;
+    return [...new Set([...envHosts, ...own])];
+  };
 
   async function handler(req, res) {
+    const hosts = hostsNow();
     if (!hostAllowed(req.headers.host, hosts)) {
-      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in DASHBOARD_ALLOWED_HOSTS)`);
+      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts or DASHBOARD_ALLOWED_HOSTS)`);
       // a browser gets a page that says what to set; the API a short text
       if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
-      return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to DASHBOARD_ALLOWED_HOSTS`, 'text/plain; charset=utf-8');
+      return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to allowedHosts in settings.yaml`, 'text/plain; charset=utf-8');
     }
     // A request target that is no URL, or a path with a broken escape (/%E0%A4%A), is the
     // client's mistake: 400, never an exception outside the try below (it would end the process).
@@ -328,6 +349,23 @@ export async function createApp({
       if (method === 'GET' && (p === '/' || p === '/index.html') && onboarding.active) {
         res.writeHead(302, { location: 'setup', 'cache-control': 'no-store', ...SECURITY_HEADERS });
         return res.end();
+      }
+      // settings.yaml `login`: the admin password opens the page; a session is checked on the server
+      const login = state.config?.settings.login;
+      const loginOn = Boolean(login?.required && gate.password);
+      let loggedIn = false;
+      if (loginOn) {
+        const s = gate.password.broken ? { ok: false, headers: {} } : sessions.check(req, passwordFingerprint(gate.password), login.rememberMs);
+        loggedIn = s.ok;
+        if (s.headers['set-cookie']) res.setHeader('set-cookie', s.headers['set-cookie']);
+      }
+      if (p === '/login' || p === '/login.js' || p === '/api/login' || p === '/api/logout') return await loginRoute(req, res, method, p, { loginOn, loggedIn, login });
+      if (loginOn && !loggedIn && !isInternal(req) && !OPEN_PATHS.has(p)) {
+        if (method === 'GET' && (p === '/' || p === '/index.html')) {
+          res.writeHead(302, { location: 'login', 'cache-control': 'no-store', ...SECURITY_HEADERS });
+          return res.end();
+        }
+        return send(res, 401, { ok: false, needsLogin: true, error: 'log in first' });
       }
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
@@ -354,7 +392,7 @@ export async function createApp({
       if (method === 'POST' && p === '/api/plugins/sync') {
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
-        const allowed = await gate.check(req, 'password', { what: 'the widget sync' });
+        const allowed = await gate.check(req, 'password', { what: 'the widget sync', loggedIn });
         if (!allowed.ok) return send(res, allowed.status, allowed.body);
         await reload({ update: url.searchParams.get('update') === '1' });
         return send(res, 200, { errors: state.pluginResult.errors, warnings: state.pluginResult.warnings }, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
@@ -363,7 +401,7 @@ export async function createApp({
         // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const id = p.split('/')[3];
-        const allowed = await gate.check(req, runtime.instances.get(id)?.confirm ?? null, { what: `widget ${runtime.instances.get(id)?.type ?? id}` });
+        const allowed = await gate.check(req, runtime.instances.get(id)?.confirm ?? null, { what: `widget ${runtime.instances.get(id)?.type ?? id}`, loggedIn });
         if (!allowed.ok) return send(res, allowed.status, allowed.body);
         const out = await runtime.action(id);
         return send(res, out.busy ? 409 : out.missing ? 404 : 200, out, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
@@ -373,12 +411,12 @@ export async function createApp({
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const action = state.actions.get(p.slice('/api/run/'.length));
         if (!action) return send(res, 404, { error: 'no such action' });
-        const allowed = await gate.check(req, action.confirm ?? null, { what: `the webhook of ${action.name}` });
+        const allowed = await gate.check(req, action.confirm ?? null, { what: `the webhook of ${action.name}`, loggedIn });
         if (!allowed.ok) return send(res, allowed.status, allowed.body);
         return send(res, 200, await runAction(action), 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
       }
       // whether this browser is unlocked (the page's lock icon), and locking it again
-      if (method === 'GET' && p === '/api/lock') return send(res, 200, { protected: gate.protected, unlocked: gate.unlocked(req) });
+      if (method === 'GET' && p === '/api/lock') return send(res, 200, { protected: gate.protected, unlocked: loggedIn || gate.unlocked(req), loggedIn });
       if (method === 'POST' && p === '/api/lock') {
         if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...gate.lock(req) });
@@ -404,6 +442,45 @@ export async function createApp({
       log.error(`${req.method} ${p}: ${err.stack ?? err}`);
       return send(res, 500, { error: 'internal error' });
     }
+  }
+
+  /**
+   * The login page and its API: the page and its script, `GET /api/login` (how the page looks,
+   * never what is behind it), `POST /api/login` with { password } and `POST /api/logout`.
+   */
+  async function loginRoute(req, res, method, p, { loginOn, loggedIn, login }) {
+    if (method === 'GET' && p === '/login') {
+      if (!loginOn || loggedIn) {
+        res.writeHead(302, { location: './', 'cache-control': 'no-store', ...SECURITY_HEADERS });
+        return res.end();
+      }
+      return sendFile(res, path.join(publicDir, 'login.html'));
+    }
+    if (method === 'GET' && p === '/login.js') return sendFile(res, path.join(publicDir, 'login.js'));
+    const s = state.config.settings;
+    if (method === 'GET' && p === '/api/login') {
+      return send(res, 200, { login: loginOn, loggedIn, broken: Boolean(gate.password?.broken), language: s.language, theme: s.theme, color: s.color });
+    }
+    if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+    if (method === 'POST' && p === '/api/logout') return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.end(req) });
+    if (method !== 'POST' || p !== '/api/login') return send(res, 404, { error: 'not found' });
+    if (!loginOn) return send(res, 404, { error: 'no login page' });
+    let body;
+    try {
+      body = await readJson(req, 4096);
+    } catch (err) {
+      return send(res, err.status ?? 400, { ok: false, error: err.message });
+    }
+    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const retryAfter = gate.limiter.waiting(address);
+    if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
+    if (!(await checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''))) {
+      const wait = gate.limiter.failed(address);
+      log.warn(`wrong admin password from ${address} at the login${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
+      return send(res, 401, { ok: false, wrongPassword: true, error: 'wrong password' });
+    }
+    gate.limiter.succeeded(address);
+    return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) });
   }
 
   /**
@@ -440,19 +517,8 @@ export async function createApp({
       return send(res, 200, await scanContainers({ servers, widgets: widgetList(state.registry), host: hostName(req.headers.host), get: dockerGet }));
     }
     if (method === 'GET' && route === 'status') {
-      const list = allowedHosts(env);
-      const name = hostName(req.headers.host);
-      return send(res, 200, {
-        host: name,
-        allowedHosts: list === null ? '*' : list,
-        hostListed: list === null || list.includes(name),
-        actionPassword: gate.protected,
-        docker: state.config.docker.map((s) => ({ name: s.name, socket: Boolean(s.socket), url: s.url ?? null })),
-      });
-    }
-    if (method === 'POST' && route === 'hash') {
-      if (typeof body?.password !== 'string' || !body.password) return send(res, 400, { ok: false, error: 'no password' });
-      return send(res, 200, { ok: true, hash: hashPassword(body.password) });
+      // what the environment sets already: those win over what the wizard writes
+      return send(res, 200, { host: hostName(req.headers.host), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword) });
     }
     if (method === 'POST' && route === 'test') return send(res, 200, await testWidget(body?.type, body?.options));
     if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files));
@@ -533,6 +599,14 @@ export async function createApp({
    */
   function setupFiles(body) {
     const s = body.settings ?? {};
+    const sec = body.security ?? {};
+    // the admin password: required, unless the environment sets one; only its hash is written
+    if (!envPassword && (typeof sec.adminPassword !== 'string' || sec.adminPassword.length < MIN_PASSWORD)) {
+      return { error: `security.adminPassword: at least ${MIN_PASSWORD} characters` };
+    }
+    const hosts = Array.isArray(sec.allowedHosts) ? sec.allowedHosts.map((h) => String(h).trim().toLowerCase()).filter(Boolean) : [];
+    if (hosts.some((h) => h !== '*' && !/^[a-z0-9.-]+(:\d{1,5})?$|^\[[0-9a-f:]+\](:\d{1,5})?$/.test(h)) || hosts.length > 20) return { error: 'security.allowedHosts: host names such as dash.lan' };
+    const security = { allowedHosts: [...new Set(hosts)], adminPassword: envPassword ? null : hashPassword(sec.adminPassword), login: sec.login === true };
     const title = typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 100) : 'Homelab';
     if (s.language !== undefined && !LANGUAGES.includes(s.language)) return { error: 'settings.language: not a known language' };
     if (s.theme !== undefined && !THEMES.includes(s.theme)) return { error: 'settings.theme: auto, dark or light' };
@@ -556,7 +630,10 @@ export async function createApp({
       cards.push(card);
     }
     const files = {
-      'settings.yaml': settingsYaml({ title, language: s.language ?? 'en', theme: s.theme ?? 'auto', color: s.color ?? 'slate' }),
+      'settings.yaml': settingsYaml({
+        title, language: s.language ?? 'en', theme: s.theme ?? 'auto', color: s.color ?? 'slate',
+        ...security,
+      }),
       'services.yaml': servicesYaml(cards),
       'widgets.yaml': WIDGETS_YAML,
       'bookmarks.yaml': BOOKMARKS_YAML,
@@ -574,6 +651,8 @@ export async function createApp({
     if (docker.added.length) files['docker.yaml'] = dockerYaml(docker.servers);
     const homepage = body.homepage && typeof body.homepage === 'object' ? body.homepage : {};
     for (const [name, text] of Object.entries(homepage)) if (HOMEPAGE_FILES.includes(name) && typeof text === 'string') files[name] = text;
+    // homepage's settings.yaml as it is, with the security the wizard set below it
+    if (typeof homepage['settings.yaml'] === 'string') files['settings.yaml'] = `${homepage['settings.yaml'].trimEnd()}\n\n${securityYaml(security)}`;
     return { files };
   }
 

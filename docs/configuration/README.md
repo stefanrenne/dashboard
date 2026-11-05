@@ -45,9 +45,10 @@ while that is there the page opens at `/setup`. The wizard has five steps:
    homepage** takes homepage's `services.yaml`, `settings.yaml`, `bookmarks.yaml`,
    `widgets.yaml` and `docker.yaml`, shows what carries over (and which widgets have no match),
    and writes them as they are in place of what the wizard would write (`services.yaml`).
-4. **Security**: whether the host name you opened it by is in `DASHBOARD_ALLOWED_HOSTS`, whether
-   there is an [action password](#action-password) (it makes the hash for you), and whether Docker
-   is the raw socket or a proxy, with the lines to add to the container's environment.
+4. **Security**: the [admin password](#admin-password) (required, at least 8 characters; only its
+   hash is written), whether the dashboard shows a [login page](#login-page) or asks only for some
+   presses, and the [allowed hosts](#allowed-hosts) (the name you opened the wizard by, when it is
+   one). All three go into `settings.yaml`. **Skip the setup** on the first step leads here too.
 5. **Done**: it writes `settings.yaml`, `services.yaml`, `widgets.yaml` (the time, the system's
    resources and a search box), `bookmarks.yaml`, `docker.yaml` and `kubernetes.yaml`, removes
    `.onboarding` and opens the dashboard. It writes nothing when one of those files is there
@@ -148,32 +149,30 @@ Settings of the container rather than of the page.
 | Variable | What |
 |---|---|
 | `DASHBOARD_VAR_*`, `DASHBOARD_FILE_*` | Values for `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` (see [Variables](#variables)) |
-| `DASHBOARD_ALLOWED_HOSTS` | The host names you open the dashboard by; without it only `localhost` and IP addresses work (see [Allowed hosts](#allowed-hosts)) |
+| `DASHBOARD_ALLOWED_HOSTS` | More host names you open the dashboard by, next to `allowedHosts` in settings.yaml (see [Allowed hosts](#allowed-hosts)) |
 | `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
 | `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
-| `DASHBOARD_ACTION_PASSWORD`, `DASHBOARD_ACTION_PASSWORD_FILE` | A password a press asks for (see [Action password](#action-password)) |
+| `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ADMIN_PASSWORD_FILE` | The admin password, in place of `adminPassword` in settings.yaml (see [Admin password](#admin-password)) |
 | `DASHBOARD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
 | `DASHBOARD_CONFIG_DIR` | The config folder, when not run from the image |
 | `LOG_TARGETS` | `both`, `stdout` or `file` (with `logpath` in [settings.yaml](settings.md)) |
 
 ### Allowed hosts
 
-`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) lists the host names you open the
-dashboard by, comma-separated:
+`allowedHosts` in [settings.yaml](settings.md) lists the host names you open the dashboard by.
+`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) on the container adds more,
+comma-separated; both count. The setup wizard writes the first list.
 
 ```yaml
-# compose.yaml
-services:
-  dashboard:
-    environment:
-      DASHBOARD_ALLOWED_HOSTS: dash.lan,dash.example.com   # every name you open it by
+# settings.yaml
+allowedHosts: [dash.lan, dash.example.com]   # every name you open it by
 ```
 
 - **Always answered**: `localhost`, `127.0.0.1`, `[::1]` (the image's health check uses them)
-  and any IP address (`http://192.168.1.10:3000`), with or without the variable.
+  and any IP address (`http://192.168.1.10:3000`), with or without a list.
 - **A host name** (`dash.lan`, the name your reverse proxy passes on) is only answered when it is
-  in the list. Without the variable no name is: the browser shows a page that says which line to
-  add, with the name it was opened by. An API call gets a 403.
+  in a list. Otherwise the browser shows a page that says which line to add, with the name it was
+  opened by. An API call gets a 403. A change of `settings.yaml` counts at once.
 - **Ports**: an entry without a port allows every port (`dash.lan`); with one, only that port
   (`dash.example.com:8443`).
 - **`*`** answers every host, as before this check. Only use it when something else checks the
@@ -183,9 +182,27 @@ This stops DNS rebinding: a web page that points a name of its own at your netwo
 otherwise be the same site as the dashboard to your browser, and could read it and press its
 buttons. Such a page always uses its own name, never an IP address, so IP addresses stay safe.
 
-### Action password
+### Admin password
 
-With `DASHBOARD_ACTION_PASSWORD` set, presses that run something ask for that password first:
+The admin password guards what runs something, and with `login: true` the whole page. It is
+`adminPassword` in [settings.yaml](settings.md): **only its scrypt hash**, never the password
+itself (a plain one is refused, and what it guards stays locked). The setup wizard writes it;
+`node src/hash-password.mjs` in the container asks for a password and prints a new hash:
+
+```sh
+docker exec -it dashboard node src/hash-password.mjs
+```
+
+```yaml
+# settings.yaml
+adminPassword: "scrypt:16384:8:1:..."   # the printed line
+```
+
+`DASHBOARD_ADMIN_PASSWORD` on the container (plain text or the hash), or a file named by
+`DASHBOARD_ADMIN_PASSWORD_FILE` (a Docker secret), takes its place; a file that cannot be read
+keeps everything it guards locked (the log says why), rather than leaving it open.
+
+These presses ask for it:
 
 - **Buttons that run as root** (`user: root`) ask by default; `confirm: none` on the entry turns
   that off.
@@ -217,22 +234,6 @@ lock in the footer locks it again, and a restart of the dashboard locks every br
 The dialog has a username (`dashboard`) and a password field, so a password manager or the
 browser's own keychain (with Face ID or Touch ID) fills it in.
 
-**Store a hash, not the password.** `node src/hash-password.mjs` in the container asks for the
-password and prints a `scrypt:` hash; put that in the variable, or in a file named by
-`DASHBOARD_ACTION_PASSWORD_FILE` (a Docker secret):
-
-```sh
-docker exec -it dashboard node src/hash-password.mjs
-```
-
-```yaml
-# compose.yaml
-services:
-  dashboard:
-    environment:
-      DASHBOARD_ACTION_PASSWORD: "scrypt:16384:8:1:..."   # the printed line, or the password itself
-```
-
 - **Scripts inside the container** (a button's `curl http://127.0.0.1:3000/api/...`) are not
   asked: a request from 127.0.0.1 without a proxy header comes from the container itself. A
   reverse proxy on the same machine with host networking must send `X-Forwarded-For` (they all
@@ -241,12 +242,32 @@ services:
   doubled each time (up to 15 minutes). Each wrong one is in the log.
 - **Open the dashboard over HTTPS** when it asks for a password: over plain HTTP the password
   crosses the network as it is.
-- A file named by `DASHBOARD_ACTION_PASSWORD_FILE` that cannot be read keeps these presses
-  locked (the log says why), rather than leaving them open.
 - Labels of a discovered container cannot set `confirm: none`.
 
-It guards the presses, not the page: anyone who can open the dashboard still sees it. Put it
-behind a login (a forward-auth proxy) to keep the page itself private.
+### Login page
+
+With `login: true` in [settings.yaml](settings.md) the page itself asks for the admin password:
+whoever opens the dashboard sees a login page first, and every API call without a session gets a
+401. Logged in counts as unlocked: buttons ask nothing more, except those with `confirm: always`.
+The logout is in the footer.
+
+```yaml
+# settings.yaml
+login: true              # or { remember: 30d }
+```
+
+- **A session lasts a week** (`remember`) and each visit moves its end on: a dashboard you open
+  every day keeps you logged in. A week without a visit ends it.
+- **Sessions live on the server**, in `.sessions.json` in the config folder (hashes of the
+  tokens only, readable by the dashboard alone): the server checks every request, they last
+  through a restart or an update, a logout ends one for good (also if its cookie was copied), and a
+  new admin password ends them all.
+- The cookie is `HttpOnly` and `SameSite=Lax` (`Secure` over HTTPS): a link to the dashboard
+  from elsewhere opens it logged in, while the endpoints that change something keep needing a
+  header no other site can send.
+- **Still open**: `/api/health` (the image's health check) and `robots.txt`; and, as for the
+  presses, scripts inside the container.
+- Without an admin password, `login: true` does nothing but say so in the messages.
 
 ### Widget worker
 

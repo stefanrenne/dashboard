@@ -215,7 +215,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   };
 
   /**
-   * Whether an action widget's press needs the action password: the entry's `confirm:`
+   * Whether an action widget's press needs the admin password: the entry's `confirm:`
    * (password, always, none), else widget.yaml `confirmWhen` (option values that ask by default,
    * the button's `user: root`). A discovered service cannot turn it off: its labels come from
    * whoever starts a container.
@@ -230,13 +230,13 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     let confirm = asked ? 'password' : null;
     if (own !== undefined) {
       if (!CONFIRM_VALUES.includes(own)) errors.push({ ...where, message: `${type}: confirm: expected password, always or none` });
-      else if (own === 'none' && asked && where.discovered) warnings.push({ ...where, message: `${type}: confirm: none is not taken from a discovered service; it asks for the action password` });
+      else if (own === 'none' && asked && where.discovered) warnings.push({ ...where, message: `${type}: confirm: none is not taken from a discovered service; it asks for the admin password` });
       else confirm = own === 'none' ? null : own;
     }
     if (!actionsProtected && (confirm || (asked && own !== 'none'))) {
       warnings.push({ ...where, message: own === 'password' || own === 'always'
-        ? `${type}: confirm: ${own} needs DASHBOARD_ACTION_PASSWORD on the dashboard; it runs without a password now`
-        : `${type}: anyone who can open the page can run this; set DASHBOARD_ACTION_PASSWORD to ask for a password first (or confirm: none to keep it as is)` });
+        ? `${type}: confirm: ${own} needs DASHBOARD_ADMIN_PASSWORD on the dashboard; it runs without a password now`
+        : `${type}: anyone who can open the page can run this; set DASHBOARD_ADMIN_PASSWORD to ask for a password first (or confirm: none to keep it as is)` });
     }
     return confirm;
   }
@@ -372,7 +372,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       const id = stableId('svc', group.name, service.name);
       // homepage's `target: hidden-iframe` (a webhook): the server calls it and reports back.
       const target = service.target ?? config.settings.target;
-      // the webhook asks for the action password unless the (configured, not discovered) service says confirm: none
+      // the webhook asks for the admin password unless the (configured, not discovered) service says confirm: none
       const hook = target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '');
       const hookConfirm = !hook ? null : service.confirm === 'none' && !service.discovered ? null : service.confirm === 'always' ? 'always' : 'password';
       if (hook) actions.set(id, { name: service.name, href: service.href, confirm: hookConfirm });

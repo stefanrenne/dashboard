@@ -40,7 +40,7 @@ async function page({ allowed = true, answers = {} } = {}) {
           : p === 'widgets' ? { widgets: WIDGETS }
             : p === 'containers' ? { containers: CONTAINERS, problems: [] }
               : p === 'docker' ? (init) => ({ socketMounted: true, errors: [], servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 32 }, ...JSON.parse(init.body).docker.map((d) => ({ name: d.name ?? 'nas', target: `http://${d.address}`, ok: false, error: 'connect ECONNREFUSED', permission: false }))] })
-                : p === 'status' ? { host: '192.168.1.10', allowedHosts: [], hostListed: false, actionPassword: false, docker: [{ name: 'local', socket: true, url: null }] }
+                : p === 'status' ? { host: '192.168.1.10', envHosts: ['env.lan'], envPassword: false }
                 : answers[p] ?? { ok: true };
         return { json: async () => structuredClone(typeof body === 'function' ? body(init) : body) };
       };
@@ -148,13 +148,26 @@ test('the steps: basics, containers with a generated form, test, security lines,
   assert.ok(doc.getElementById('homepage-files'), 'its file chooser opens in this step');
   next(doc);
   await tick();
-  // 4. security: a hash, and the compose lines
-  assert.match(doc.getElementById('panel').textContent, /Docker-socket is gekoppeld/);
-  doc.getElementById('action-password').value = 'geheim';
-  doc.getElementById('action-password').closest('form').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  // 4. security: the admin password is required; hosts and the login choice go into settings.yaml
+  const panel = () => doc.getElementById('panel').textContent;
+  assert.ok(!/Docker/.test(panel()), 'no Docker section here any more');
+  assert.equal(doc.getElementById('allowed-hosts').value, '', 'opened by an IP address: no name to fill in');
+  assert.match(panel(), /Ook uit de environment van de container: env\.lan/);
+  assert.equal(doc.getElementById('login-actions').checked, true, 'only some actions, unless chosen otherwise');
+  assert.match(doc.querySelector('label[for=login-page]').textContent, /Een loginpagina.*veiliger/, 'the login page is marked safer');
+  assert.ok(doc.querySelector('label[for=login-page] strong') && doc.querySelector('label[for=login-page] .hint'), 'a title in bold, the explanation below it');
+  doc.getElementById('login-page').click();
+  const type = (id, value) => { doc.getElementById(id).value = value; doc.getElementById(id).dispatchEvent(new w.Event('input')); };
+  next(doc);
   await tick();
-  assert.match(doc.querySelector('pre').textContent, /DASHBOARD_ACTION_PASSWORD: "scrypt:1:2:3:abc:def"/);
-  assert.ok(!doc.querySelector('pre').textContent.includes('DASHBOARD_ALLOWED_HOSTS'), 'opened by IP: no host to add');
+  assert.equal(doc.querySelector('[role=alert]').textContent, 'Het admin wachtwoord moet minstens 8 tekens hebben.');
+  type('admin-password', 'Geheim-Admin-1');
+  type('admin-repeat', 'Geheim-Admin-2');
+  next(doc);
+  await tick();
+  assert.equal(doc.querySelector('[role=alert]').textContent, 'De twee wachtwoorden zijn niet gelijk.');
+  type('admin-repeat', 'Geheim-Admin-1');
+  type('allowed-hosts', 'dash.lan, www.example.com');
   next(doc);
   await tick();
   // 5. done: what is sent
@@ -164,15 +177,22 @@ test('the steps: basics, containers with a generated form, test, security lines,
   const sent = calls.find((c) => c.p === 'finish').body;
   assert.deepEqual(sent.settings, { title: 'Thuis', language: 'nl', theme: 'auto', color: 'emerald' });
   assert.deepEqual(sent.docker, [{ address: 'nas.lan:2375' }]);
+  assert.deepEqual(sent.security, { adminPassword: 'Geheim-Admin-1', allowedHosts: ['dash.lan', 'www.example.com'], login: true });
   assert.deepEqual(sent.services, [{ group: 'Downloads', name: 'Radarr', href: 'http://192.168.1.10:7878', container: 'radarr', server: 'local', icon: 'radarr.png', widget: { type: 'radarr', url: 'http://radarr:7878', key: 'abc123', enableQueue: false, version: 1 } }]);
 });
 
 test('skip: an empty dashboard, and a file that is there already is said', async () => {
   const { w, calls } = await page({ answers: { finish: { ok: false, exists: ['services.yaml'] } } });
-  let alerted = '';
-  w.alert = (m) => { alerted = m; };
-  [...w.document.querySelectorAll('button')].find((b) => b.classList.contains('link')).click();
+  const doc = w.document;
+  [...doc.querySelectorAll('button')].find((b) => b.classList.contains('link')).click();
   await tick();
-  assert.deepEqual(calls.find((c) => c.p === 'finish').body.services, []);
-  assert.equal(alerted, 'Bestaat al: services.yaml. Er is niets geschreven.');
+  assert.equal(doc.querySelector('h2').textContent, 'Beveiliging', 'skipping still asks for the admin password');
+  for (const id of ['admin-password', 'admin-repeat']) { doc.getElementById(id).value = 'Geheim-Admin-1'; doc.getElementById(id).dispatchEvent(new w.Event('input')); }
+  next(doc);
+  await tick();
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Configuratie schrijven').click();
+  await tick();
+  const sent = calls.find((c) => c.p === 'finish').body;
+  assert.deepEqual([sent.services, sent.security.login], [[], false]);
+  assert.equal(doc.querySelector('#panel [role=status]').textContent, 'Bestaat al: services.yaml. Er is niets geschreven.');
 });

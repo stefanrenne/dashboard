@@ -654,6 +654,12 @@ test('the footer: core and plugin versions linked to their release or commit, an
   assert.equal(plain.document.getElementById('version-box').hidden, true);
 });
 
+test('a develop or main build shows its commit, as the widgets show theirs', async () => {
+  const layout = { ...structuredClone(LAYOUT), version: 'develop-b5ae2fa', showVersion: true, plugins: [{ name: 'widgets', version: 'bba0c29' }] };
+  const w = await page({ ...RESULTS, '/api/layout': layout });
+  assert.equal(w.document.getElementById('version-box').textContent, 'core b5ae2fa | widgets bba0c29');
+});
+
 test('17 languages: Hebrew turns the page right-to-left, the others left-to-right', async () => {
   const keys = Object.keys((await page()).HD.I18N.en).sort();
   const w = await page();

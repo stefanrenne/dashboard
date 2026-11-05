@@ -1,7 +1,9 @@
-// A password in front of the actions (buttons, hidden-iframe webhooks, the widget sync), from
-// DASHBOARD_ACTION_PASSWORD or the file DASHBOARD_ACTION_PASSWORD_FILE names: plain text, or a
-// scrypt hash (src/hash-password.mjs). A correct password unlocks that browser for a while
-// (a random token in an HttpOnly cookie, kept in memory); failures per address are slowed down.
+// The admin password: in front of the actions (buttons, hidden-iframe webhooks, the widget sync)
+// and, with settings.yaml `login`, the whole page (src/login.js). From DASHBOARD_ADMIN_PASSWORD or
+// the file DASHBOARD_ADMIN_PASSWORD_FILE names (plain text or a scrypt hash), else settings.yaml
+// `adminPassword` (a scrypt hash, as src/hash-password.mjs and the setup wizard make). A correct
+// password unlocks that browser for a while (a random token in an HttpOnly cookie, kept in
+// memory); failures per address are slowed down.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -23,22 +25,22 @@ export function hashPassword(password, { N = 16384, r = 8, p = 1 } = {}) {
 }
 
 /**
- * The configured password: { value, hashed } or null when none is set. Throws when
- * DASHBOARD_ACTION_PASSWORD_FILE names a file that cannot be read, or a hash is malformed:
+ * The admin password from the environment: { value, hashed } or null when none is set. Throws
+ * when DASHBOARD_ADMIN_PASSWORD_FILE names a file that cannot be read, or a hash is malformed:
  * a password the user meant to set must never silently fall away.
  */
 export function loadPassword(env = process.env) {
-  let value = env.DASHBOARD_ACTION_PASSWORD;
-  if (env.DASHBOARD_ACTION_PASSWORD_FILE) {
+  let value = env.DASHBOARD_ADMIN_PASSWORD;
+  if (env.DASHBOARD_ADMIN_PASSWORD_FILE) {
     try {
-      value = fs.readFileSync(env.DASHBOARD_ACTION_PASSWORD_FILE, 'utf8');
+      value = fs.readFileSync(env.DASHBOARD_ADMIN_PASSWORD_FILE, 'utf8');
     } catch (err) {
-      throw new Error(`DASHBOARD_ACTION_PASSWORD_FILE: ${err.code === 'ENOENT' ? 'no such file' : err.message}`);
+      throw new Error(`DASHBOARD_ADMIN_PASSWORD_FILE: ${err.code === 'ENOENT' ? 'no such file' : err.message}`);
     }
   }
   value = String(value ?? '').trim();
   if (!value) return null;
-  if (value.startsWith('scrypt:') && !SCRYPT.test(value)) throw new Error('DASHBOARD_ACTION_PASSWORD: a scrypt hash, but not of the form src/hash-password.mjs prints');
+  if (value.startsWith('scrypt:') && !SCRYPT.test(value)) throw new Error('DASHBOARD_ADMIN_PASSWORD: a scrypt hash, but not of the form src/hash-password.mjs prints');
   return { value, hashed: value.startsWith('scrypt:') };
 }
 
@@ -46,7 +48,8 @@ const digest = (text) => crypto.createHash('sha256').update(String(text)).digest
 
 /** True when `given` is the password; constant time for either form. */
 export async function checkPassword(password, given) {
-  if (!password || typeof given !== 'string' || !given) return false;
+  // a password that could not be read (broken) never matches: what it guards stays locked
+  if (!password?.value || password.broken || typeof given !== 'string' || !given) return false;
   if (!password.hashed) return crypto.timingSafeEqual(digest(password.value), digest(given));
   const [, N, r, p, salt, hash] = SCRYPT.exec(password.value);
   const expected = Buffer.from(hash, 'base64');
@@ -57,6 +60,11 @@ export async function checkPassword(password, given) {
 }
 
 /** A loopback connection that no proxy passed on: a script inside the container (curl 127.0.0.1). */
+/** A short fingerprint of a password (its stored form), so a new password ends the sessions of the old one. */
+export function passwordFingerprint(password) {
+  return password?.value ? crypto.createHash('sha256').update(`dash-session:${password.value}`).digest('hex').slice(0, 32) : '';
+}
+
 export function isInternal(req) {
   const address = String(req.socket?.remoteAddress ?? '');
   const loopback = address === '::1' || address.startsWith('127.') || address.startsWith('::ffff:127.');
@@ -74,7 +82,7 @@ export function cookieValue(req, name) {
 
 /**
  * Wrong tries per address: FREE_FAILURES free, then a wait of FIRST_WAIT_MS that doubles up to
- * MAX_WAIT_MS. Shared by the action password and the onboarding code.
+ * MAX_WAIT_MS. Shared by the admin password and the onboarding code.
  */
 export class FailureLimiter {
   constructor(now = Date.now) {
@@ -141,9 +149,10 @@ export class ActionGate {
    * May this request run something that asks `requirement` (null, 'password' or 'always')?
    * { ok: true, headers } (headers may set the unlock cookie) or { ok: false, status, body }.
    */
-  async check(req, requirement, { what = 'an action', base = '/' } = {}) {
+  async check(req, requirement, { what = 'an action', base = '/', loggedIn = false } = {}) {
     if (!this.password || !requirement || isInternal(req)) return { ok: true, headers: {} };
-    if (requirement === 'password' && this.#unlocked(req)) return { ok: true, headers: {} };
+    // a login with the admin password counts as unlocked; `always` asks every time anyway
+    if (requirement === 'password' && (loggedIn || this.#unlocked(req))) return { ok: true, headers: {} };
     const address = String(req.socket?.remoteAddress ?? 'unknown');
     const retryAfter = this.limiter.waiting(address);
     if (retryAfter) return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter, error: 'too many wrong passwords' } };
@@ -151,7 +160,7 @@ export class ActionGate {
     if (given === undefined) return { ok: false, status: 401, body: { ok: false, needsPassword: true, always: requirement === 'always', error: 'password needed' } };
     if (!(await checkPassword(this.password, String(given)))) {
       const wait = this.limiter.failed(address);
-      this.log.warn(`wrong action password from ${address} for ${what}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
+      this.log.warn(`wrong admin password from ${address} for ${what}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
       return { ok: false, status: 401, body: { ok: false, needsPassword: true, wrongPassword: true, always: requirement === 'always', error: 'wrong password' } };
     }
     this.limiter.succeeded(address);

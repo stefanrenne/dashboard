@@ -4,7 +4,23 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **The action password is the admin password.** `DASHBOARD_ACTION_PASSWORD` and
+  `DASHBOARD_ACTION_PASSWORD_FILE` (0.22.0) are now `DASHBOARD_ADMIN_PASSWORD` and
+  `DASHBOARD_ADMIN_PASSWORD_FILE`; rename them on the container. It can also be in settings.yaml
+  as `adminPassword`, as a scrypt hash only (`node src/hash-password.mjs`); the variable wins.
+
 ### Added
+- **A login page:** `login: true` in settings.yaml asks for the admin password before the page
+  opens. A session lasts a week (`login: { remember }`) and each visit moves its end on; sessions
+  live on the server (`.sessions.json`, hashes only), last through a restart, and end with a logout
+  (in the footer) or a new admin password. Logged in, buttons ask nothing more but those with
+  `confirm: always`.
+- **`allowedHosts` in settings.yaml**, next to `DASHBOARD_ALLOWED_HOSTS`: the host names the
+  dashboard answers. A change counts at once; the page for a refused host names the line to add.
+- The setup wizard's security step sets all three: the admin password (required; only its hash is
+  written), the login page or only some presses, and the allowed hosts. Its Docker part is gone
+  (the Docker step covers it).
 - **Setup wizard on a first start.** An empty `/config` no longer gets the example config with
   services that do not exist: the page opens a wizard that asks for a title, language, theme and
   colour; checks the Docker servers it can reach (with the error, and servers or socket proxies to

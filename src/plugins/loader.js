@@ -51,7 +51,7 @@ export function readManifest(dir) {
   problems.push(...checkAttributes(manifest.attributes));
   if (manifest.confirmWhen !== undefined && (!isPlainObject(manifest.confirmWhen) || !Object.keys(manifest.confirmWhen).length
     || Object.entries(manifest.confirmWhen).some(([k, v]) => !manifest.options?.[k] || !['string', 'number', 'boolean'].includes(typeof v)))) {
-    problems.push('confirmWhen: a map of option to the value for which a press asks for the action password, such as { user: root }');
+    problems.push('confirmWhen: a map of option to the value for which a press asks for the admin password, such as { user: root }');
   }
   try {
     manifest.refreshMs = parseDuration(manifest.refresh, DEFAULT_REFRESH_MS);

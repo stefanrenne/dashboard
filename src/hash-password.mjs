@@ -1,5 +1,5 @@
-// Prints the scrypt hash of an action password, for DASHBOARD_ACTION_PASSWORD (or the file of
-// DASHBOARD_ACTION_PASSWORD_FILE), so the password itself is stored nowhere:
+// Prints the scrypt hash of an admin password, for settings.yaml adminPassword or DASHBOARD_ADMIN_PASSWORD
+// (or the file of DASHBOARD_ADMIN_PASSWORD_FILE), so the password itself is stored nowhere:
 //
 //   docker exec -it dashboard node src/hash-password.mjs
 //   echo -n 'secret' | node src/hash-password.mjs
@@ -29,7 +29,7 @@ async function readStdin() {
 
 let password;
 if (process.stdin.isTTY) {
-  password = await ask('Action password: ');
+  password = await ask('Admin password: ');
   if ((await ask('Once more: ')) !== password) {
     console.error('The two do not match.');
     process.exit(1);

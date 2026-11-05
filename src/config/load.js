@@ -37,7 +37,7 @@ export const STATUS_STYLES = ['dot', 'basic'];
 const MIN_PLUGIN_UPDATE_MS = 60_000;
 
 /** pluginUpdateInterval: how often #latest and branch plugins are checked; false or 0 turns it off. */
-/** settings.yaml `actions: { remember }`: how long a correct action password unlocks a browser; 0 asks every time. */
+/** settings.yaml `actions: { remember }`: how long a correct admin password unlocks a browser; 0 asks every time. */
 function actionRememberMs(actions, file, ctx) {
   const fallback = 15 * 60 * 1000;
   if (actions === undefined) return fallback;
@@ -52,6 +52,49 @@ function actionRememberMs(actions, file, ctx) {
   } catch (err) {
     ctx.warn(file, 'actions.remember', `${err.message}; remembering 15 minutes`);
     return fallback;
+  }
+}
+
+/** settings.yaml `allowedHosts`: a list or comma-separated names, or `*`; null when not set. */
+function allowedHostsSetting(value, file, ctx) {
+  if (value === undefined || value === null) return null;
+  const list = (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : null);
+  if (!list || list.some((h) => typeof h !== 'string')) {
+    ctx.warn(file, 'allowedHosts', 'expected a list of host names, such as [dash.lan], or "*"; ignored');
+    return null;
+  }
+  return list.map((h) => h.trim().toLowerCase()).filter(Boolean);
+}
+
+/**
+ * settings.yaml `adminPassword`: only the scrypt hash src/hash-password.mjs (or the setup wizard)
+ * makes, never the password itself. A plain one is refused: the presses it guards stay locked.
+ */
+function adminPasswordSetting(value, file, ctx) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^scrypt:\d+:\d+:\d+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/.test(value.trim())) {
+    ctx.error(file, 'adminPassword', 'expected the scrypt hash of the password (node src/hash-password.mjs), not the password itself; what asks for it stays locked');
+    return { broken: true };
+  }
+  return { value: value.trim(), hashed: true };
+}
+
+/** settings.yaml `login`: true, false, or { remember: 7d }: a login page with the admin password. */
+function loginSetting(value, file, ctx) {
+  const off = { required: false, rememberMs: 7 * 86_400_000 };
+  if (value === undefined || value === false || value === null) return off;
+  if (value === true) return { ...off, required: true };
+  if (!isPlainObject(value)) {
+    ctx.warn(file, 'login', 'expected true, false or { remember: 7d }; no login page');
+    return off;
+  }
+  for (const key of Object.keys(value)) if (key !== 'remember') ctx.warn(file, `login.${key}`, 'unknown key, ignored');
+  try {
+    const ms = parseDuration(value.remember, off.rememberMs);
+    return { required: true, rememberMs: Math.max(60_000, ms) };
+  } catch (err) {
+    ctx.warn(file, 'login.remember', `${err.message}; remembering 7 days`);
+    return { ...off, required: true };
   }
 }
 
@@ -181,6 +224,9 @@ export function normalizeSettings(raw, ctx) {
   settings.pluginUpdateMs = pluginUpdateMs(settings.pluginUpdateInterval, file, ctx);
   settings.actionRememberMs = actionRememberMs(settings.actions, file, ctx);
   delete settings.actions;
+  settings.allowedHosts = allowedHostsSetting(settings.allowedHosts, file, ctx);
+  settings.adminPassword = adminPasswordSetting(settings.adminPassword, file, ctx);
+  settings.login = loginSetting(settings.login, file, ctx);
   for (const key of ['fullWidth', 'useEqualHeights', 'disableCollapse', 'groupsInitiallyCollapsed', 'showStats', 'hideVersion', 'disableUpdateCheck', 'disableIndexing']) {
     if (settings[key] !== undefined && typeof settings[key] !== 'boolean') {
       ctx.warn(file, key, 'expected true or false, ignored');
