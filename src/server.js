@@ -31,6 +31,9 @@ const server = http.createServer((req, res) => {
 });
 server.listen(Number(values.port), values.host, () => {
   log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
+  // a first install: where the wizard is, and the code it asks from outside the local network
+  const shown = ['0.0.0.0', '::'].includes(values.host) ? '<this server>' : values.host;
+  app.onboarding.announce(`http://${shown}:${values.port}`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

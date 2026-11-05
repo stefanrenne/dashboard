@@ -39,6 +39,9 @@ export function readManifest(dir) {
   if (manifest.aliases !== undefined && (!Array.isArray(manifest.aliases) || manifest.aliases.some((a) => !ALIAS_PATTERN.test(String(a))))) {
     problems.push('aliases: a list of other names, lowercase letters, digits, dashes and underscores');
   }
+  if (manifest.images !== undefined && (!Array.isArray(manifest.images) || manifest.images.some((i) => !/^[a-z0-9][a-z0-9._\/-]*$/.test(String(i))))) {
+    problems.push('images: a list of Docker image names the setup wizard recognises the service by, such as [plexinc/pms-docker]');
+  }
   if (manifest.frames !== undefined && (!Array.isArray(manifest.frames) || manifest.frames.some((n) => !['url', 'string'].includes(manifest.options?.[n]?.type)))) {
     problems.push('frames: a list of url options whose page the widget shows in a frame');
   }

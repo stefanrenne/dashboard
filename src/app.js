@@ -3,6 +3,7 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config/load.js';
@@ -12,13 +13,15 @@ import { syncPlugins, withDefaultPlugins, pluginUpdates, defaultPluginsFor } fro
 import { WidgetRuntime } from './plugins/runtime.js';
 import { WidgetSandbox } from './plugins/sandbox.js';
 import { Discovery, mergeDiscovered } from './discovery/index.js';
-import { withMountedSocket, DEFAULT_SOCKET } from './discovery/docker.js';
+import { withMountedSocket, dockerGet, DEFAULT_SOCKET } from './discovery/docker.js';
 import { buildState } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
-import { ActionGate, loadPassword } from './actionauth.js';
+import { ActionGate, loadPassword, hashPassword } from './actionauth.js';
+import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, servicesYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
+import { validateOptions } from './plugins/options.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];
@@ -156,6 +159,7 @@ export async function createApp({
     password = { value: crypto.randomBytes(32).toString('hex'), hashed: false, broken: true };
   }
   const gate = new ActionGate({ password, log });
+  const onboarding = new Onboarding({ configDir, log });
   const passwordSecrets = password && !password.hashed ? [password.value] : [];
 
   function rebuild() {
@@ -319,6 +323,12 @@ export async function createApp({
       if (!state.config && p !== '/api/health') {
         return send(res, 503, 'The dashboard could not load its configuration; see its log.', 'text/plain; charset=utf-8');
       }
+      if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, method, p);
+      // a first install: the wizard first (docker/start.sh wrote the marker into the empty config folder)
+      if (method === 'GET' && (p === '/' || p === '/index.html') && onboarding.active) {
+        res.writeHead(302, { location: 'setup', 'cache-control': 'no-store', ...SECURITY_HEADERS });
+        return res.end();
+      }
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
         const custom = CUSTOM_FILES.filter((f) => fs.existsSync(path.join(configDir, f)));
@@ -396,6 +406,149 @@ export async function createApp({
     }
   }
 
+  /**
+   * The setup wizard and its API (src/onboarding.js), only while the config folder has the
+   * onboarding marker. Everything but the page and its state needs a visitor on the local
+   * network or the code from the log; what writes also needs the X-Requested-With header.
+   */
+  async function onboardingRoute(req, res, method, p) {
+    if (!onboarding.active) return send(res, 404, { error: 'not found' });
+    if (method === 'GET' && p === '/setup') return sendFile(res, path.join(publicDir, 'setup.html'));
+    if (method === 'GET' && p === '/setup.js') return sendFile(res, path.join(publicDir, 'setup.js'));
+    const route = p.slice('/api/onboarding/'.length);
+    if (method === 'GET' && route === 'state') return send(res, 200, { active: true, allowed: onboarding.allowed(req), version: VERSION });
+    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+    let body = null;
+    if (method === 'POST') {
+      try {
+        body = await readJson(req);
+      } catch (err) {
+        return send(res, err.status ?? 400, { ok: false, error: err.message });
+      }
+    }
+    if (method === 'POST' && route === 'code') {
+      const out = onboarding.verify(req, body?.code);
+      return out.ok ? send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...out.headers }) : send(res, out.status, out.body);
+    }
+    if (!onboarding.allowed(req)) return send(res, 401, { ok: false, needsCode: true, error: 'the code from the log is needed' });
+    if (method === 'GET' && route === 'widgets') return send(res, 200, { widgets: widgetList(state.registry) });
+    if (method === 'GET' && route === 'containers') {
+      return send(res, 200, await scanContainers({ servers: state.config.docker, widgets: widgetList(state.registry), host: hostName(req.headers.host), get: dockerGet }));
+    }
+    if (method === 'GET' && route === 'status') {
+      const list = allowedHosts(env);
+      const name = hostName(req.headers.host);
+      return send(res, 200, {
+        host: name,
+        allowedHosts: list === null ? '*' : list,
+        hostListed: list === null || list.includes(name),
+        actionPassword: gate.protected,
+        docker: state.config.docker.map((s) => ({ name: s.name, socket: Boolean(s.socket), url: s.url ?? null })),
+      });
+    }
+    if (method === 'POST' && route === 'hash') {
+      if (typeof body?.password !== 'string' || !body.password) return send(res, 400, { ok: false, error: 'no password' });
+      return send(res, 200, { ok: true, hash: hashPassword(body.password) });
+    }
+    if (method === 'POST' && route === 'test') return send(res, 200, await testWidget(body?.type, body?.options));
+    if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files));
+    if (method === 'POST' && route === 'finish') {
+      const files = setupFiles(body ?? {});
+      if (files.error) return send(res, 400, { ok: false, error: files.error });
+      const out = onboarding.finish(files.files);
+      if (!out.ok) return send(res, 409, { ok: false, exists: out.exists, error: `already there: ${out.exists.join(', ')}` });
+      await reload();
+      return send(res, 200, out);
+    }
+    return send(res, 404, { error: 'not found' });
+  }
+
+  /** One run of a widget with the options the wizard has, to show that they work. */
+  async function testWidget(type, raw) {
+    const widget = typeof type === 'string' ? state.registry.get(type) : null;
+    if (!widget?.server) return { ok: false, error: `unknown widget "${String(type).slice(0, 40)}"` };
+    const { options, errors } = validateOptions(widget.manifest.options, raw && typeof raw === 'object' ? raw : {}, new Set());
+    if (errors.length) return { ok: false, error: errors.join('; ') };
+    const secretValues = Object.entries(widget.manifest.options).filter(([k, d]) => d.secret && typeof options[k] === 'string' && options[k]).map(([k]) => options[k]);
+    // a runtime of its own, in this process: the dashboard's instances and their worker stay as they are
+    const rt = new WidgetRuntime({ registry: state.registry, log, timeoutMs, configDir: path.resolve(configDir) });
+    rt.setInstances(new Map([['setup-test', { type: widget.manifest.id, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs: 1000, fields: null, highlight: null, errors: [] }]]), state.registry, secretValues);
+    const r = await rt.get('setup-test');
+    if (!r.ok) return { ok: false, error: r.error };
+    return { ok: true, blocks: (r.data?.blocks ?? []).slice(0, 4).map((b) => ({ label: b.label, value: b.value, unit: b.unit ?? null })) };
+  }
+
+  /** homepage's files loaded as the dashboard would, without writing them: what carries over. */
+  function homepageDryRun(files) {
+    const given = Object.fromEntries(Object.entries(files && typeof files === 'object' ? files : {}).filter(([k, v]) => HOMEPAGE_FILES.includes(k) && typeof v === 'string'));
+    if (!Object.keys(given).length) return { ok: false, error: `none of ${HOMEPAGE_FILES.join(', ')}` };
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dash-import-'));
+    try {
+      for (const [name, text] of Object.entries(given)) fs.writeFileSync(path.join(dir, name), text);
+      const config = loadConfig(dir, { env });
+      const { layout } = buildState({ config, registry: state.registry, groups: mergeDiscovered(config.services, []).groups, secrets: config.secrets });
+      const services = [];
+      const walk = (groups) => {
+        for (const g of groups) {
+          for (const s of g.services ?? []) services.push({ group: g.name, name: s.name, widgets: s.widgets.map((w) => w.type), unknown: s.widgets.filter((w) => !w.known).map((w) => w.type) });
+          walk(g.groups ?? []);
+        }
+      };
+      walk(layout.groups);
+      const scrubbed = (list) => list.map((m) => `${m.file}${m.path ? ` ${m.path}` : ''}: ${m.message}`);
+      return { ok: true, files: Object.keys(given), services, bookmarks: layout.bookmarks.reduce((n, g) => n + g.bookmarks.length, 0), header: layout.header.length, errors: scrubbed(layout.messages.errors), warnings: scrubbed(layout.messages.warnings) };
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * The files the wizard writes: settings, services, header widgets and bookmarks from its
+   * steps, homepage's files as they are in their place, and the commented docker.yaml and
+   * kubernetes.yaml of the example config. { files } or { error }.
+   */
+  function setupFiles(body) {
+    const s = body.settings ?? {};
+    const title = typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 100) : 'Homelab';
+    if (s.language !== undefined && !LANGUAGES.includes(s.language)) return { error: 'settings.language: not a known language' };
+    if (s.theme !== undefined && !THEMES.includes(s.theme)) return { error: 'settings.theme: auto, dark or light' };
+    if (s.color !== undefined && !COLORS.includes(s.color)) return { error: 'settings.color: not a known colour' };
+    const cards = [];
+    for (const [i, c] of (Array.isArray(body.services) ? body.services : []).entries()) {
+      const name = typeof c?.name === 'string' ? c.name.trim().slice(0, 100) : '';
+      if (!name) return { error: `services[${i}]: a name is needed` };
+      const card = { group: typeof c.group === 'string' && c.group.trim() ? c.group.trim().slice(0, 100) : 'Services', name };
+      for (const k of ['href', 'icon', 'description', 'container', 'server']) if (typeof c[k] === 'string' && c[k].trim()) card[k] = c[k].trim().slice(0, 500);
+      if (card.href && !/^https?:\/\//.test(card.href)) return { error: `${name}: the link must start with http:// or https://` };
+      if (c.widget?.type) {
+        const widget = state.registry.get(c.widget.type);
+        if (!widget) return { error: `${name}: unknown widget "${String(c.widget.type).slice(0, 40)}"` };
+        const { type, ...raw } = c.widget;
+        const { errors } = validateOptions(widget.manifest.options, raw, new Set());
+        if (errors.length) return { error: `${name}: ${errors.join('; ')}` };
+        const opts = Object.fromEntries(Object.entries(raw).filter(([k, v]) => k in widget.manifest.options && v !== '' && v !== null && v !== undefined));
+        card.widget = { type: widget.manifest.id, ...opts };
+      }
+      cards.push(card);
+    }
+    const files = {
+      'settings.yaml': settingsYaml({ title, language: s.language ?? 'en', theme: s.theme ?? 'auto', color: s.color ?? 'slate' }),
+      'services.yaml': servicesYaml(cards),
+      'widgets.yaml': WIDGETS_YAML,
+      'bookmarks.yaml': BOOKMARKS_YAML,
+    };
+    for (const name of ['docker.yaml', 'kubernetes.yaml']) {
+      try {
+        files[name] = fs.readFileSync(path.join(ROOT, 'config.example', name), 'utf8');
+      } catch {
+        // not in this install
+      }
+    }
+    const homepage = body.homepage && typeof body.homepage === 'object' ? body.homepage : {};
+    for (const [name, text] of Object.entries(homepage)) if (HOMEPAGE_FILES.includes(name) && typeof text === 'string') files[name] = text;
+    return { files };
+  }
+
   /** Calls a `target: hidden-iframe` URL (configured, never from the request) and reports the outcome. */
   async function runAction(action) {
     const secrets = [...(state.config?.secrets ?? [])];
@@ -414,6 +567,7 @@ export async function createApp({
   return {
     handler,
     reload,
+    onboarding,
     get layout() {
       return state.layout;
     },

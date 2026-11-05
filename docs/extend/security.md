@@ -37,6 +37,13 @@ choosing a Docker image. The dashboard limits the damage where it can:
   the socket can start a root container.
 - The dashboard, and so every widget, runs as the unprivileged `node` user. The entrypoint is
   root only to give `node` a mounted Docker socket's group, before the dashboard starts.
+- **The setup wizard of a first install** writes the config folder, lists the containers and
+  runs a widget once to test it. It exists only while `/config/.onboarding` is there (an empty
+  folder at the first start); every other request to it is a 404. It answers a visitor whose
+  address, and every address a proxy passed on, is private; anyone else needs the code from the
+  log (wrong ones are slowed down per address), and what it changes needs
+  `X-Requested-With: dashboard`. Its endpoints are the only ones that read a request body: JSON
+  only, at most 1 MB. It never overwrites a file that is there.
 - A mounted Docker socket gives every widget the whole Docker API (`:ro` does not limit it).
   Use a docker-socket-proxy with `CONTAINERS=1` when you install widgets you do not fully trust.
 

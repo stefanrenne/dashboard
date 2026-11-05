@@ -35,6 +35,7 @@ without `client.js` is rendered by the dashboard from `blocks`.
 | `options` | no | Map of option name to schema (below). |
 | `aliases` | no | Other names the widget answers to in `type:`, e.g. homepage's (`[customapi]`). Added after every real id, only where still free; the widget's `id` stays the one the page uses. |
 | `defaultFields` | no | Block keys shown when the entry has no `fields`, e.g. `[cpu, memoryPercent]`. Without it every block shows. |
+| `images` | no | Docker images the setup wizard of a first install recognises the service by, when the image's name is not the widget's id or one of its `aliases`, e.g. `[plexinc/pms-docker]` (a repository without registry and tag, or only its last part). |
 | `confirmWhen` | no | Option values for which a press of the widget's `action` asks for the action password by default, e.g. `{ user: root }`. An entry's `confirm:` (`password`, `always`, `none`) overrides it. Only counts when the dashboard has `DASHBOARD_ACTION_PASSWORD`. |
 | `frames` | no | `url` options whose page the `client.js` shows in an `<iframe>`, e.g. `[src]`. The page's CSP allows the origin of each one's value (`frame-src`); only public options count, so a URL from a variable or a secret option is never framed. |
 | `attributes` | no | Public values the widget publishes for a service's `filter:`, each `name: { type: <type>, from? }` with `boolean`, `number` or `string`. A line comment says what it means; the docs page lists them. See [Filter attributes](#filter-attributes). |
@@ -263,6 +264,7 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 
 | API | Dashboard | Change |
 |---|---|---|
+| 2 | next | `images` in widget.yaml, for the setup wizard. Widgets need no change. |
 | 2 | next | `confirmWhen` in widget.yaml, and the action password: `POST api/widgets/<instanceId>/action` answers 401 `{ needsPassword: true }` (or 429 with `retryAfter`) until it has one; the page asks for it. Widgets need no change. |
 | 2 | next | API 1 is no longer supported: such a widget is not loaded, with a message that says what to rename. |
 | 2 | next | The names of the page: the element `dash-<id>`, the events `dash-widget-action`, `dash-widget-params`, `dash-search-input` and `dash-search-submit`, the theme properties `--dash-*` and the icon marker `#dash-mask`. Nothing else changed: a widget of API 1 goes to 2 by renaming them. |

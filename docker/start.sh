@@ -16,6 +16,12 @@ if [ "$(id -u)" = 0 ]; then
     fi
     addgroup node "$group" 2>/dev/null || true
   fi
+  # a first start: an empty /config (often made by Docker, so owned by root) becomes node's, so
+  # the setup wizard can write it; the marker tells the dashboard to show the wizard
+  if [ -d /config ] && [ -z "$(ls -A /config 2>/dev/null)" ]; then
+    chown node:node /config 2>/dev/null || true
+    : > /config/.onboarding && chown node:node /config/.onboarding
+  fi
   # downloaded widgets from a run as root belong to node, so it can update and remove them
   if [ -d /config/plugins ]; then chown -R node:node /config/plugins 2>/dev/null || true; fi
   # DASHBOARD_ALLOW_ROOT_SCRIPTS=true: `node` may run /usr/local/bin/dashboard-root as root, for button widgets
@@ -30,6 +36,7 @@ if [ "$(id -u)" = 0 ]; then
   exec su-exec node "$0" "$@"
 fi
 
-# Start with the example config when /config is empty.
-if [ -z "$(ls -A /config 2>/dev/null)" ]; then cp -r /app/config.example/. /config/; fi
+# Started as another user: the same marker when it can write the empty /config. The setup
+# wizard (src/onboarding.js) removes it once it has written the config.
+if [ -z "$(ls -A /config 2>/dev/null)" ]; then : > /config/.onboarding 2>/dev/null || echo "/config is empty and not writable for $(id -u): the setup wizard cannot start" >&2; fi
 exec node /app/src/server.js "$@"

@@ -72,7 +72,37 @@ export function cookieValue(req, name) {
   return null;
 }
 
-const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
+/**
+ * Wrong tries per address: FREE_FAILURES free, then a wait of FIRST_WAIT_MS that doubles up to
+ * MAX_WAIT_MS. Shared by the action password and the onboarding code.
+ */
+export class FailureLimiter {
+  constructor(now = Date.now) {
+    this.now = now;
+    this.failures = new Map(); // address -> { count, until }
+  }
+
+  /** Seconds this address must still wait, or 0. */
+  waiting(address) {
+    const f = this.failures.get(address);
+    return f && f.until > this.now() ? Math.ceil((f.until - this.now()) / 1000) : 0;
+  }
+
+  /** Counts a wrong try; the wait it starts in ms (0 for a free one). */
+  failed(address) {
+    const count = (this.failures.get(address)?.count ?? 0) + 1;
+    const wait = count >= FREE_FAILURES ? Math.min(MAX_WAIT_MS, FIRST_WAIT_MS * 2 ** (count - FREE_FAILURES)) : 0;
+    if (this.failures.size > 1000) for (const [a, f] of this.failures) if (f.until <= this.now()) this.failures.delete(a);
+    this.failures.set(address, { count, until: this.now() + wait });
+    return wait;
+  }
+
+  succeeded(address) {
+    this.failures.delete(address);
+  }
+}
+
+export const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
 
 export class ActionGate {
   constructor({ password = null, rememberMs = DEFAULT_REMEMBER_MS, now = Date.now, log = console } = {}) {
@@ -81,7 +111,7 @@ export class ActionGate {
     this.now = now;
     this.log = log;
     this.unlocks = new Map(); // token -> expiry
-    this.failures = new Map(); // address -> { count, until }
+    this.limiter = new FailureLimiter(() => this.now());
   }
 
   get protected() {
@@ -115,21 +145,16 @@ export class ActionGate {
     if (!this.password || !requirement || isInternal(req)) return { ok: true, headers: {} };
     if (requirement === 'password' && this.#unlocked(req)) return { ok: true, headers: {} };
     const address = String(req.socket?.remoteAddress ?? 'unknown');
-    const failed = this.failures.get(address);
-    if (failed && failed.until > this.now()) {
-      return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter: Math.ceil((failed.until - this.now()) / 1000), error: 'too many wrong passwords' } };
-    }
+    const retryAfter = this.limiter.waiting(address);
+    if (retryAfter) return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter, error: 'too many wrong passwords' } };
     const given = req.headers[PASSWORD_HEADER];
     if (given === undefined) return { ok: false, status: 401, body: { ok: false, needsPassword: true, always: requirement === 'always', error: 'password needed' } };
     if (!(await checkPassword(this.password, String(given)))) {
-      const count = (failed?.count ?? 0) + 1;
-      const wait = count >= FREE_FAILURES ? Math.min(MAX_WAIT_MS, FIRST_WAIT_MS * 2 ** (count - FREE_FAILURES)) : 0;
-      if (this.failures.size > 1000) for (const [a, f] of this.failures) if (f.until <= this.now()) this.failures.delete(a);
-      this.failures.set(address, { count, until: this.now() + wait });
+      const wait = this.limiter.failed(address);
       this.log.warn(`wrong action password from ${address} for ${what}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
       return { ok: false, status: 401, body: { ok: false, needsPassword: true, wrongPassword: true, always: requirement === 'always', error: 'wrong password' } };
     }
-    this.failures.delete(address);
+    this.limiter.succeeded(address);
     const cookie = requirement === 'password' ? this.#unlockCookie(req, base) : null;
     return { ok: true, headers: cookie ? { 'set-cookie': cookie } : {} };
   }

@@ -22,6 +22,40 @@ skipped and the rest keeps working. Coming from homepage? Its configuration work
 | [`custom.css`, `custom.js`](custom-css-js.md) | Your own style and script, loaded after the page's own |
 | `plugins/` | Managed by the dashboard: downloaded widgets and `plugins.lock.yaml`. Older versions and removed sources are deleted after each sync |
 
+## First start
+
+The image starts the setup wizard when `/config` is empty: it writes the file `.onboarding`, and
+while that is there the page opens at `/setup`. The wizard has five steps:
+
+1. **Basics**: title, language, theme and colour (`settings.yaml`).
+2. **Services**: the running containers of the Docker servers it can reach (a mounted socket, or
+   `docker.yaml` once there is one), each with the widget that fits its image (`linuxserver/radarr`
+   gets `radarr`) and its address: the container's name when it shares a network with the
+   dashboard, its own address on a macvlan or ipvlan network (Unraid's `br0`), or the published
+   port. Tick the ones you want, fill in what the widget needs (a key), and **Test** shows whether
+   it answers. Services can also be added by hand. Containers with `dashboard.*` labels are on the
+   page already and left out (`services.yaml`).
+3. **From homepage**: choose homepage's `services.yaml`, `settings.yaml`, `bookmarks.yaml`,
+   `widgets.yaml` and `docker.yaml`; the wizard shows what carries over (and which widgets have no
+   match), and writes them as they are, in place of the steps before.
+4. **Security**: whether the host name you opened it by is in `DASHBOARD_ALLOWED_HOSTS`, whether
+   there is an [action password](#action-password) (it makes the hash for you), and whether Docker
+   is the raw socket or a proxy, with the lines to add to the container's environment.
+5. **Done**: it writes `settings.yaml`, `services.yaml`, `widgets.yaml` (the time, the system's
+   resources and a search box), `bookmarks.yaml`, and the commented `docker.yaml` and
+   `kubernetes.yaml`, removes `.onboarding` and opens the dashboard. It writes nothing when one of
+   those files is there already.
+
+A key or password you enter is written into `services.yaml` as it is; to keep it out of the file,
+put `{{DASHBOARD_VAR_NAME}}` in its place and set the variable on the container (see
+[Variables](#variables)). **Skip the setup** writes the same files with no services.
+
+On the local network (a private address, also through a reverse proxy whose visitors are on it)
+the wizard opens straight away. From anywhere else it asks for the code the dashboard writes in
+its log at the start (`docker logs dashboard`). Wrong codes are slowed down. Once the wizard is
+done, `/setup` is gone; it never shows for a config folder that has files. To see it again, empty
+the folder and restart the container.
+
 ## YAML in short
 
 Every file is [YAML](https://yaml.org), a superset of JSON that is easy to read and write.

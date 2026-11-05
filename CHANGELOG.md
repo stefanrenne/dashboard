@@ -5,6 +5,13 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- **Setup wizard on a first start.** An empty `/config` no longer gets the example config with
+  services that do not exist: the page opens a wizard that asks for a title, language, theme and
+  colour; lists the running containers with the widget that fits each image and its address
+  (with a Test button); takes over homepage's files; shows the security settings with the lines
+  to add (and makes the action password's hash); and then writes the YAML files. It answers the
+  local network straight away and anyone else after the code in the log. Widget API 2 gets
+  `images` in widget.yaml for images whose name differs from the widget's id.
 - **Develop builds:** every change on the `develop` branch is published as
   `ghcr.io/stefanrenne/dashboard:develop` (version `develop-<sha>`), which installs the widgets
   collection from its `develop` branch. `latest` and the version tags stay on releases, which are

@@ -1137,6 +1137,75 @@ test('action password: without one everything runs as before, with warnings for 
   }
 });
 
+test('onboarding: / leads to the wizard; local or with the code; it writes the config, then it is gone', async () => {
+  const t = await startApp({ '.onboarding': '' });
+  const outside = { 'x-forwarded-for': '203.0.113.9' };
+  const post = (p, body, headers = {}) => fetch(`${t.base}/api/onboarding/${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body) });
+  try {
+    t.app.onboarding.announce('http://x');
+    const root = await t.get('/', { redirect: 'manual' });
+    assert.deepEqual([root.status, root.headers.get('location')], [302, 'setup']);
+    assert.match(await (await t.get('/setup')).text(), /<script src="setup.js"><\/script>/);
+    assert.equal((await t.get('/setup.js')).status, 200);
+    assert.deepEqual(await t.json('/api/onboarding/state'), { active: true, allowed: true, version: (await t.json('/api/health')).version }, 'a test request is local');
+    // from outside: the code
+    assert.equal((await t.get('/api/onboarding/widgets', { headers: outside })).status, 401);
+    assert.equal((await post('code', { code: 'NOPE-NOPE' }, outside)).status, 401);
+    assert.equal((await fetch(`${t.base}/api/onboarding/code`, { method: 'POST', headers: { 'content-type': 'application/json', ...outside }, body: '{}' })).status, 403, 'the header keeps other sites out');
+    const coded = await post('code', { code: t.app.onboarding.code }, outside);
+    const cookie = coded.headers.get('set-cookie').split(';')[0];
+    const widgets = await (await t.get('/api/onboarding/widgets', { headers: { ...outside, cookie } })).json();
+    assert.ok(widgets.widgets.some((w) => w.id === 'radarr' && w.options.key.secret), 'the widgets with their options');
+    assert.ok(!widgets.widgets.some((w) => w.id === 'datetime'), 'only service widgets');
+    assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
+    const status = await t.json('/api/onboarding/status');
+    assert.deepEqual([status.host, status.actionPassword, status.docker], ['127.0.0.1', false, []]);
+    assert.match((await (await post('hash', { password: 'x' })).json()).hash, /^scrypt:/);
+    assert.match((await (await post('test', { type: 'nope', options: {} })).json()).error, /unknown widget/);
+    assert.match((await (await post('test', { type: 'radarr', options: {} })).json()).error, /url/, 'the options are checked first');
+    const dry = await (await post('homepage', { files: { 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        widget: { type: plex, url: http://plex.lan, key: "{{HOMEPAGE_VAR_PLEX}}" }\n    - Odd:\n        widget: { type: oddity }\n' } })).json();
+    assert.deepEqual(dry.services.map((s) => [s.group, s.name, s.unknown]), [['Media', 'Plex', []], ['Media', 'Odd', ['oddity']]]);
+    assert.ok(dry.warnings.some((w) => w.includes('HOMEPAGE_VAR_PLEX')), dry.warnings.join('\n'));
+    assert.equal((await post('finish', { settings: { color: 'nope' } })).status, 400);
+    assert.equal((await post('finish', { services: [{ name: 'X', widget: { type: 'radarr' } }] })).status, 400, 'a widget without its required options');
+    const done = await post('finish', {
+      settings: { title: 'Mijn lab', language: 'nl', theme: 'dark', color: 'emerald' },
+      services: [{ group: 'Downloads', name: 'Radarr', href: 'http://radarr.lan', icon: 'radarr.png', widget: { type: 'radarr', url: 'http://radarr.lan', key: 'Geheim-12345' } }],
+      homepage: { 'bookmarks.yaml': '- Dev:\n    - GitHub:\n        - href: https://github.com\n' },
+    });
+    assert.deepEqual((await done.json()).written, ['settings.yaml', 'services.yaml', 'widgets.yaml', 'bookmarks.yaml', 'docker.yaml', 'kubernetes.yaml']);
+    assert.equal(fs.existsSync(path.join(t.configDir, '.onboarding')), false);
+    const layout = await t.json('/api/layout');
+    assert.deepEqual([layout.settings.title, layout.groups.map((g) => g.name), layout.bookmarks.map((b) => b.name)], ['Mijn lab', ['Downloads'], ['Dev']], 'homepage\'s bookmarks.yaml as it was');
+    assert.ok(!JSON.stringify(layout).includes('Geheim-12345'), 'the key stays on the server');
+    assert.equal((await t.get('/', { redirect: 'manual' })).status, 200, 'the dashboard itself now');
+    assert.equal((await t.get('/setup')).status, 404);
+    assert.equal((await t.get('/api/onboarding/state')).status, 404);
+  } finally {
+    await t.close();
+  }
+});
+
+test('onboarding: nothing without the marker, and a file that appeared meanwhile is not overwritten', async () => {
+  const plain = await startApp({});
+  try {
+    assert.equal((await plain.get('/', { redirect: 'manual' })).status, 200);
+    assert.equal((await plain.get('/setup')).status, 404);
+    assert.equal((await plain.get('/api/onboarding/widgets')).status, 404);
+  } finally {
+    await plain.close();
+  }
+  const t = await startApp({ '.onboarding': '', 'services.yaml': '[]\n' });
+  try {
+    const res = await fetch(`${t.base}/api/onboarding/finish`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: '{}' });
+    assert.equal(res.status, 409);
+    assert.deepEqual((await res.json()).exists, ['services.yaml']);
+    assert.equal(fs.existsSync(path.join(t.configDir, 'settings.yaml')), false, 'nothing written');
+  } finally {
+    await t.close();
+  }
+});
+
 test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSION, then package.json', () => {
   const root = tmpDir('hd-version-');
   fs.writeFileSync(path.join(root, 'package.json'), '{ "version": "1.0.0" }');

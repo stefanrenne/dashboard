@@ -49,8 +49,12 @@ light themes, 22 accent colours, tabs, 17 languages, and it installs as an app o
 docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/dashboard:latest
 ```
 
-Open `http://localhost:3000`. The empty `config` folder is filled with an example to start from;
-edit `services.yaml` and watch the page follow:
+Open `http://localhost:3000`. On a first start, with an empty `config` folder, a setup wizard
+opens: pick a title, language and colour, tick the running containers you want on the page (it
+recognises them and fills in their widget and address), bring your homepage files along if you
+have them, and check the security settings. It writes the YAML files and steps aside (see
+[First start](configuration/README.md#first-start)). From then on, edit `services.yaml` and watch
+the page follow:
 
 ```yaml
 # services.yaml
