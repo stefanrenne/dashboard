@@ -37,8 +37,11 @@ while that is there the page opens at `/setup`. The wizard has five steps:
    image (`linuxserver/radarr` gets `radarr`) and its address: the container's name when it
    shares a network with the dashboard, its own address on a macvlan or ipvlan network (Unraid's
    `br0`), or the published port. Tick the ones you want, fill in what the widget needs (a key),
-   and **Test** shows whether it answers. Containers with `dashboard.*` labels are on the page
-   already and left out. **Add a service by hand** adds one without a container; **Migrate from
+   and **Test** shows whether it answers. **Next** checks every ticked service first: a name, a
+   link (the published address, else the widget's URL, editable), the widget's required options,
+   and a test of the widget; one that fails is marked in red with its error, and the wizard stays
+   until it is fixed or unticked. Containers with `dashboard.*` labels are on the page already and
+   left out. **Add a service by hand** adds one without a container; **Migrate from
    homepage** takes homepage's `services.yaml`, `settings.yaml`, `bookmarks.yaml`,
    `widgets.yaml` and `docker.yaml`, shows what carries over (and which widgets have no match),
    and writes them as they are in place of what the wizard would write (`services.yaml`).

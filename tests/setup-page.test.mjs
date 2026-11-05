@@ -82,7 +82,8 @@ test('from outside the local network it asks for the code first', async () => {
 });
 
 test('the steps: basics, containers with a generated form, test, security lines, and what finish sends', async () => {
-  const { w, calls } = await page({ answers: { test: { ok: true, blocks: [{ label: 'wanted', value: 3, unit: null }] }, hash: { ok: true, hash: 'scrypt:1:2:3:abc:def' } } });
+  const test = (init) => (JSON.parse(init.body).options.key === 'bad' ? { ok: false, error: 'Radarr answered 401' } : { ok: true, blocks: [{ label: 'wanted', value: 3, unit: null }] });
+  const { w, calls } = await page({ answers: { test, hash: { ok: true, hash: 'scrypt:1:2:3:abc:def' } } });
   const doc = w.document;
   // 1. basics, in the browser's language; the colour applies at once
   assert.equal(doc.getElementById('language').value, 'nl');
@@ -112,12 +113,33 @@ test('the steps: basics, containers with a generated form, test, security lines,
   assert.equal(doc.getElementById('opt-0-enableQueue').type, 'checkbox');
   assert.equal(doc.getElementById('opt-0-version').tagName, 'SELECT');
   assert.equal(doc.getElementById('href-0').value, 'http://192.168.1.10:7878');
+  const card = (i) => doc.querySelectorAll('.card')[i];
+  // Next is held back while a ticked service is not ready: a key missing, a failing test, no link
+  next(doc);
+  await tick();
+  assert.equal(doc.querySelector('h2').textContent, 'Services', 'still on this step');
+  assert.equal(card(0).querySelector('.result').textContent, 'key is nodig.');
+  assert.ok(card(0).classList.contains('invalid'));
+  assert.equal(doc.querySelector('[role=alert]').textContent, 'Niet alle services zijn klaar: herstel de rood gemarkeerde, of vink ze uit.');
+  doc.getElementById('opt-0-key').value = 'bad';
+  doc.getElementById('opt-0-key').dispatchEvent(new w.Event('input'));
+  next(doc);
+  await tick();
+  assert.equal(card(0).querySelector('.result').textContent, 'Radarr answered 401', 'tested on Next');
+  assert.equal(doc.querySelector('h2').textContent, 'Services');
+  doc.getElementById('on-1').click(); // postgres: no widget and no link
+  await tick();
   doc.getElementById('opt-0-key').value = 'abc123';
   doc.getElementById('opt-0-key').dispatchEvent(new w.Event('input'));
-  [...cards[0].querySelectorAll('button')].find((b) => b.textContent === 'Testen').click();
+  next(doc);
   await tick();
-  assert.equal(cards[0].querySelector('.result').textContent, 'Werkt: wanted 3');
-  assert.deepEqual(calls.find((c) => c.p === 'test').body, { type: 'radarr', options: { url: 'http://radarr:7878', key: 'abc123', enableQueue: false, version: 1 } });
+  assert.equal(card(1).querySelector('.result').textContent, 'Een link is nodig, beginnend met http:// of https://.');
+  doc.getElementById('on-1').click();
+  await tick();
+  [...card(0).querySelectorAll('button')].find((b) => b.textContent === 'Testen').click();
+  await tick();
+  assert.equal(card(0).querySelector('.result').textContent, 'Werkt: wanted 3');
+  assert.deepEqual(calls.filter((c) => c.p === 'test').at(-1).body, { type: 'radarr', options: { url: 'http://radarr:7878', key: 'abc123', enableQueue: false, version: 1 } });
   assert.deepEqual(calls.find((c) => c.p === 'containers').body, { docker: [{ address: 'nas.lan:2375' }] }, 'the scan includes the added server');
   // homepage: a button here, next to adding by hand
   assert.equal(doc.getElementById('homepage-files'), null);
