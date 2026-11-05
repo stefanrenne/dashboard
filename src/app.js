@@ -20,7 +20,7 @@ import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
 import { ActionGate, loadPassword, hashPassword } from './actionauth.js';
-import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, servicesYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
+import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
 import { validateOptions } from './plugins/options.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
@@ -432,8 +432,12 @@ export async function createApp({
     }
     if (!onboarding.allowed(req)) return send(res, 401, { ok: false, needsCode: true, error: 'the code from the log is needed' });
     if (method === 'GET' && route === 'widgets') return send(res, 200, { widgets: widgetList(state.registry) });
-    if (method === 'GET' && route === 'containers') {
-      return send(res, 200, await scanContainers({ servers: state.config.docker, widgets: widgetList(state.registry), host: hostName(req.headers.host), get: dockerGet }));
+    if (route === 'docker' || route === 'containers') {
+      const { servers, errors } = wizardDocker(body?.docker);
+      if (route === 'docker') {
+        return send(res, 200, { socketMounted: fs.existsSync(dockerSocket ?? DEFAULT_SOCKET), servers: await checkDocker({ servers, get: dockerGet }), errors });
+      }
+      return send(res, 200, await scanContainers({ servers, widgets: widgetList(state.registry), host: hostName(req.headers.host), get: dockerGet }));
     }
     if (method === 'GET' && route === 'status') {
       const list = allowedHosts(env);
@@ -461,6 +465,26 @@ export async function createApp({
       return send(res, 200, out);
     }
     return send(res, 404, { error: 'not found' });
+  }
+
+  /**
+   * The Docker servers of the wizard: the ones the dashboard has (docker.yaml or the mounted
+   * socket) and the ones added in the wizard ([{ address, name? }]), each name once.
+   */
+  function wizardDocker(given) {
+    const servers = [...state.config.docker];
+    const added = [];
+    const errors = [];
+    for (const [i, g] of (Array.isArray(given) ? given : []).slice(0, 10).entries()) {
+      const out = parseDockerAddress(g?.address, g?.name);
+      if (out.error) errors.push(`docker[${i}]: ${out.error}`);
+      else if (servers.some((s) => s.name === out.server.name)) errors.push(`docker[${i}]: the name "${out.server.name}" is taken`);
+      else {
+        servers.push(out.server);
+        added.push(out.server);
+      }
+    }
+    return { servers, added, errors };
   }
 
   /** One run of a widget with the options the wizard has, to show that they work. */
@@ -544,6 +568,10 @@ export async function createApp({
         // not in this install
       }
     }
+    // servers added in the wizard: docker.yaml lists them, with the mounted socket (listing any turns the implicit one off)
+    const docker = wizardDocker(body.docker);
+    if (docker.errors.length) return { error: docker.errors.join('; ') };
+    if (docker.added.length) files['docker.yaml'] = dockerYaml(docker.servers);
     const homepage = body.homepage && typeof body.homepage === 'object' ? body.homepage : {};
     for (const [name, text] of Object.entries(homepage)) if (HOMEPAGE_FILES.includes(name) && typeof text === 'string') files[name] = text;
     return { files };

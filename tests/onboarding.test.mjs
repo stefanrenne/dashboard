@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { loadConfig } from '../src/config/load.js';
 import {
   Onboarding, MARKER, groupFor, imageRepository, isLocal, isPrivateAddress, matchWidget, newCode, readJson,
-  scanContainers, servicesYaml, settingsYaml, WIDGETS_YAML, BOOKMARKS_YAML,
+  scanContainers, servicesYaml, settingsYaml, WIDGETS_YAML, BOOKMARKS_YAML, parseDockerAddress, checkDocker, dockerYaml,
 } from '../src/onboarding.js';
 import { tmpDir, silentLog } from './helpers.mjs';
 
@@ -103,6 +103,30 @@ test('the YAML the wizard writes loads without a message, secrets as written, an
   assert.equal(config.services[0].services[0].widgets[0].options.key, 'k#ey: 1');
   assert.equal(config.widgets.length, 3);
   assert.match(servicesYaml([]), /\n\[\]\n$/);
+});
+
+test('Docker servers in the wizard: a socket or host:port, checked with the error and a hint for a socket it may not use, written as docker.yaml', async () => {
+  assert.deepEqual(parseDockerAddress('/var/run/docker.sock'), { server: { name: 'local', socket: '/var/run/docker.sock', discover: true } });
+  assert.deepEqual(parseDockerAddress('docker-proxy:2375').server, { name: 'docker-proxy', url: 'http://docker-proxy:2375', discover: true, host: 'docker-proxy', port: 2375, protocol: 'http' });
+  assert.equal(parseDockerAddress('tcp://10.0.0.5').server.url, 'http://10.0.0.5:2375', 'tcp:// and the default port');
+  assert.equal(parseDockerAddress('https://nas.lan:2376', 'nas').server.url, 'https://nas.lan:2376');
+  for (const bad of ['', 'http://a b', 'nas:99999', '/etc/../x', 'ftp://x']) assert.ok(parseDockerAddress(bad).error, bad);
+  assert.ok(parseDockerAddress('nas:2375', 'a b').error, 'a name with a space');
+  const get = async (s, p) => {
+    if (s.name === 'denied') throw Object.assign(new Error('connect EACCES /var/run/docker.sock'), { code: 'EACCES' });
+    if (s.name === 'off') throw new Error('connect ECONNREFUSED 10.0.0.5:2375');
+    return p === '/version' ? { Version: '27.3.1' } : [{}, {}];
+  };
+  assert.deepEqual(await checkDocker({ servers: [{ name: 'local', socket: '/s' }, { name: 'denied', socket: '/s' }, { name: 'off', url: 'http://10.0.0.5:2375' }], get }), [
+    { name: 'local', target: '/s', ok: true, version: '27.3.1', containers: 2 },
+    { name: 'denied', target: '/s', ok: false, error: 'connect EACCES /var/run/docker.sock', permission: true },
+    { name: 'off', target: 'http://10.0.0.5:2375', ok: false, error: 'connect ECONNREFUSED 10.0.0.5:2375', permission: false },
+  ]);
+  const dir = tmpDir('dash-onb-');
+  fs.writeFileSync(path.join(dir, 'docker.yaml'), dockerYaml([{ name: 'local', socket: '/var/run/docker.sock', implicit: true }, parseDockerAddress('https://nas.lan:2376', 'nas').server]));
+  const config = loadConfig(dir, { env: {} });
+  assert.deepEqual(config.errors, []);
+  assert.deepEqual(config.docker.map((s) => [s.name, s.socket ?? s.url]), [['local', '/var/run/docker.sock'], ['nas', 'https://nas.lan:2376']], 'the mounted socket too: listing servers turns the implicit one off');
 });
 
 test('readJson: JSON only, at most the limit, broken JSON is a 400', async () => {

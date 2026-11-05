@@ -197,6 +197,56 @@ export async function scanContainers({ servers, widgets, host, get, selfId = os.
   return { containers: out, problems };
 }
 
+/**
+ * A Docker server the wizard was given: a socket path (/var/run/docker.sock) or the address of a
+ * Docker API or socket proxy (http://docker-proxy:2375, tcp://10.0.0.5:2375, nas:2375).
+ * { server } in the shape docker.yaml gives, or { error }.
+ */
+export function parseDockerAddress(address, name) {
+  const a = String(address ?? '').trim();
+  const id = String(name ?? '').trim();
+  if (id && !/^[a-zA-Z0-9][\w-]{0,39}$/.test(id)) return { error: 'name: letters, digits, - and _' };
+  if (a.startsWith('/')) {
+    if (!/^\/[\w./-]+$/.test(a) || a.includes('..')) return { error: 'not a socket path' };
+    return { server: { name: id || 'local', socket: a, discover: true } };
+  }
+  const m = /^(?:(https?|tcp):\/\/)?([a-zA-Z0-9.-]+|\[[0-9a-fA-F:]+\])(?::(\d{1,5}))?\/?$/.exec(a);
+  if (!m || Number(m[3] ?? 2375) > 65535) return { error: 'expected /path/to/docker.sock or host:port' };
+  const protocol = m[1] === 'https' ? 'https' : 'http';
+  const host = m[2];
+  const port = Number(m[3] ?? 2375);
+  return { server: { name: id || host.replace(/[^\w-]/g, '-').slice(0, 40), url: `${protocol}://${host}:${port}`, discover: true, host, port, protocol } };
+}
+
+/**
+ * Whether each Docker server answers: its version and number of containers, or the error, with
+ * a hint for a socket the dashboard may not use.
+ */
+export async function checkDocker({ servers, get }) {
+  return Promise.all(servers.map(async (s) => {
+    const target = s.socket ?? s.url;
+    try {
+      const version = await get(s, '/version');
+      const containers = await get(s, '/containers/json');
+      return { name: s.name, target, ok: true, version: version?.Version ?? null, containers: Array.isArray(containers) ? containers.length : 0 };
+    } catch (err) {
+      return { name: s.name, target, ok: false, error: err.message, permission: /EACCES|EPERM/.test(String(err.code ?? err.message)) };
+    }
+  }));
+}
+
+/** docker.yaml for the servers the wizard was given (and the mounted socket, which listing others would turn off). */
+export function dockerYaml(servers) {
+  const map = {};
+  for (const s of servers) map[s.name] = s.socket ? { socket: s.socket } : { host: s.host, port: s.port, ...(s.protocol === 'https' ? { protocol: 'https' } : {}) };
+  return [
+    '# Docker servers, written by the setup wizard: for "container:" status and the discovery of containers',
+    '# with dashboard.* labels. See https://getdashboard.dev/configuration/docker.html',
+    YAML.stringify(map, { lineWidth: 0 }).trimEnd(),
+    '',
+  ].join('\n');
+}
+
 /** The widgets a service card can use, for the wizard's form: their options, without secrets' values. */
 export function widgetList(registry) {
   const seen = new Set();

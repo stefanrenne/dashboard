@@ -39,7 +39,8 @@ async function page({ allowed = true, answers = {} } = {}) {
         const body = p === 'state' ? { active: true, allowed }
           : p === 'widgets' ? { widgets: WIDGETS }
             : p === 'containers' ? { containers: CONTAINERS, problems: [] }
-              : p === 'status' ? { host: '192.168.1.10', allowedHosts: [], hostListed: false, actionPassword: false, docker: [{ name: 'local', socket: true, url: null }] }
+              : p === 'docker' ? (init) => ({ socketMounted: true, errors: [], servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 32 }, ...JSON.parse(init.body).docker.map((d) => ({ name: d.name ?? 'nas', target: `http://${d.address}`, ok: false, error: 'connect ECONNREFUSED', permission: false }))] })
+                : p === 'status' ? { host: '192.168.1.10', allowedHosts: [], hostListed: false, actionPassword: false, docker: [{ name: 'local', socket: true, url: null }] }
                 : answers[p] ?? { ok: true };
         return { json: async () => structuredClone(typeof body === 'function' ? body(init) : body) };
       };
@@ -91,7 +92,17 @@ test('the steps: basics, containers with a generated form, test, security lines,
   assert.equal(doc.documentElement.style.getPropertyValue('--t500'), '#10b981');
   next(doc);
   await tick();
-  // 2. services: the matched container ticked with its URL, the other not
+  // 2. Docker: what answers, and a server added here
+  assert.match(doc.getElementById('panel').textContent, /local \(\/var\/run\/docker\.sock\): Docker 27\.3\.1, 32 containers/);
+  doc.getElementById('docker-address').value = 'nas.lan:2375';
+  doc.getElementById('docker-address').closest('form').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  await tick();
+  assert.deepEqual(calls.filter((c) => c.p === 'docker').at(-1).body, { docker: [{ address: 'nas.lan:2375' }] });
+  assert.match(doc.getElementById('panel').textContent, /connect ECONNREFUSED/);
+  assert.match(doc.getElementById('panel').textContent, /nas\.lan:2375/, 'listed as added here');
+  next(doc);
+  await tick();
+  // 3. services: the matched container ticked with its URL, the other not
   const cards = [...doc.querySelectorAll('.card')];
   assert.equal(cards.length, 2);
   assert.ok(cards[0].classList.contains('on'));
@@ -107,9 +118,12 @@ test('the steps: basics, containers with a generated form, test, security lines,
   await tick();
   assert.equal(cards[0].querySelector('.result').textContent, 'Werkt: wanted 3');
   assert.deepEqual(calls.find((c) => c.p === 'test').body, { type: 'radarr', options: { url: 'http://radarr:7878', key: 'abc123', enableQueue: false, version: 1 } });
-  next(doc);
+  assert.deepEqual(calls.find((c) => c.p === 'containers').body, { docker: [{ address: 'nas.lan:2375' }] }, 'the scan includes the added server');
+  // homepage: a button here, next to adding by hand
+  assert.equal(doc.getElementById('homepage-files'), null);
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Overstappen van homepage').click();
   await tick();
-  // 3. homepage: skipped
+  assert.ok(doc.getElementById('homepage-files'), 'its file chooser opens in this step');
   next(doc);
   await tick();
   // 4. security: a hash, and the compose lines
@@ -127,6 +141,7 @@ test('the steps: basics, containers with a generated form, test, security lines,
   await tick();
   const sent = calls.find((c) => c.p === 'finish').body;
   assert.deepEqual(sent.settings, { title: 'Thuis', language: 'nl', theme: 'auto', color: 'emerald' });
+  assert.deepEqual(sent.docker, [{ address: 'nas.lan:2375' }]);
   assert.deepEqual(sent.services, [{ group: 'Downloads', name: 'Radarr', href: 'http://192.168.1.10:7878', container: 'radarr', server: 'local', icon: 'radarr.png', widget: { type: 'radarr', url: 'http://radarr:7878', key: 'abc123', enableQueue: false, version: 1 } }]);
 });
 

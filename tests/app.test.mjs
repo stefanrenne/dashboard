@@ -1158,6 +1158,8 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
     assert.ok(widgets.widgets.some((w) => w.id === 'radarr' && w.options.key.secret), 'the widgets with their options');
     assert.ok(!widgets.widgets.some((w) => w.id === 'datetime'), 'only service widgets');
     assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
+    const docker = await (await post('docker', { docker: [{ address: '127.0.0.1:1' }, { address: 'not valid!' }] })).json();
+    assert.deepEqual([docker.servers.length, docker.servers[0].ok, docker.errors.length], [1, false, 1], 'an added server is checked, a bad address said');
     const status = await t.json('/api/onboarding/status');
     assert.deepEqual([status.host, status.actionPassword, status.docker], ['127.0.0.1', false, []]);
     assert.match((await (await post('hash', { password: 'x' })).json()).hash, /^scrypt:/);
@@ -1172,9 +1174,11 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
       settings: { title: 'Mijn lab', language: 'nl', theme: 'dark', color: 'emerald' },
       services: [{ group: 'Downloads', name: 'Radarr', href: 'http://radarr.lan', icon: 'radarr.png', widget: { type: 'radarr', url: 'http://radarr.lan', key: 'Geheim-12345' } }],
       homepage: { 'bookmarks.yaml': '- Dev:\n    - GitHub:\n        - href: https://github.com\n' },
+      docker: [{ address: 'docker-proxy:2375', name: 'proxy' }],
     });
     assert.deepEqual((await done.json()).written, ['settings.yaml', 'services.yaml', 'widgets.yaml', 'bookmarks.yaml', 'docker.yaml', 'kubernetes.yaml']);
     assert.equal(fs.existsSync(path.join(t.configDir, '.onboarding')), false);
+    assert.match(fs.readFileSync(path.join(t.configDir, 'docker.yaml'), 'utf8'), /proxy:\n  host: docker-proxy\n  port: 2375/, 'the server added in the wizard');
     const layout = await t.json('/api/layout');
     assert.deepEqual([layout.settings.title, layout.groups.map((g) => g.name), layout.bookmarks.map((b) => b.name)], ['Mijn lab', ['Downloads'], ['Dev']], 'homepage\'s bookmarks.yaml as it was');
     assert.ok(!JSON.stringify(layout).includes('Geheim-12345'), 'the key stays on the server');
