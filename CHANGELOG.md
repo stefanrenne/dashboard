@@ -16,6 +16,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   live on the server (`.sessions.json`, hashes only), last through a restart, and end with a logout
   (in the footer) or a new admin password. Logged in, buttons ask nothing more but those with
   `confirm: always`.
+- **A settings page** (the gear in the footer): settings.yaml's look, security and switches, and
+  the admin password (a new one needs the current one). It keeps the file's comments and other
+  keys. It opens with the admin password (a login counts); without one yet, the local network sets
+  one first.
+- Durations take days too: `7d`.
 - **`allowedHosts` in settings.yaml**, next to `DASHBOARD_ALLOWED_HOSTS`: the host names the
   dashboard answers. A change counts at once; the page for a refused host names the line to add.
 - The setup wizard's security step sets all three: the admin password (required; only its hash is

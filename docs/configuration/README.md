@@ -157,6 +157,22 @@ Settings of the container rather than of the page.
 | `DASHBOARD_CONFIG_DIR` | The config folder, when not run from the image |
 | `LOG_TARGETS` | `both`, `stdout` or `file` (with `logpath` in [settings.yaml](settings.md)) |
 
+### Settings page
+
+The gear in the footer opens `/settings`: the page's look (title, language, theme, colour, the
+header widgets' box, where links open, the status labels), the security (the login page or only
+some actions, how long a login and an unlock last, the allowed hosts), the admin password and a
+few switches (the versions in the footer, the update check, search engines). It writes them into
+`settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
+`providers`, ...), which it names; the dashboard follows at once.
+
+- It opens with the [admin password](#admin-password); a login counts, and the browser stays
+  unlocked as after a press (`actions.remember`).
+- A new admin password needs the current one, every time; then every other login ends. Set in
+  the container's environment, it is changed there.
+- **Without an admin password yet** (a dashboard set up before the setup wizard), the page asks
+  to set one first, and only on the local network; nothing else is saved before it.
+
 ### Allowed hosts
 
 `allowedHosts` in [settings.yaml](settings.md) lists the host names you open the dashboard by.

@@ -29,6 +29,10 @@ choosing a Docker image. The dashboard limits the damage where it can:
   [Admin password](../configuration/README.md#admin-password)); a correct one unlocks that
   browser for a while through an HttpOnly cookie the server keeps in memory, and guessing is slowed
   down per address.
+- **The settings page writes settings.yaml.** It opens only with the admin password (or a
+  login); a new admin password needs the current one, and only its hash is written. Without an
+  admin password yet, it answers only the local network, and only to set one. Its endpoints read a
+  JSON body (at most 64 KB) and need `X-Requested-With: dashboard`.
 - **`login: true` closes the page itself** (see [Login page](../configuration/README.md#login-page)):
   every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
   mode 600) and checks each time; a logout or a new admin password ends it for good. Only

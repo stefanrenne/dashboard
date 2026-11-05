@@ -1280,6 +1280,56 @@ test('login: the admin password opens the page; a session on the server; logged 
   }
 });
 
+test('settings page: without an admin password the local network sets one first; then the password opens it, and changing it needs the current one', async () => {
+  const t = await startApp({ 'settings.yaml': '# mine\ntitle: Lab\nlayout:\n  Media: { columns: 2 }\n' });
+  const outside = { 'x-forwarded-for': '203.0.113.7' };
+  const local = { 'x-forwarded-for': '192.168.1.30' };
+  const req = (p, { body, headers = {} } = {}) => fetch(`${t.base}/api/settings${p}`, body === undefined && !headers['x-dashboard-password'] ? { headers } : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) });
+  try {
+    assert.match(await (await t.get('/settings')).text(), /<script src="settings.js"><\/script>/);
+    // no admin password yet: from outside nothing; from the local network, only setting one
+    assert.equal((await req('', { headers: outside })).status, 403);
+    const first = await (await req('', { headers: local })).json();
+    assert.deepEqual([first.noPassword, first.values.title, first.other], [true, 'Lab', ['layout']]);
+    assert.equal((await req('', { body: { values: { title: 'X' } }, headers: local })).status, 403, 'nothing else before a password');
+    assert.equal((await req('/password', { body: { next: 'short' }, headers: local })).status, 400);
+    assert.equal((await req('/password', { body: { next: 'Geheim-Admin-1' }, headers: local })).status, 200);
+    assert.match(fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8'), /^adminPassword: scrypt:/m);
+    // now the password opens it, for everyone
+    const asked = await req('', { headers: local });
+    assert.deepEqual([asked.status, (await asked.json()).needsPassword], [401, true]);
+    assert.equal((await req('/unlock', { headers: { ...outside, 'x-dashboard-password': 'nope' } })).status, 401);
+    const unlocked = await req('/unlock', { headers: { ...outside, 'x-dashboard-password': 'Geheim-Admin-1' } });
+    const cookie = unlocked.headers.get('set-cookie').split(';')[0];
+    const open = { ...outside, cookie };
+    assert.equal((await (await req('', { headers: open })).json()).values.title, 'Lab');
+    const saved = await (await req('', { body: { values: { title: 'Thuis', theme: 'dark', allowedHosts: ['dash.lan'], login: false } }, headers: open })).json();
+    assert.deepEqual([saved.ok, saved.values.title, saved.values.theme], [true, 'Thuis', 'dark']);
+    const text = fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8');
+    assert.match(text, /^# mine$/m, 'comments stay');
+    assert.match(text, /^layout:\n {2}Media: \{ columns: 2 \}$/m, 'other keys stay');
+    assert.equal(t.app.layout.settings.title, 'Thuis', 'the dashboard follows at once');
+    assert.equal((await req('', { body: { values: { theme: 'pink' } }, headers: open })).status, 400);
+    // a new password needs the current one, also when unlocked
+    assert.equal((await req('/password', { body: { current: 'nope', next: 'Ander-Wachtwoord-2' }, headers: open })).status, 401);
+    assert.equal((await req('/password', { body: { next: 'Ander-Wachtwoord-2' }, headers: open })).status, 401);
+    assert.equal((await req('/password', { body: { current: 'Geheim-Admin-1', next: 'Ander-Wachtwoord-2' }, headers: open })).status, 200);
+    assert.equal((await req('/unlock', { headers: { ...outside, 'x-dashboard-password': 'Geheim-Admin-1' } })).status, 401, 'the old one no longer works');
+    assert.equal((await req('/unlock', { headers: { ...outside, 'x-dashboard-password': 'Ander-Wachtwoord-2' } })).status, 200);
+    assert.equal((await fetch(`${t.base}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json', ...open }, body: '{}' })).status, 403, 'the header keeps other sites out');
+  } finally {
+    await t.close();
+  }
+  // with the password in the environment it is changed there
+  const env = await startApp({}, { DASHBOARD_ADMIN_PASSWORD: 'Geheim-Admin-1' });
+  try {
+    const r = await fetch(`${env.base}/api/settings/password`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', 'x-dashboard-password': 'Geheim-Admin-1', 'x-forwarded-for': '203.0.113.7' }, body: JSON.stringify({ current: 'Geheim-Admin-1', next: 'Iets-Anders-3' }) });
+    assert.equal(r.status, 409);
+  } finally {
+    await env.close();
+  }
+});
+
 test('readVersion: the image\'s VERSION file wins over a copied DASHBOARD_VERSION, then package.json', () => {
   const root = tmpDir('hd-version-');
   fs.writeFileSync(path.join(root, 'package.json'), '{ "version": "1.0.0" }');

@@ -21,6 +21,8 @@ import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
 import { ActionGate, loadPassword, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
+import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
+import { isLocal } from './onboarding.js';
 import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
 import { validateOptions } from './plugins/options.js';
 
@@ -165,6 +167,13 @@ export async function createApp({
   const onboarding = new Onboarding({ configDir, log });
   const sessions = new SessionStore({ configDir, log });
   const passwordSecrets = envPassword?.value && !envPassword.hashed ? [envPassword.value] : [];
+  // the allowed hosts: DASHBOARD_ALLOWED_HOSTS and settings.yaml allowedHosts together; `*` in either allows every host
+  const envHosts = allowedHosts(env);
+  const hostsNow = () => {
+    const own = state.config?.settings.allowedHosts ?? [];
+    if (envHosts === null || own.includes('*')) return null;
+    return [...new Set([...envHosts, ...own])];
+  };
 
   function rebuild() {
     gate.password = envPassword ?? state.config.settings.adminPassword ?? null;
@@ -311,13 +320,6 @@ export async function createApp({
     });
   }
 
-  // the allowed hosts: DASHBOARD_ALLOWED_HOSTS and settings.yaml allowedHosts together; `*` in either allows every host
-  const envHosts = allowedHosts(env);
-  const hostsNow = () => {
-    const own = state.config?.settings.allowedHosts ?? [];
-    if (envHosts === null || own.includes('*')) return null;
-    return [...new Set([...envHosts, ...own])];
-  };
 
   async function handler(req, res) {
     const hosts = hostsNow();
@@ -361,12 +363,13 @@ export async function createApp({
       }
       if (p === '/login' || p === '/login.js' || p === '/api/login' || p === '/api/logout') return await loginRoute(req, res, method, p, { loginOn, loggedIn, login });
       if (loginOn && !loggedIn && !isInternal(req) && !OPEN_PATHS.has(p)) {
-        if (method === 'GET' && (p === '/' || p === '/index.html')) {
+        if (method === 'GET' && (p === '/' || p === '/index.html' || /text\/html/.test(req.headers.accept ?? ''))) {
           res.writeHead(302, { location: 'login', 'cache-control': 'no-store', ...SECURITY_HEADERS });
           return res.end();
         }
         return send(res, 401, { ok: false, needsLogin: true, error: 'log in first' });
       }
+      if (p === '/settings' || p === '/settings.js' || p === '/api/settings' || p.startsWith('/api/settings/')) return await settingsRoute(req, res, method, p, { loggedIn, login });
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
         const custom = CUSTOM_FILES.filter((f) => fs.existsSync(path.join(configDir, f)));
@@ -442,6 +445,77 @@ export async function createApp({
       log.error(`${req.method} ${p}: ${err.stack ?? err}`);
       return send(res, 500, { error: 'internal error' });
     }
+  }
+
+  /**
+   * The settings page and its API: the admin password opens it (a login counts, and the
+   * browser stays unlocked as for a press); without one yet, only the local network, which must
+   * set one first. A new admin password always needs the current one.
+   */
+  async function settingsRoute(req, res, method, p, { loggedIn, login }) {
+    if (method === 'GET' && p === '/settings') return sendFile(res, path.join(publicDir, 'settings.html'));
+    if (method === 'GET' && p === '/settings.js') return sendFile(res, path.join(publicDir, 'settings.js'));
+    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+    const route = p.slice('/api/settings'.length);
+    const noPassword = !gate.password;
+    const access = async () => {
+      if (noPassword) return isLocal(req) ? { ok: true, headers: {} } : { ok: false, status: 403, body: { ok: false, needsSetup: true, error: 'no admin password yet: set one from the local network first' } };
+      return gate.check(req, 'password', { what: 'the settings', loggedIn });
+    };
+    const allowed = await access();
+    if (!allowed.ok) return send(res, allowed.status, allowed.body);
+    // without an admin password, setting one comes first: nothing else is saved
+    if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
+    const headers = { ...SECURITY_HEADERS, ...allowed.headers };
+    const answer = () => ({ ok: true, ...readSettings(configDir), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn });
+    if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
+    if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
+    let body;
+    try {
+      body = method === 'POST' ? await readJson(req, 64 * 1024) : null;
+    } catch (err) {
+      return send(res, err.status ?? 400, { ok: false, error: err.message });
+    }
+    if (method === 'POST' && route === '') {
+      const checked = checkSettings(body?.values);
+      if (checked.error) return send(res, 400, { ok: false, error: checked.error });
+      try {
+        writeSettings(configDir, checked.values);
+      } catch (err) {
+        return send(res, 409, { ok: false, error: err.message });
+      }
+      log.info(`settings: ${Object.keys(checked.values).join(', ')} saved from the settings page`);
+      await reload();
+      return send(res, 200, answer(), 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/password') {
+      if (envPassword) return send(res, 409, { ok: false, error: 'the admin password is set in the environment (DASHBOARD_ADMIN_PASSWORD)' });
+      if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) return send(res, 400, { ok: false, error: `at least ${MIN_PASSWORD} characters` });
+      if (gate.password) {
+        // the current password, every time: also when logged in or unlocked
+        const address = String(req.socket?.remoteAddress ?? 'unknown');
+        const retryAfter = gate.limiter.waiting(address);
+        if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
+        if (!(await checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''))) {
+          gate.limiter.failed(address);
+          log.warn(`wrong current admin password from ${address} on the settings page`);
+          return send(res, 401, { ok: false, wrongPassword: true, error: 'the current password is not right' });
+        }
+        gate.limiter.succeeded(address);
+      }
+      try {
+        writeAdminPassword(configDir, hashPassword(body.next));
+      } catch (err) {
+        return send(res, 409, { ok: false, error: err.message });
+      }
+      log.info('settings: a new admin password; every login session ends');
+      await reload();
+      // the sessions of the old password end; this browser keeps going with one of the new
+      const login2 = state.config.settings.login;
+      const renewed = login2?.required && gate.password ? { 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login2.rememberMs) } : {};
+      return send(res, 200, answer(), 'application/json', { ...SECURITY_HEADERS, ...renewed });
+    }
+    return send(res, 404, { error: 'not found' });
   }
 
   /**

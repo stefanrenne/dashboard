@@ -3,14 +3,14 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 
-const UNITS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+const UNITS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
 
 /** Parses `500ms`, `10s`, `5m`, `1h` or a number of seconds into milliseconds. */
 export function parseDuration(value, fallbackMs) {
   if (value === undefined || value === null || value === '') return fallbackMs;
   if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value * 1000;
-  const match = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h)$/.exec(String(value).trim());
-  if (!match) throw new Error(`invalid duration "${value}" (use e.g. 500ms, 10s, 5m, 1h)`);
+  const match = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d)$/.exec(String(value).trim());
+  if (!match) throw new Error(`invalid duration "${value}" (use e.g. 500ms, 10s, 5m, 1h, 7d)`);
   return Number(match[1]) * UNITS[match[2]];
 }
 
