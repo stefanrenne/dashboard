@@ -870,6 +870,7 @@ test('the version is shown and checked for updates by default; hideVersion: true
     assert.equal(quiet.layout.versionUrl, null);
     assert.equal(versionUrl('0.7.2'), 'https://github.com/stefanrenne/dashboard/releases/tag/v0.7.2');
     assert.equal(versionUrl('main-1d0c028'), 'https://github.com/stefanrenne/dashboard/commit/1d0c028');
+    assert.equal(versionUrl('develop-1d0c028'), 'https://github.com/stefanrenne/dashboard/commit/1d0c028');
     assert.equal(versionUrl('dev'), null);
     assert.equal(off.layout.update, null);
     off.close();

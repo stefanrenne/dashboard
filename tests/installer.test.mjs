@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import YAML from 'yaml';
-import { syncPlugins, parseSource, readLock, latestTag, withDefaultPlugins, DEFAULT_PLUGINS, CORE_WIDGETS, olderTag, pluginUpdates, packageInfo } from '../src/plugins/installer.js';
+import { syncPlugins, parseSource, readLock, latestTag, withDefaultPlugins, DEFAULT_PLUGINS, defaultPluginsFor, CORE_WIDGETS, olderTag, pluginUpdates, packageInfo } from '../src/plugins/installer.js';
 import { loadWidget } from '../src/plugins/loader.js';
 import { WidgetRuntime } from '../src/plugins/runtime.js';
 import { validateOptions } from '../src/plugins/options.js';
@@ -81,6 +81,17 @@ test('a floating ref warns, stays on the locked commit, and moves only on update
 
   const updated = await syncPlugins({ configDir, entries, update: true, log: silentLog });
   assert.equal(path.basename(updated.installed[0].dir), 'example-counter@1.2.0');
+  // the develop collection of a develop build follows its branch on purpose: no warning
+  const quiet = await syncPlugins({ configDir: tmpDir(), entries: [{ source: `git+${url}#main`, followsBranch: true }], log: silentLog });
+  assert.deepEqual(quiet.warnings, []);
+});
+
+test('defaultPluginsFor: a develop build takes the collection\'s develop branch, every other version #latest', () => {
+  assert.equal(defaultPluginsFor('0.22.0'), DEFAULT_PLUGINS);
+  assert.equal(defaultPluginsFor('main-1d0c028'), DEFAULT_PLUGINS);
+  const develop = defaultPluginsFor('develop-1d0c028');
+  assert.deepEqual(develop.map((d) => [d.source, d.label, d.followsBranch]), [['git+https://github.com/stefanrenne/dashboard-widgets#develop', 'widgets', true]]);
+  assert.equal(withDefaultPlugins([], develop)[0].followsBranch, true, 'kept when the defaults are added');
 });
 
 test('latestTag: highest release by number, no pre-releases or other tags', () => {

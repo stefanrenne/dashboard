@@ -4,6 +4,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- **Develop builds:** every change on the `develop` branch is published as
+  `ghcr.io/stefanrenne/dashboard:develop` (version `develop-<sha>`), which installs the widgets
+  collection from its `develop` branch. `latest` and the version tags stay on releases, which are
+  tagged on `main` only.
+
 ## [0.22.0] - 2026-11-04
 
 ### Added

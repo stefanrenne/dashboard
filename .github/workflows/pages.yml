@@ -25,7 +25,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # the docs of main, the released state: a scheduled run or one by hand starts on the default
+      # branch (develop), whose docs may describe what is not released yet
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: actions/setup-node@v7
         with:
           node-version: "24"

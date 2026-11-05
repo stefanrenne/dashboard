@@ -1,8 +1,11 @@
 name: CI
 
+# Work happens on develop: every push there is tested and published as the image's `develop` tag
+# (version develop-<sha>), which takes the widgets collection's develop branch. main only moves
+# to develop for a release (a fast-forward), and only a tag vX.Y.Z on main publishes `latest`.
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
@@ -30,13 +33,17 @@ jobs:
         with:
           node-version: "24" # the same LTS line as the image
           cache: npm
-      # the tests load every widget from the widgets collection, at its newest release: the one
-      # installations get through #latest (and the Pages workflow uses)
-      - name: Newest release of the widgets collection
+      # the tests load every widget from the widgets collection: on develop (a push, or a pull
+      # request into it) its develop branch, as a develop image gets it; otherwise its newest
+      # release, the one installations get through #latest (and the Pages workflow uses)
+      - name: The widgets collection to test with
         id: collection
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "tag=$(gh release view --repo stefanrenne/dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"
+          DEVELOP: ${{ github.ref == 'refs/heads/develop' || github.base_ref == 'develop' }}
+        run: |
+          if [ "$DEVELOP" = true ]; then echo "tag=develop" >> "$GITHUB_OUTPUT"
+          else echo "tag=$(gh release view --repo stefanrenne/dashboard-widgets --json tagName --jq .tagName)" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v7
         with:
           repository: stefanrenne/dashboard-widgets
@@ -48,8 +55,8 @@ jobs:
           DASHBOARD_COLLECTION_DIR: collection
 
   # A push to main and a pull request build and smoke-test the image without pushing it: an update
-  # of the build actions or the base image is tested before a release. Only releases are pushed.
-  # Whether the image changes. A push to main that touches only docs, scripts, tests, examples
+  # of the build actions or the base image is tested before a release. Releases and develop are pushed.
+  # Whether the image changes. A push to a branch that touches only docs, scripts, tests, examples
   # or Markdown (none of them matters in the image, see .dockerignore) skips the image build.
   # Tags, runs by hand, the weekly rebuild and pull requests always build.
   changes:
@@ -87,17 +94,20 @@ jobs:
           fetch-depth: 0 # tags and main: only a release commit on main is published
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
-      # Only releases are published (`latest`, `X.Y.Z`, `X.Y`): a tag vX.Y.Z on a commit on main,
-      # a run by hand on main that releases package.json's version (unless released already;
-      # dependabot-automerge.yml starts such runs too), and the weekly rebuild of the newest
-      # release. Every other build (a push to main, a pull request) is tested, not pushed, as
-      # main-<short sha>.
+      # Releases are published as `latest`, `X.Y.Z` and `X.Y`: a tag vX.Y.Z on a commit on main,
+      # a run by hand on main that releases package.json's version (unless released already),
+      # and the weekly rebuild of the newest release. A push to develop (or a run by hand there;
+      # dependabot-automerge.yml starts those) is published as `develop` only, version
+      # develop-<short sha>. Every other build (a push to main, a pull request) is tested, not
+      # pushed, as main-<short sha>.
       - id: version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          v="main-${GITHUB_SHA::7}"; rel=false; publish=false
+          v="main-${GITHUB_SHA::7}"; rel=false; publish=false; channel=release
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; rel=true; publish=true
+          elif [[ "$GITHUB_REF" == refs/heads/develop && ( "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ) ]]; then
+            v="develop-${GITHUB_SHA::7}"; publish=true; channel=develop
           elif [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/main ]]; then
             pkg=$(node -p "require('./package.json').version")
             if gh release view "v$pkg" >/dev/null 2>&1; then echo "v$pkg is released already: nothing to publish"
@@ -107,10 +117,10 @@ jobs:
             tag=$(gh release view --json tagName --jq .tagName)
             git checkout -q "$tag"; v="${tag#v}"; publish=true; echo "rebuilding $tag"
           fi
-          if [ "$publish" = true ] && ! git merge-base --is-ancestor HEAD origin/main; then
+          if [ "$channel" = release ] && [ "$publish" = true ] && ! git merge-base --is-ancestor HEAD origin/main; then
             echo "::error::$v is not a commit on main: only releases from main are published"; exit 1
           fi
-          { echo "version=$v"; echo "release=$rel"; echo "publish=$publish"; echo "minor=${v%.*}"; } >> "$GITHUB_OUTPUT"
+          { echo "version=$v"; echo "release=$rel"; echo "publish=$publish"; echo "channel=$channel"; echo "minor=${v%.*}"; } >> "$GITHUB_OUTPUT"
       - name: Build for the smoke test (amd64)
         uses: docker/build-push-action@v7
         with:
@@ -140,12 +150,14 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
+          # a release: latest, X.Y.Z and X.Y; develop: only `develop`
           tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-            type=raw,value=${{ steps.version.outputs.minor }}
-      # every build checks that arm64 builds too; only a release is pushed
-      - name: Build (amd64, arm64) and push a release
+            type=raw,value=latest,enable=${{ steps.version.outputs.channel == 'release' }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.channel == 'release' }}
+            type=raw,value=${{ steps.version.outputs.minor }},enable=${{ steps.version.outputs.channel == 'release' }}
+            type=raw,value=develop,enable=${{ steps.version.outputs.channel == 'develop' }}
+      # every build checks that arm64 builds too; only a release or develop is pushed
+      - name: Build (amd64, arm64) and push a release or develop
         uses: docker/build-push-action@v7
         with:
           context: .

@@ -39,6 +39,15 @@ export const LATEST_REF = 'latest';
 // atLeast: the release this dashboard needs; a #latest locked below it moves on by itself.
 // label: its name in the footer.
 export const DEFAULT_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', atLeast: 'v0.13.0', label: 'widgets' }];
+// A develop build of the dashboard (version develop-<sha>, the image's `develop` tag) takes the
+// collection's develop branch instead, so both develop lines are tried together. A branch moves:
+// it is checked like any other (pluginUpdateInterval), without the warning for not being pinned.
+export const DEVELOP_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#develop', label: 'widgets', followsBranch: true }];
+
+/** The default plugins for a dashboard of this version: the develop branch for a develop build. */
+export function defaultPluginsFor(version) {
+  return String(version).startsWith('develop-') ? DEVELOP_PLUGINS : DEFAULT_PLUGINS;
+}
 // The collection's widgets behind a service's siteMonitor:, ping:, container:, app: and
 // proxmoxNode: (src/layout.js). `only:` on a default's repository keeps them.
 export const CORE_WIDGETS = ['http-status', 'ping', 'docker', 'kubernetes-pods', 'proxmoxvm'];
@@ -197,7 +206,7 @@ export async function syncPlugins({ configDir, entries, update = false, keepUnus
         packages.push(packageInfo(entry, src, null, dir));
         continue;
       }
-      if (src.floating) {
+      if (src.floating && !entry.followsBranch) {
         warnings.push({
           source: label,
           message: `not pinned to a version (${src.kind === 'git' ? 'use a tag or commit' : 'use an exact version'}); the lock file keeps it stable`,

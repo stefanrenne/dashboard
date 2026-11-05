@@ -48,6 +48,13 @@ The tests need a checkout of the widgets collection next to this repository (or 
 Run the tests before every commit. CI (`.github/workflows/ci.yml`) does the same, then builds
 the image and smoke-tests it.
 
+**Work happens on `develop`**: commit and push there; every push is published as the image's
+`develop` tag (version `develop-<sha>`, with the collection's `develop` branch). `main` only
+moves to `develop` for a release, as a fast-forward (`git push origin develop:main`), and never
+gets commits of its own; the release tag goes on `main`. Steps in
+`docs/extend/contributing/publishing.md`. The collection works the same way: test against its
+`develop` checkout next to this one.
+
 ## Hard rules
 
 1. **Secrets never reach the browser.** Options marked `secret: true`, options a widget does not
@@ -80,7 +87,7 @@ the image and smoke-tests it.
    `K8S_SA_DIR`, `configDir`, ...) so tests can replace them.
 9. **Docker is read-only.** Only GET calls on the Docker API. Recommend a socket proxy in the docs.
 10. **External code is run, never fetched implicitly.** Plugins are installed only from sources the
-    user listed plus `DEFAULT_PLUGINS` (the project's own widgets collection, `#latest`), are pinned through the lock file, and arguments to `git`/`npm`/`ping` are
+    user listed plus `DEFAULT_PLUGINS` (the project's own widgets collection, `#latest`; `#develop` for a develop build), are pinned through the lock file, and arguments to `git`/`npm`/`ping` are
     validated and passed without a shell.
 11. **Nothing installation-specific outside `deploy/`.** No host names, IP addresses, user names
     or personal config in `src/`, `public/`, `docs/`, `scripts/`, tests or examples; use
@@ -93,7 +100,7 @@ the image and smoke-tests it.
   plus `widget.yaml`); the README format is in the collection's CLAUDE.md. A collection
   release starts the Pages workflow itself (its release job, with the secret
   `PAGES_DISPATCH_TOKEN`); otherwise **follow every collection release with a rebuild of the
-  site**: `gh workflow run pages.yml --repo stefanrenne/dashboard`. Then
+  site**: `gh workflow run pages.yml --repo stefanrenne/dashboard --ref main`. Then
   check that the page of each new or changed widget is there
   (`https://getdashboard.dev/widgets/collection/<id>.html`).
 - **No version requirements in the docs before 1.0**: no "(dashboard 0.12.0 or newer)", "since

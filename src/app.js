@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config/load.js';
 import { watchConfig } from './config/watch.js';
 import { loadRegistry } from './plugins/loader.js';
-import { syncPlugins, withDefaultPlugins, pluginUpdates, DEFAULT_PLUGINS } from './plugins/installer.js';
+import { syncPlugins, withDefaultPlugins, pluginUpdates, defaultPluginsFor } from './plugins/installer.js';
 import { WidgetRuntime } from './plugins/runtime.js';
 import { WidgetSandbox } from './plugins/sandbox.js';
 import { Discovery, mergeDiscovered } from './discovery/index.js';
@@ -28,7 +28,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
 export const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
- * The version: the VERSION file the Docker build writes (1.2.3 or main-<sha>), else DASHBOARD_VERSION,
+ * The version: the VERSION file the Docker build writes (1.2.3, or develop-<sha> / main-<sha>), else DASHBOARD_VERSION,
  * else package.json's. The file comes first because it is part of the image: a container
  * recreated with its old environment copied over (Portainer's Recreate) keeps an old DASHBOARD_VERSION.
  */
@@ -117,10 +117,10 @@ dashboard answers only <code>localhost</code> and IP addresses, so that a web pa
 </body></html>`;
 }
 
-/** The release (1.2.3) or commit (main-<sha>) page of this dashboard's version, or null. */
+/** The release (1.2.3) or commit (main-<sha>, develop-<sha>) page of this dashboard's version, or null. */
 export function versionUrl(version) {
   if (/^\d+\.\d+\.\d+$/.test(version)) return `${REPO_URL}/releases/tag/v${version}`;
-  const sha = /^main-([0-9a-f]{7,40})$/.exec(version)?.[1];
+  const sha = /^(?:main|develop)-([0-9a-f]{7,40})$/.exec(version)?.[1];
   return sha ? `${REPO_URL}/commit/${sha}` : null;
 }
 
@@ -135,7 +135,7 @@ export async function createApp({
   watch = false,
   discovery: discoveryOptions = {},
   timeoutMs,
-  defaultPlugins = DEFAULT_PLUGINS,
+  defaultPlugins = defaultPluginsFor(VERSION),
   dockerSocket = DEFAULT_SOCKET,
   releasesUrl = RELEASES_URL,
 } = {}) {
