@@ -138,7 +138,10 @@ jobs:
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:3000/api/health && break; sleep 1; done
           curl -fs http://127.0.0.1:3000/api/health | grep -q '"version":"${{ steps.version.outputs.version }}"'
           curl -fs http://127.0.0.1:3000/api/layout | grep -q '"groups"'
-          curl -fs http://127.0.0.1:3000/ | grep -q '<title>'
+          # an empty /config: the first start opens the setup wizard
+          curl -fs -o /dev/null -w '%{redirect_url}' http://127.0.0.1:3000/ | grep -q '/setup$'
+          curl -fs http://127.0.0.1:3000/setup | grep -q '<title>'
+          docker exec hd test -f /config/.onboarding
           docker logs hd
       - uses: docker/login-action@v4
         if: steps.version.outputs.publish == 'true'
