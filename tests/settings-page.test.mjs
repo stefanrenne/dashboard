@@ -186,6 +186,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
     'GET /api/settings/files': { ok: true, files: FILES },
+    'GET /api/settings/services': { ok: true, hash: 'h1', items: [], discovered: [] },
     'GET /api/settings/files/services.yaml': () => ({ ok: true, file: 'services.yaml', exists: true, hash, text, history: [{ id: 'services.yaml.2026-11-06T10-00-00-000Z', time: '2026-11-06T10:00:00.000Z', size: 10 }] }),
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
     'GET /api/settings/files/media.yaml': { ok: true, file: 'media.yaml', exists: true, hash: 'm1', text: '- Plex: {}\n', history: [] },
@@ -203,8 +204,10 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
-  await tick();
   assert.equal(doc.querySelector('nav.sections [aria-current=page]').textContent, 'Services');
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Als tekst bewerken').click();
+  await tick();
+  await tick();
   assert.equal(doc.getElementById('title'), null, 'the general form is in its own section');
   const area = doc.getElementById('file-text');
   assert.equal(area.value, text);
@@ -367,4 +370,57 @@ test('settings page: widget packages: the defaults, entries edited, added, reord
   assert.equal(calls.some((c) => c.p === '/api/plugins/sync' && c.init.method === 'POST'), true);
   assert.equal(synced.headers['x-requested-with'], 'dashboard');
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Klaar.');
+});
+
+test('settings page: services as a form: fields, rename, move to another group, add, remove; includes as blocks; discovered shown', async () => {
+  const fields = (extra = {}) => ({ href: '', icon: '', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false, ...extra });
+  const items = [
+    { kind: 'group', id: '0', name: 'Infra', items: [
+      { kind: 'service', id: '0/0', name: 'Router', fields: fields({ href: 'http://router.lan', ping: 'router.lan' }), widgets: ['custom-api'], other: [] },
+      { kind: 'group', id: '0/1', name: 'Network', items: [] },
+    ] },
+    { kind: 'group', id: '1', name: 'Media', include: 'media.yaml', items: [] },
+    { kind: 'group', id: '2', name: 'Apps', items: [{ kind: 'include', id: '2/0', file: 'apps.yaml' }] },
+  ];
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/services': { ok: true, hash: 'h1', items, discovered: [{ group: 'Media', name: 'Jellyfin', origin: 'docker:local' }] },
+    'POST /api/settings/services': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items, discovered: [] }),
+  }, () => {}, 'http://dash.lan/settings#services');
+  await tick();
+  const panel = () => doc.getElementById('panel').textContent;
+  assert.match(panel(), /De services van deze groep staan in media\.yaml/);
+  assert.match(panel(), /Ingevoegd uit apps\.yaml/);
+  assert.match(panel(), /Media › Jellyfin \(docker:local\)/);
+  assert.match(panel(), /Widgets: custom-api \(bewerk ze als tekst\)/);
+  const router = doc.querySelector('.card');
+  const id = router.querySelector('input[id$="-name"]').id.replace('-name', '');
+  const set = (sid, value, event = 'input') => { const n = doc.getElementById(sid); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  set(`${id}-name`, 'Gateway');
+  set(`${id}-ping`, '');
+  set(`${id}-showStats`, 'true', 'change');
+  // into the nested group Network
+  const move = doc.getElementById(`${id}-move`);
+  assert.deepEqual([...move.options].map((o) => o.textContent), ['Infra', 'Infra › Network', 'Apps']);
+  set(`${id}-move`, '1', 'change');
+  // a new service in Apps, named; the include block moved down below it
+  const apps = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input').value === 'Apps');
+  [...apps.querySelectorAll('button')].find((b) => b.textContent === 'Een service toevoegen').click();
+  const fresh = doc.activeElement;
+  assert.equal(fresh.value, 'Nieuwe service');
+  set(fresh.id, 'Wiki');
+  set(fresh.id.replace('-name', '-href'), 'http://wiki.lan');
+  doc.querySelector('[aria-label="apps.yaml omlaag"]').click();
+  // a group added and removed again
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Een groep toevoegen').click();
+  doc.querySelector('[aria-label="Nieuwe groep verwijderen"]').click();
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/services' && c.init.method === 'POST').at(-1).body;
+  assert.equal(sent.hash, 'h1');
+  assert.deepEqual(sent.items.map((g) => [g.name, g.items.map((x) => x.name ?? x.file ?? x.id)]), [['Infra', ['Network']], ['Media', []], ['Apps', ['Wiki', '2/0']]]);
+  const gateway = sent.items[0].items[0].items[0];
+  assert.deepEqual([gateway.id, gateway.name, gateway.fields.ping, gateway.fields.showStats, gateway.fields.href], ['0/0', 'Gateway', '', 'true', 'http://router.lan']);
+  assert.equal(sent.items[2].items[0].id, null);
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });

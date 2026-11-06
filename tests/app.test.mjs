@@ -1729,3 +1729,27 @@ test('settings page plugins: a package added from the page is installed, a bad s
     await t.close();
   }
 });
+
+test('settings page services: the tree read and saved, the dashboard follows; stale and broken saves refused', async () => {
+  const t = await startApp({
+    'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n`,
+    'services.yaml': '# mine\n- Infra:\n    - Router:\n        href: http://router.lan\n',
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const post = (body) => fetch(`${t.base}/api/settings/services`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) });
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/services`, { headers: auth })).json();
+    assert.deepEqual(read.items.map((g) => [g.name, g.items.map((s) => s.name)]), [['Infra', ['Router']]]);
+    read.items[0].items[0].fields.description = 'Gateway';
+    read.items[0].items.push({ kind: 'service', id: null, name: 'Switch', fields: { href: 'http://switch.lan' } });
+    const saved = await (await post({ items: read.items, hash: read.hash })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.deepEqual(t.app.layout.groups[0].services.map((s) => [s.name, s.description ?? null]), [['Router', 'Gateway'], ['Switch', null]]);
+    assert.match(fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8'), /^# mine\n/);
+    assert.equal((await post({ items: read.items, hash: read.hash })).status, 409, 'the old hash');
+    const broken = await post({ items: [{ kind: 'group', id: null, name: '' , items: [] }], hash: saved.hash });
+    assert.equal(broken.status, 400);
+  } finally {
+    await t.close();
+  }
+});

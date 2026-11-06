@@ -35,6 +35,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - **Widget packages on the settings page**: the `plugins` list (git, npm or a folder, with subdir
   and only), what each is pinned to, the widgets collection it extends, and buttons to install
   again or update to the newest.
+- **Services as a form on the settings page**: groups, nested groups and services, renamed,
+  moved, added and removed, with every service key; comments, widgets and `!include`s stay as
+  written. Discovered services are listed.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

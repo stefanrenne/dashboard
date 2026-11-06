@@ -174,7 +174,11 @@ writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
 `providers`, ...), which it names; the dashboard follows at once.
 
-The other sections (Services, Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, and
+Services is a form: groups, nested groups and services (link, icon, description, the status
+check and the rest of a service's keys), renamed, moved to another group, added and removed; a
+group or list that comes from an `!include` is a block with a link to its file, and the services
+found by discovery are listed (their labels are their source). "Edit as text" shows the file.
+The other sections (Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, and
 Advanced for `settings.yaml` itself) show their file as text, with its comments, and the files
 it includes. A save is checked first: a mistake is shown with its file and path and nothing is
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file

@@ -25,6 +25,7 @@ import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
 import { readLayout, checkLayout, writeLayout } from './settings-layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './settings-plugins.js';
+import { readServices, writeServices } from './settings-services.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
@@ -562,7 +563,7 @@ export async function createApp({
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
     let body;
     try {
-      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') ? BODY_LIMIT : 64 * 1024) : null;
+      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || route === '/services' ? BODY_LIMIT : 64 * 1024) : null;
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
@@ -579,6 +580,27 @@ export async function createApp({
       return send(res, 200, answer(), 'application/json', headers);
     }
     if (route === '/files' || route.startsWith('/files/')) return filesRoute(res, method, route, body, headers);
+    if (route === '/services') {
+      // the services the dashboard found by itself: shown, not edited (their labels are the source)
+      const discovered = () => (state.layout?.groups ?? []).flatMap(function all(g, _, __, parent = '') {
+        const name = parent ? `${parent} › ${g.name}` : g.name;
+        return [...g.services.filter((x) => x.discovered).map((x) => ({ group: name, name: x.name, origin: x.discovered })), ...(g.groups ?? []).flatMap((n) => all(n, 0, 0, name))];
+      });
+      try {
+        if (method === 'POST') {
+          const out = writeServices(configDir, body?.items, body?.hash, { env });
+          if (out.changed) {
+            log.info('settings: services.yaml saved from the services form');
+            await reload();
+          }
+          return send(res, 200, { ok: true, ...readServices(configDir), discovered: discovered(), warnings: out.warnings ?? [] }, 'application/json', headers);
+        }
+        return send(res, 200, { ok: true, ...readServices(configDir), discovered: discovered() }, 'application/json', headers);
+      } catch (err) {
+        if (!(err instanceof ConfigEditError)) throw err;
+        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
+      }
+    }
     if (method === 'POST' && route === '/plugins') {
       const checked = checkPlugins(body?.entries);
       if (checked.error) return send(res, 400, { ok: false, error: checked.error });

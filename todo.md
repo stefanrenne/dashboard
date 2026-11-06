@@ -12,10 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **services.yaml editor.** Groups (add, rename, remove, order, nested groups) and services
-  (add, edit, move between groups, order, remove): name, href, icon (a picker with preview),
-  description, siteMonitor / ping / container + server, weight, target, filter. Discovered
-  services (Docker labels, Kubernetes annotations) shown read-only with their source.
 - [ ] **Service widgets in the services editor.** `widget:`/`widgets:` per service: the type from
   the registry (`widgetList` in `src/onboarding.js`), a form generated from the widget's option
   schema (`OPTION_TYPES` in `src/plugins/options.js`: enums, lists, objects), secret options

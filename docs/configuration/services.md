@@ -111,6 +111,8 @@ Click a container label to see the container's CPU and memory. `ping` also accep
 Icons: a dashboard-icons name, an `mdi-`, `si-` or `sh-` icon, a file in `config/icons` or a URL;
 see [Images](images.md).
 
+The settings page edits this file under Services, as a form or as text.
+
 ## Filtering services
 
 `filter:` on a service hides its card while an expression is true, such as
