@@ -30,7 +30,7 @@
   }
   * { box-sizing: border-box; }
   html { background: var(--dash-bg); }
-  body { margin: 0; min-height: 100vh; background: var(--dash-bg); color: var(--dash-text);
+  body { margin: 0; overflow-x: clip; min-height: 100vh; background: var(--dash-bg); color: var(--dash-text);
     font: 15px/1.5 Manrope, ui-sans-serif, system-ui, sans-serif; transition: background .2s, color .2s; }
   main { max-width: 52rem; margin: 0 auto; padding: 0 16px 64px; }
   h1 { margin: 0 0 4px; font-size: 1.6rem; font-weight: 700; color: var(--dash-heading); }
@@ -93,7 +93,9 @@
   fieldset.ask > legend { padding: 0; font-weight: 600; color: var(--dash-heading); }
   .panel hr { margin: 20px 0 16px; border: 0; border-top: 1px solid var(--dash-border); }
   /* the header and the save bar stick to the edges; the page shows through them, blurred */
-  .top, .saved { position: sticky; z-index: 2; display: flex; align-items: center; gap: 12px; margin-inline: -16px; padding: 12px 16px;
+  .top, .saved { position: sticky; z-index: 2; display: flex; align-items: center; gap: 12px; padding-block: 12px;
+    /* full page width; the padding keeps the buttons on the column of the page */
+    margin-inline: calc(50% - 50vw); padding-inline: calc(50vw - 50%);
     background: color-mix(in srgb, var(--dash-bg) 30%, transparent);
     -webkit-backdrop-filter: blur(12px) saturate(1.5); backdrop-filter: blur(12px) saturate(1.5); }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .top, .saved { background: var(--dash-bg); } }
