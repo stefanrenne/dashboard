@@ -86,7 +86,7 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
   assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan', 'dash.example.com', 'other.lan'], 'no duplicates');
   doc.querySelector('[aria-label="other.lan verwijderen"]').click();
   assert.equal(doc.getElementById('login-actions').checked, true);
-  assert.match(doc.body.textContent, /Ook in settings\.yaml, blijven zoals ze zijn \(pas ze aan in het bestand\): layout, plugins/);
+  assert.match(doc.body.textContent, /Ook in settings\.yaml, blijven zoals ze zijn \(pas ze aan onder Geavanceerd\): layout, plugins/);
   doc.getElementById('title').value = 'Thuis';
   doc.getElementById('title').dispatchEvent(new w.Event('input'));
   doc.getElementById('login-page').click();
@@ -163,4 +163,76 @@ test('settings page: passkeys over https (add, list, remove), a notice over http
   await tick();
   assert.equal(unlocked, true);
   assert.ok(door.doc.querySelector('.panel h2'), 'the settings show');
+});
+
+test('settings page: sections by the URL, and a config file as text: save, problems, conflict, an earlier version', async () => {
+  const FILES = [
+    { file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true },
+    { file: 'services.yaml', root: 'services.yaml', from: null, at: '', exists: true },
+    { file: 'media.yaml', root: 'services.yaml', from: 'services.yaml', at: '[0].Media', exists: true },
+  ];
+  let text = '- Media: !include media.yaml\n- Apps:\n    - App:\n        widget: { type: x, key: __SECRET_0123456789__ }\n';
+  let hash = 'h1';
+  let next = 'ok';
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/files': { ok: true, files: FILES },
+    'GET /api/settings/files/services.yaml': () => ({ ok: true, file: 'services.yaml', exists: true, hash, text, history: [{ id: 'services.yaml.2026-11-06T10-00-00-000Z', time: '2026-11-06T10:00:00.000Z', size: 10 }] }),
+    'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
+    'GET /api/settings/files/media.yaml': { ok: true, file: 'media.yaml', exists: true, hash: 'm1', text: '- Plex: {}\n', history: [] },
+    'GET /api/settings/files/services.yaml/history/services.yaml.2026-11-06T10-00-00-000Z': { ok: true, text: '# the old one\n' },
+    'POST /api/settings/files/services.yaml': (init) => {
+      const body = JSON.parse(init.body);
+      if (next === 'problem') return { ok: false, error: 'services.yaml › [1]: expected a map', errors: [{ file: 'services.yaml', path: '[1]', message: 'expected a map' }] };
+      text = body.text;
+      hash = 'h2';
+      return { ok: true, changed: true, hash, warnings: [{ file: 'services.yaml', path: '[1].Apps[0].App.widget.key', message: 'a secret written into the file itself' }] };
+    },
+  });
+  const links = [...doc.querySelectorAll('nav.sections a')];
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
+  assert.equal(links[0].getAttribute('aria-current'), 'page');
+  w.location.hash = '#services';
+  await tick();
+  await tick();
+  assert.equal(doc.querySelector('nav.sections [aria-current=page]').textContent, 'Services');
+  assert.equal(doc.getElementById('title'), null, 'the general form is in its own section');
+  const area = doc.getElementById('file-text');
+  assert.equal(area.value, text);
+  assert.match(doc.getElementById('panel').textContent, /Waarden als __SECRET_…__ zijn verborgen/);
+  assert.deepEqual([...doc.querySelectorAll('#file-choose option')].map((o) => o.textContent), ['services.yaml', 'media.yaml (ingevoegd vanuit services.yaml)']);
+  // a save sends the text with the hash it was read with; remarks are shown
+  area.value = `${text}- Infra: []\n`;
+  area.dispatchEvent(new w.Event('input'));
+  const save = () => [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  save();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/files/services.yaml' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual(sent, { text: `${text.replace('- Infra: []\n', '')}- Infra: []\n`, hash: 'h1' });
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+  assert.match(doc.querySelector('.warn').textContent, /\[1\]\.Apps\[0\]\.App\.widget\.key: a secret written/);
+  // a problem: shown with its path, the text stays in the editor
+  next = 'problem';
+  doc.getElementById('file-text').value = 'broken';
+  doc.getElementById('file-text').dispatchEvent(new w.Event('input'));
+  save();
+  await tick();
+  assert.match(doc.querySelector('[role=alert]').textContent, /Niet opgeslagen: los dit eerst op\.services\.yaml › \[1\]: expected a map/);
+  assert.equal(doc.getElementById('file-text').value, 'broken');
+  // undo, then an earlier version into the editor
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Wijzigingen ongedaan maken').click();
+  assert.equal(doc.getElementById('file-text').value, text);
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'In de editor laden').click();
+  await tick();
+  assert.equal(doc.getElementById('file-text').value, '# the old one\n');
+  // the included file: chosen from the list, with where it is included
+  doc.getElementById('file-choose').value = 'media.yaml';
+  doc.getElementById('file-choose').dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.equal(doc.getElementById('file-text').value, '- Plex: {}\n');
+  assert.match(doc.getElementById('panel').textContent, /Ingevoegd vanuit services\.yaml bij \[0\]\.Media/);
+  // Advanced: settings.yaml as a file
+  w.location.hash = '#advanced';
+  await tick();
+  assert.equal(doc.querySelector('#panel h2').textContent, 'settings.yaml');
 });

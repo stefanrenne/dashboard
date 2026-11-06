@@ -5,8 +5,8 @@
 
 // the texts; those the setup wizard has too are the same there
 const I18N = {
-  en: {"titleLabel":"Title","languageLabel":"Language","themeLabel":"Theme","themeAuto":"Follow the system","themeDark":"Dark","themeLight":"Light","colorLabel":"Colour","safer":"safer","secHosts":"Allowed hosts","secHostsHelp":"The names you open the dashboard by. IP addresses and localhost always work; * allows every name. Saved with Save, into settings.yaml.","secAdmin":"Admin password","passwordRepeat":"Repeat the password","passwordShort":"The admin password needs at least {count} characters.","passwordMismatch":"The two passwords are not the same.","wait":"Too many tries; wait {seconds} s","wrong":"Wrong password","heading":"Settings","back":"Dashboard","unlockTitle":"Open the settings","unlockText":"The settings need authentication.","unlock":"Open","wrongCurrent":"The current password is not right.","offline":"The dashboard does not answer.","setupFirst":"There is no admin password yet. Set one first: it guards the settings, the buttons that run something and, if you like, the whole page.","setupRemote":"There is no admin password yet. Set one from the local network, or put adminPassword in settings.yaml.","secAppearance":"Appearance","showTitle":"Show the title on the page","headerStyle":"Header widgets","headerBoxed":"In a box","headerClean":"Without a box","target":"Service links open","targetBlank":"In a new tab","targetSelf":"In this tab","targetTop":"In the whole window","statusStyle":"Status labels","statusText":"As text","statusDot":"As a dot","statusBasic":"UP or DOWN","secSecurity":"Security","loginRemember":"Stay logged in for","durationHelp":"Such as 15m, 12h or 7d; 0 asks every time.","currentPassword":"Current password","newPassword":"New password","changePassword":"Change the password","setPassword":"Set the password","passwordChanged":"The admin password is changed; every other login has ended.","secOther":"Other","hideVersion":"Hide the versions in the footer","disableUpdateCheck":"Do not check for a new release","disableIndexing":"Ask search engines not to index the page","save":"Save","saving":"Saving…","saved":"Saved.","failed":"Not saved: {error}","otherKeys":"Also in settings.yaml, kept as they are (edit them in the file): {list}","askWhen":"Security level","askActions":"Only privileged actions","askActionsText":"Anyone can open the dashboard, but changing the settings and running commands that need root, or are marked with confirm:, require authentication.","askPage":"Dashboard access","askPageText":"The dashboard cannot be opened without authentication.","askAgain":"Buttons ask again after","askAgainHelp":"Such as 15m, 12h or 7d; 0 asks for every button.","usePasskey":"Use a passkey","secPasskeys":"Passkeys","passkeysText":"A passkey (with your fingerprint, face or PIN) works wherever authentication is asked, on {host}. The admin password keeps working too.","passkeysHttps":"Passkeys work when the dashboard is opened over https, by its host name. A passkey belongs to the address it was added on.","passkeysNone":"No passkeys for {host} yet.","passkeyName":"Name","addPasskey":"Add a passkey","removePasskey":"Remove","passkeyAdded":"The passkey is added.","passkeyRemoved":"The passkey is removed.","passkeyMeta":"added {created}, last used {used}","passkeyNever":"never","passkeyFailed":"The passkey did not work: {error}","passkeyOld":"This browser cannot add a passkey here; try a newer one.","hostsNone":"No host names yet: only IP addresses and localhost open the dashboard.","hostName":"Host name","addHost":"Add","remove":"Remove","removeHost":"Remove {host}"},
-  nl: {"titleLabel":"Titel","languageLabel":"Taal","themeLabel":"Thema","themeAuto":"Systeem volgen","themeDark":"Donker","themeLight":"Licht","colorLabel":"Kleur","safer":"veiliger","secHosts":"Toegestane hosts","secHostsHelp":"De namen waarmee je het dashboard opent. IP-adressen en localhost werken altijd; * staat elke naam toe. Opgeslagen met Opslaan, in settings.yaml.","secAdmin":"Admin wachtwoord","passwordRepeat":"Herhaal het wachtwoord","passwordShort":"Het admin wachtwoord moet minstens {count} tekens hebben.","passwordMismatch":"De twee wachtwoorden zijn niet gelijk.","wait":"Te veel pogingen; wacht {seconds} s","wrong":"Onjuist wachtwoord","heading":"Instellingen","back":"Dashboard","unlockTitle":"Instellingen openen","unlockText":"De instellingen vragen om authenticatie.","unlock":"Openen","wrongCurrent":"Het huidige wachtwoord klopt niet.","offline":"Het dashboard antwoordt niet.","setupFirst":"Er is nog geen admin wachtwoord. Stel dat eerst in: het beschermt de instellingen, de knoppen die iets uitvoeren en, als je wilt, de hele pagina.","setupRemote":"Er is nog geen admin wachtwoord. Stel er een in vanaf het lokale netwerk, of zet adminPassword in settings.yaml.","secAppearance":"Uiterlijk","showTitle":"De titel op de pagina tonen","headerStyle":"Headerwidgets","headerBoxed":"In een kader","headerClean":"Zonder kader","target":"Links van services openen","targetBlank":"In een nieuw tabblad","targetSelf":"In dit tabblad","targetTop":"In het hele venster","statusStyle":"Statuslabels","statusText":"Als tekst","statusDot":"Als een stip","statusBasic":"UP of DOWN","secSecurity":"Beveiliging","loginRemember":"Ingelogd blijven voor","durationHelp":"Zoals 15m, 12h of 7d; 0 vraagt het elke keer.","currentPassword":"Huidig wachtwoord","newPassword":"Nieuw wachtwoord","changePassword":"Wachtwoord wijzigen","setPassword":"Wachtwoord instellen","passwordChanged":"Het admin wachtwoord is gewijzigd; elke andere login is beëindigd.","secOther":"Overig","hideVersion":"De versies in de footer verbergen","disableUpdateCheck":"Niet zoeken naar een nieuwe release","disableIndexing":"Zoekmachines vragen de pagina niet te indexeren","save":"Opslaan","saving":"Opslaan…","saved":"Opgeslagen.","failed":"Niet opgeslagen: {error}","otherKeys":"Ook in settings.yaml, blijven zoals ze zijn (pas ze aan in het bestand): {list}","askWhen":"Beveiligingsniveau","askActions":"Alleen risicovolle acties","askActionsText":"Iedereen kan het dashboard openen, maar voor het wijzigen van de instellingen en het uitvoeren van commando's die root nodig hebben, of gemarkeerd zijn met confirm:, is authenticatie nodig.","askPage":"Toegang tot het dashboard","askPageText":"Het dashboard is niet te openen zonder authenticatie.","askAgain":"Knoppen vragen opnieuw na","askAgainHelp":"Zoals 15m, 12h of 7d; 0 vraagt bij elke knop.","usePasskey":"Passkey gebruiken","secPasskeys":"Passkeys","passkeysText":"Een passkey (met je vingerafdruk, gezicht of pincode) werkt overal waar om authenticatie wordt gevraagd, op {host}. Het admin wachtwoord blijft ook werken.","passkeysHttps":"Passkeys werken als het dashboard via https wordt geopend, op zijn hostnaam. Een passkey hoort bij het adres waarop hij is toegevoegd.","passkeysNone":"Nog geen passkeys voor {host}.","passkeyName":"Naam","addPasskey":"Passkey toevoegen","removePasskey":"Verwijderen","passkeyAdded":"De passkey is toegevoegd.","passkeyRemoved":"De passkey is verwijderd.","passkeyMeta":"toegevoegd {created}, laatst gebruikt {used}","passkeyNever":"nooit","passkeyFailed":"De passkey werkte niet: {error}","passkeyOld":"Deze browser kan hier geen passkey toevoegen; probeer een nieuwere.","hostsNone":"Nog geen hostnamen: alleen IP-adressen en localhost openen het dashboard.","hostName":"Hostnaam","addHost":"Toevoegen","remove":"Verwijderen","removeHost":"{host} verwijderen"},
+  en: {"titleLabel":"Title","languageLabel":"Language","themeLabel":"Theme","themeAuto":"Follow the system","themeDark":"Dark","themeLight":"Light","colorLabel":"Colour","safer":"safer","secHosts":"Allowed hosts","secHostsHelp":"The names you open the dashboard by. IP addresses and localhost always work; * allows every name. Saved with Save, into settings.yaml.","secAdmin":"Admin password","passwordRepeat":"Repeat the password","passwordShort":"The admin password needs at least {count} characters.","passwordMismatch":"The two passwords are not the same.","wait":"Too many tries; wait {seconds} s","wrong":"Wrong password","heading":"Settings","back":"Dashboard","unlockTitle":"Open the settings","unlockText":"The settings need authentication.","unlock":"Open","wrongCurrent":"The current password is not right.","offline":"The dashboard does not answer.","setupFirst":"There is no admin password yet. Set one first: it guards the settings, the buttons that run something and, if you like, the whole page.","setupRemote":"There is no admin password yet. Set one from the local network, or put adminPassword in settings.yaml.","secAppearance":"Appearance","showTitle":"Show the title on the page","headerStyle":"Header widgets","headerBoxed":"In a box","headerClean":"Without a box","target":"Service links open","targetBlank":"In a new tab","targetSelf":"In this tab","targetTop":"In the whole window","statusStyle":"Status labels","statusText":"As text","statusDot":"As a dot","statusBasic":"UP or DOWN","secSecurity":"Security","loginRemember":"Stay logged in for","durationHelp":"Such as 15m, 12h or 7d; 0 asks every time.","currentPassword":"Current password","newPassword":"New password","changePassword":"Change the password","setPassword":"Set the password","passwordChanged":"The admin password is changed; every other login has ended.","secOther":"Other","hideVersion":"Hide the versions in the footer","disableUpdateCheck":"Do not check for a new release","disableIndexing":"Ask search engines not to index the page","save":"Save","saving":"Saving…","saved":"Saved.","failed":"Not saved: {error}","otherKeys":"Also in settings.yaml, kept as they are (edit them under Advanced): {list}","askWhen":"Security level","askActions":"Only privileged actions","askActionsText":"Anyone can open the dashboard, but changing the settings and running commands that need root, or are marked with confirm:, require authentication.","askPage":"Dashboard access","askPageText":"The dashboard cannot be opened without authentication.","askAgain":"Buttons ask again after","askAgainHelp":"Such as 15m, 12h or 7d; 0 asks for every button.","usePasskey":"Use a passkey","secPasskeys":"Passkeys","passkeysText":"A passkey (with your fingerprint, face or PIN) works wherever authentication is asked, on {host}. The admin password keeps working too.","passkeysHttps":"Passkeys work when the dashboard is opened over https, by its host name. A passkey belongs to the address it was added on.","passkeysNone":"No passkeys for {host} yet.","passkeyName":"Name","addPasskey":"Add a passkey","removePasskey":"Remove","passkeyAdded":"The passkey is added.","passkeyRemoved":"The passkey is removed.","passkeyMeta":"added {created}, last used {used}","passkeyNever":"never","passkeyFailed":"The passkey did not work: {error}","passkeyOld":"This browser cannot add a passkey here; try a newer one.","hostsNone":"No host names yet: only IP addresses and localhost open the dashboard.","hostName":"Host name","addHost":"Add","remove":"Remove","removeHost":"Remove {host}","navLabel":"Sections","navGeneral":"General","navServices":"Services","navHeader":"Header widgets","navBookmarks":"Bookmarks","navDocker":"Docker","navKubernetes":"Kubernetes","navProxmox":"Proxmox","navAdvanced":"Advanced","fileHelp":"The file as it is, with its comments. A save is checked first; the dashboard follows at once.","fileAdvanced":"settings.yaml as a file: also layout, plugins, providers and every other key.","fileChoose":"File","fileIncludedOption":"{file} (included from {from})","fileIncluded":"Included from {from} at {at}: saved in this file, the include stays as it is.","fileNew":"This file does not exist yet; Save creates it.","fileSecrets":"Values shown as __SECRET_…__ are hidden: leave them where they are or move them. A new secret is better in a {{DASHBOARD_VAR_…}} variable.","fileHistory":"Earlier versions","fileLoadVersion":"Load into the editor","fileLoaded":"The version of {time} is in the editor; Save puts it back.","fileUndo":"Undo changes","fileConflict":"The file was changed elsewhere since it was opened.","fileReload":"Reload the file","fileProblems":"Not saved: fix these first.","fileRemarks":"Remarks:","fileUnchanged":"No changes.","fileLoading":"Loading…"},
+  nl: {"titleLabel":"Titel","languageLabel":"Taal","themeLabel":"Thema","themeAuto":"Systeem volgen","themeDark":"Donker","themeLight":"Licht","colorLabel":"Kleur","safer":"veiliger","secHosts":"Toegestane hosts","secHostsHelp":"De namen waarmee je het dashboard opent. IP-adressen en localhost werken altijd; * staat elke naam toe. Opgeslagen met Opslaan, in settings.yaml.","secAdmin":"Admin wachtwoord","passwordRepeat":"Herhaal het wachtwoord","passwordShort":"Het admin wachtwoord moet minstens {count} tekens hebben.","passwordMismatch":"De twee wachtwoorden zijn niet gelijk.","wait":"Te veel pogingen; wacht {seconds} s","wrong":"Onjuist wachtwoord","heading":"Instellingen","back":"Dashboard","unlockTitle":"Instellingen openen","unlockText":"De instellingen vragen om authenticatie.","unlock":"Openen","wrongCurrent":"Het huidige wachtwoord klopt niet.","offline":"Het dashboard antwoordt niet.","setupFirst":"Er is nog geen admin wachtwoord. Stel dat eerst in: het beschermt de instellingen, de knoppen die iets uitvoeren en, als je wilt, de hele pagina.","setupRemote":"Er is nog geen admin wachtwoord. Stel er een in vanaf het lokale netwerk, of zet adminPassword in settings.yaml.","secAppearance":"Uiterlijk","showTitle":"De titel op de pagina tonen","headerStyle":"Headerwidgets","headerBoxed":"In een kader","headerClean":"Zonder kader","target":"Links van services openen","targetBlank":"In een nieuw tabblad","targetSelf":"In dit tabblad","targetTop":"In het hele venster","statusStyle":"Statuslabels","statusText":"Als tekst","statusDot":"Als een stip","statusBasic":"UP of DOWN","secSecurity":"Beveiliging","loginRemember":"Ingelogd blijven voor","durationHelp":"Zoals 15m, 12h of 7d; 0 vraagt het elke keer.","currentPassword":"Huidig wachtwoord","newPassword":"Nieuw wachtwoord","changePassword":"Wachtwoord wijzigen","setPassword":"Wachtwoord instellen","passwordChanged":"Het admin wachtwoord is gewijzigd; elke andere login is beëindigd.","secOther":"Overig","hideVersion":"De versies in de footer verbergen","disableUpdateCheck":"Niet zoeken naar een nieuwe release","disableIndexing":"Zoekmachines vragen de pagina niet te indexeren","save":"Opslaan","saving":"Opslaan…","saved":"Opgeslagen.","failed":"Niet opgeslagen: {error}","otherKeys":"Ook in settings.yaml, blijven zoals ze zijn (pas ze aan onder Geavanceerd): {list}","askWhen":"Beveiligingsniveau","askActions":"Alleen risicovolle acties","askActionsText":"Iedereen kan het dashboard openen, maar voor het wijzigen van de instellingen en het uitvoeren van commando's die root nodig hebben, of gemarkeerd zijn met confirm:, is authenticatie nodig.","askPage":"Toegang tot het dashboard","askPageText":"Het dashboard is niet te openen zonder authenticatie.","askAgain":"Knoppen vragen opnieuw na","askAgainHelp":"Zoals 15m, 12h of 7d; 0 vraagt bij elke knop.","usePasskey":"Passkey gebruiken","secPasskeys":"Passkeys","passkeysText":"Een passkey (met je vingerafdruk, gezicht of pincode) werkt overal waar om authenticatie wordt gevraagd, op {host}. Het admin wachtwoord blijft ook werken.","passkeysHttps":"Passkeys werken als het dashboard via https wordt geopend, op zijn hostnaam. Een passkey hoort bij het adres waarop hij is toegevoegd.","passkeysNone":"Nog geen passkeys voor {host}.","passkeyName":"Naam","addPasskey":"Passkey toevoegen","removePasskey":"Verwijderen","passkeyAdded":"De passkey is toegevoegd.","passkeyRemoved":"De passkey is verwijderd.","passkeyMeta":"toegevoegd {created}, laatst gebruikt {used}","passkeyNever":"nooit","passkeyFailed":"De passkey werkte niet: {error}","passkeyOld":"Deze browser kan hier geen passkey toevoegen; probeer een nieuwere.","hostsNone":"Nog geen hostnamen: alleen IP-adressen en localhost openen het dashboard.","hostName":"Hostnaam","addHost":"Toevoegen","remove":"Verwijderen","removeHost":"{host} verwijderen","navLabel":"Onderdelen","navGeneral":"Algemeen","navServices":"Services","navHeader":"Kopwidgets","navBookmarks":"Bladwijzers","navDocker":"Docker","navKubernetes":"Kubernetes","navProxmox":"Proxmox","navAdvanced":"Geavanceerd","fileHelp":"Het bestand zoals het is, met het commentaar. Opslaan controleert het eerst; het dashboard volgt meteen.","fileAdvanced":"settings.yaml als bestand: ook layout, plugins, providers en elke andere sleutel.","fileChoose":"Bestand","fileIncludedOption":"{file} (ingevoegd vanuit {from})","fileIncluded":"Ingevoegd vanuit {from} bij {at}: opgeslagen in dit bestand, de include blijft zoals hij is.","fileNew":"Dit bestand bestaat nog niet; Opslaan maakt het aan.","fileSecrets":"Waarden als __SECRET_…__ zijn verborgen: laat ze staan of verplaats ze. Een nieuw geheim staat beter in een {{DASHBOARD_VAR_…}}-variabele.","fileHistory":"Eerdere versies","fileLoadVersion":"In de editor laden","fileLoaded":"De versie van {time} staat in de editor; Opslaan zet hem terug.","fileUndo":"Wijzigingen ongedaan maken","fileConflict":"Het bestand is elders gewijzigd sinds het werd geopend.","fileReload":"Bestand opnieuw laden","fileProblems":"Niet opgeslagen: los dit eerst op.","fileRemarks":"Opmerkingen:","fileUnchanged":"Geen wijzigingen.","fileLoading":"Laden…"},
   fr: {"titleLabel":"Titre","languageLabel":"Langue","themeLabel":"Thème","themeAuto":"Suivre le système","themeDark":"Sombre","themeLight":"Clair","colorLabel":"Couleur","safer":"plus sûr","secHosts":"Hôtes autorisés","secAdmin":"Mot de passe administrateur","passwordRepeat":"Répétez le mot de passe","passwordShort":"Le mot de passe administrateur doit compter au moins {count} caractères.","passwordMismatch":"Les deux mots de passe ne sont pas identiques.","wait":"Trop d’essais ; attendez {seconds} s","wrong":"Mot de passe incorrect","heading":"Réglages","back":"Tableau de bord","unlockTitle":"Ouvrir les réglages","unlock":"Ouvrir","wrongCurrent":"Le mot de passe actuel n’est pas le bon.","offline":"Le tableau de bord ne répond pas.","setupFirst":"Il n’y a pas encore de mot de passe administrateur. Définissez-en un d’abord : il protège les réglages, les boutons qui exécutent quelque chose et, si vous le souhaitez, toute la page.","setupRemote":"Il n’y a pas encore de mot de passe administrateur. Définissez-en un depuis le réseau local, ou mettez adminPassword dans settings.yaml.","secAppearance":"Apparence","showTitle":"Afficher le titre sur la page","headerStyle":"Widgets d’en-tête","headerBoxed":"Dans un cadre","headerClean":"Sans cadre","target":"Les liens des services s’ouvrent","targetBlank":"Dans un nouvel onglet","targetSelf":"Dans cet onglet","targetTop":"Dans toute la fenêtre","statusStyle":"Étiquettes d’état","statusText":"En texte","statusDot":"En point","statusBasic":"UP ou DOWN","secSecurity":"Sécurité","loginRemember":"Rester connecté pendant","durationHelp":"Comme 15m, 12h ou 7d ; 0 le demande à chaque fois.","currentPassword":"Mot de passe actuel","newPassword":"Nouveau mot de passe","changePassword":"Changer le mot de passe","setPassword":"Définir le mot de passe","passwordChanged":"Le mot de passe administrateur est changé ; toutes les autres connexions sont terminées.","secOther":"Autre","hideVersion":"Masquer les versions dans le pied de page","disableUpdateCheck":"Ne pas chercher de nouvelle version","disableIndexing":"Demander aux moteurs de recherche de ne pas indexer la page","save":"Enregistrer","saving":"Enregistrement…","saved":"Enregistré.","failed":"Non enregistré : {error}","otherKeys":"Aussi dans settings.yaml, gardés tels quels (modifiez-les dans le fichier) : {list}"},
   de: {"titleLabel":"Titel","languageLabel":"Sprache","themeLabel":"Design","themeAuto":"System folgen","themeDark":"Dunkel","themeLight":"Hell","colorLabel":"Farbe","safer":"sicherer","secHosts":"Erlaubte Hosts","secAdmin":"Admin-Passwort","passwordRepeat":"Passwort wiederholen","passwordShort":"Das Admin-Passwort braucht mindestens {count} Zeichen.","passwordMismatch":"Die beiden Passwörter sind nicht gleich.","wait":"Zu viele Versuche; warte {seconds} s","wrong":"Falsches Passwort","heading":"Einstellungen","back":"Dashboard","unlockTitle":"Einstellungen öffnen","unlock":"Öffnen","wrongCurrent":"Das aktuelle Passwort stimmt nicht.","offline":"Das Dashboard antwortet nicht.","setupFirst":"Es gibt noch kein Admin-Passwort. Lege zuerst eins fest: Es schützt die Einstellungen, die Schaltflächen, die etwas ausführen, und auf Wunsch die ganze Seite.","setupRemote":"Es gibt noch kein Admin-Passwort. Lege eins im lokalen Netz fest oder trage adminPassword in settings.yaml ein.","secAppearance":"Aussehen","showTitle":"Den Titel auf der Seite zeigen","headerStyle":"Header-Widgets","headerBoxed":"In einem Kasten","headerClean":"Ohne Kasten","target":"Links der Dienste öffnen","targetBlank":"In einem neuen Tab","targetSelf":"In diesem Tab","targetTop":"Im ganzen Fenster","statusStyle":"Status-Labels","statusText":"Als Text","statusDot":"Als Punkt","statusBasic":"UP oder DOWN","secSecurity":"Sicherheit","loginRemember":"Angemeldet bleiben für","durationHelp":"Etwa 15m, 12h oder 7d; 0 fragt jedes Mal.","currentPassword":"Aktuelles Passwort","newPassword":"Neues Passwort","changePassword":"Passwort ändern","setPassword":"Passwort festlegen","passwordChanged":"Das Admin-Passwort ist geändert; jede andere Anmeldung ist beendet.","secOther":"Sonstiges","hideVersion":"Die Versionen in der Fußzeile ausblenden","disableUpdateCheck":"Nicht nach einem neuen Release suchen","disableIndexing":"Suchmaschinen bitten, die Seite nicht zu indexieren","save":"Speichern","saving":"Speichere…","saved":"Gespeichert.","failed":"Nicht gespeichert: {error}","otherKeys":"Auch in settings.yaml, bleiben, wie sie sind (in der Datei ändern): {list}"},
   es: {"titleLabel":"Título","languageLabel":"Idioma","themeLabel":"Tema","themeAuto":"Seguir al sistema","themeDark":"Oscuro","themeLight":"Claro","colorLabel":"Color","safer":"más seguro","secHosts":"Hosts permitidos","secAdmin":"Contraseña de administrador","passwordRepeat":"Repite la contraseña","passwordShort":"La contraseña de administrador necesita al menos {count} caracteres.","passwordMismatch":"Las dos contraseñas no coinciden.","wait":"Demasiados intentos; espera {seconds} s","wrong":"Contraseña incorrecta","heading":"Ajustes","back":"Panel","unlockTitle":"Abrir los ajustes","unlock":"Abrir","wrongCurrent":"La contraseña actual no es correcta.","offline":"El panel no responde.","setupFirst":"Aún no hay contraseña de administrador. Crea una primero: protege los ajustes, los botones que ejecutan algo y, si quieres, toda la página.","setupRemote":"Aún no hay contraseña de administrador. Crea una desde la red local, o pon adminPassword en settings.yaml.","secAppearance":"Apariencia","showTitle":"Mostrar el título en la página","headerStyle":"Widgets de cabecera","headerBoxed":"En un recuadro","headerClean":"Sin recuadro","target":"Los enlaces de servicios se abren","targetBlank":"En una pestaña nueva","targetSelf":"En esta pestaña","targetTop":"En toda la ventana","statusStyle":"Etiquetas de estado","statusText":"Como texto","statusDot":"Como un punto","statusBasic":"UP o DOWN","secSecurity":"Seguridad","loginRemember":"Mantener la sesión durante","durationHelp":"Como 15m, 12h o 7d; 0 la pide cada vez.","currentPassword":"Contraseña actual","newPassword":"Contraseña nueva","changePassword":"Cambiar la contraseña","setPassword":"Crear la contraseña","passwordChanged":"La contraseña de administrador ha cambiado; las demás sesiones han terminado.","secOther":"Otros","hideVersion":"Ocultar las versiones en el pie","disableUpdateCheck":"No buscar una versión nueva","disableIndexing":"Pedir a los buscadores que no indexen la página","save":"Guardar","saving":"Guardando…","saved":"Guardado.","failed":"No guardado: {error}","otherKeys":"También en settings.yaml, se quedan como están (edítalos en el archivo): {list}"},
@@ -73,7 +73,7 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
-const state = { data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
+const state = { section: 'general', files: null, file: {}, chosen: {}, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
 
 async function api(path, body, headers = {}) {
   const init = body === undefined && !Object.keys(headers).length ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) };
@@ -207,6 +207,7 @@ function render() {
   const v = state.values;
   const d = state.data;
   if (d.noPassword) return show(passwordSection());
+  if (state.section !== 'general') return show(nav(), fileSection(SECTIONS.find((x) => x[0] === state.section)));
   const swatches = el('div', { class: 'swatches', role: 'group', 'aria-label': t('colorLabel') }, ...Object.keys(PALETTES).map((name) => {
     const b = el('button', { type: 'button', class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === v.color), onclick: () => { v.color = name; applyTheme(v); render(); } });
     b.style.background = PALETTES[name].split(' ')[5];
@@ -216,6 +217,7 @@ function render() {
     el('input', { type: 'radio', name: 'login', id: `login-${on ? 'page' : 'actions'}`, checked: v.login === on, onchange: () => { v.login = on; render(); } }),
     el('span', {}, el('strong', { text: title }), badge ? el('span', { class: 'badge', text: badge }) : null, el('br'), el('span', { class: 'hint', text: hint })));
   return show(
+    nav(),
     el('section', { class: 'panel' },
       el('h2', { text: t('secAppearance') }),
       el('div', { class: 'grid' },
@@ -275,6 +277,143 @@ async function save() {
     state.statusClass = 'error';
   }
   applyTheme(state.values);
+  render();
+}
+
+// ---------------------------------------------------------------- sections and the config files
+// [id, text key, the config file it edits]; General is the form above. The sections with a file
+// show it as text until their own form is there.
+const SECTIONS = [
+  ['general', 'navGeneral', null],
+  ['services', 'navServices', 'services.yaml'],
+  ['header', 'navHeader', 'widgets.yaml'],
+  ['bookmarks', 'navBookmarks', 'bookmarks.yaml'],
+  ['docker', 'navDocker', 'docker.yaml'],
+  ['kubernetes', 'navKubernetes', 'kubernetes.yaml'],
+  ['proxmox', 'navProxmox', 'proxmox.yaml'],
+  ['advanced', 'navAdvanced', 'settings.yaml'],
+];
+const sectionOf = (hash) => (SECTIONS.some((x) => x[0] === String(hash).slice(1)) ? String(hash).slice(1) : 'general');
+const fileUrl = (name) => `/files/${encodeURIComponent(name)}`;
+
+function nav() {
+  return el('nav', { class: 'sections', 'aria-label': t('navLabel') },
+    ...SECTIONS.map(([id, key]) => el('a', { href: `#${id}`, 'aria-current': id === state.section ? 'page' : null, text: t(key) })));
+}
+
+async function loadFiles() {
+  const out = await api('/files').catch((err) => ({ ok: false, error: err.message }));
+  if (out.needsPassword) return askPassword();
+  state.files = out.ok ? out.files : [];
+  if (!out.ok) state.filesError = out.error;
+  render();
+}
+
+async function loadFile(name, keepStatus = false) {
+  const old = state.file[name] ?? {};
+  state.file[name] = { ...old, loading: true };
+  const out = await api(fileUrl(name)).catch((err) => ({ ok: false, error: err.message }));
+  if (out.needsPassword) return askPassword();
+  state.file[name] = out.ok
+    ? { text: out.text, draft: out.text, hash: out.hash, exists: out.exists, history: out.history, ...(keepStatus ? { status: old.status, statusClass: old.statusClass, problems: old.problems, remarks: old.remarks } : {}) }
+    : { error: out.error };
+  render();
+}
+
+function fileSection([, , root]) {
+  if (!state.files) {
+    loadFiles();
+    return el('section', { class: 'panel' }, el('p', { class: 'muted', text: t('fileLoading') }));
+  }
+  const files = state.files.filter((f) => f.root === root);
+  const name = files.some((f) => f.file === state.chosen[root]) ? state.chosen[root] : root;
+  const entry = files.find((f) => f.file === name) ?? { file: name, root, from: null, at: '' };
+  const f = state.file[name];
+  if (!f) {
+    loadFile(name);
+    return el('section', { class: 'panel' }, el('p', { class: 'muted', text: t('fileLoading') }));
+  }
+  if (f.error && f.text === undefined) return el('section', { class: 'panel' }, el('p', { class: 'error', text: t('failed', { error: f.error }) }));
+  const area = el('textarea', { id: 'file-text', class: 'code', rows: '24', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', wrap: 'off', 'aria-label': name,
+    oninput: (e) => { f.draft = e.target.value; } });
+  area.value = f.draft;
+  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
+  const history = f.history ?? [];
+  const versions = history.length ? el('div', { class: 'row' },
+    el('label', { for: 'file-version' }, t('fileHistory'),
+      el('select', { id: 'file-version' }, ...history.map((v) => el('option', { value: v.id, text: new Date(v.time).toLocaleString(lang) })))),
+    el('button', { type: 'button', text: t('fileLoadVersion'), onclick: () => loadVersion(name) })) : null;
+  return [
+    el('section', { class: 'panel' },
+      el('h2', { text: name }),
+      el('p', { class: 'muted', text: t(root === 'settings.yaml' && name === root ? 'fileAdvanced' : 'fileHelp') }),
+      files.length > 1 ? el('label', { for: 'file-choose' }, t('fileChoose'),
+        el('select', { id: 'file-choose', onchange: (e) => { state.chosen[root] = e.target.value; render(); } },
+          ...files.map((x) => el('option', { value: x.file, selected: x.file === name, text: x.from ? t('fileIncludedOption', { file: x.file, from: x.from }) : x.file })))) : null,
+      entry.from ? el('p', { class: 'muted', text: t('fileIncluded', { from: entry.from, at: entry.at || '/' }) }) : null,
+      f.exists === false ? el('p', { class: 'muted', text: t('fileNew') }) : null,
+      area,
+      /__SECRET_[0-9a-f]{10}__/.test(f.draft) ? el('p', { class: 'hint muted', text: t('fileSecrets') }) : null,
+      f.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...f.problems.map(message))) : null,
+      f.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...f.remarks.map(message))) : null,
+      f.conflict ? el('p', { class: 'error' }, t('fileConflict'), ' ', el('button', { type: 'button', class: 'link', text: t('fileReload'), onclick: () => loadFile(name) })) : null,
+      versions),
+    el('div', { class: 'saved' },
+      el('span', { class: f.statusClass ?? 'muted', role: 'status', text: f.status ?? '' }),
+      el('button', { type: 'button', text: t('fileUndo'), onclick: () => { f.draft = f.text; f.status = ''; f.problems = []; render(); } }),
+      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: () => saveFile(name) })),
+  ];
+}
+
+async function loadVersion(name) {
+  const f = state.file[name];
+  const id = document.getElementById('file-version')?.value;
+  const v = (f.history ?? []).find((x) => x.id === id);
+  if (!v) return;
+  const out = await api(`${fileUrl(name)}/history/${encodeURIComponent(id)}`).catch((err) => ({ ok: false, error: err.message }));
+  if (out.ok) {
+    f.draft = out.text;
+    f.status = t('fileLoaded', { time: new Date(v.time).toLocaleString(lang) });
+    f.statusClass = 'muted';
+  } else {
+    f.status = t('failed', { error: out.error });
+    f.statusClass = 'error';
+  }
+  render();
+}
+
+async function saveFile(name) {
+  const f = state.file[name];
+  f.status = t('saving');
+  f.statusClass = 'muted';
+  f.problems = [];
+  f.remarks = [];
+  f.conflict = false;
+  render();
+  const res = await fetch(`api/settings${fileUrl(name)}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ text: f.draft, hash: f.hash }) })
+    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
+  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+  if (out.needsPassword) return askPassword();
+  if (out.ok) {
+    f.status = out.changed ? t('saved') : t('fileUnchanged');
+    f.statusClass = 'ok';
+    f.remarks = out.warnings ?? [];
+    await loadFile(name, true);
+    state.files = null; // an include added or removed changes the list
+    if (state.section === 'advanced' || name === 'settings.yaml' || out.changed) {
+      const fresh = await api('').catch(() => null);
+      if (fresh?.ok) {
+        state.data = fresh;
+        state.values = copy(fresh.values);
+        applyTheme(state.values);
+      }
+    }
+  } else {
+    f.status = t('failed', { error: out.error });
+    f.statusClass = 'error';
+    f.problems = out.errors ?? [];
+    f.conflict = res.status === 409;
+  }
   render();
 }
 
@@ -400,4 +539,13 @@ async function removePasskey(id) {
 }
 
 window.HD_SETTINGS = { I18N, PALETTES, state };
+state.section = sectionOf(window.location.hash);
+window.addEventListener('hashchange', () => {
+  state.section = sectionOf(window.location.hash);
+  if (state.data) render();
+});
+// a file edited but not saved: the browser asks before leaving
+window.addEventListener('beforeunload', (e) => {
+  if (Object.values(state.file).some((f) => f.draft !== undefined && f.draft !== f.text)) e.preventDefault();
+});
 load();

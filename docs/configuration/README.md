@@ -166,8 +166,15 @@ header widgets' box, where links open, the status labels), the security (the log
 some actions, how long a login and an unlock last, the allowed hosts), the admin password and a
 few switches (the versions in the footer, the update check, search engines). It writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
-`providers`, ...), which it names; the dashboard follows at once. The previous version of the file is kept under
-`.history/` in the config folder (the last ten).
+`providers`, ...), which it names; the dashboard follows at once.
+
+The other sections (Services, Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, and
+Advanced for `settings.yaml` itself) show their file as text, with its comments, and the files
+it includes. A save is checked first: a mistake is shown with its file and path and nothing is
+written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file
+was changed elsewhere in the meantime, the page says so instead of overwriting it. The previous
+versions are kept under `.history/` in the config folder (the last ten per file), and one can
+be loaded back into the editor. The section is in the address (`/settings#services`).
 
 - It opens with the [admin password](#admin-password); a login counts, and the browser stays
   unlocked as after a press (`actions.remember`).

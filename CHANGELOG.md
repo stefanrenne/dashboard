@@ -22,6 +22,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   `DASHBOARD_WIDGET_ISOLATION=off`.
 
 ### Added
+- **Every config file on the settings page**: sections for services, header widgets, bookmarks,
+  Docker, Kubernetes, Proxmox and `settings.yaml` (Advanced) show the file as text, also the files
+  it includes, and save it checked, with earlier versions to go back to. Forms follow.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

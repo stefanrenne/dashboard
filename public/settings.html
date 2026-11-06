@@ -110,6 +110,15 @@
   .back:hover { border-color: var(--dash-accent); }
   .back:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
   .saved { bottom: 0; justify-content: flex-end; }
+  nav.sections { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; }
+  nav.sections a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 999px;
+    background: var(--dash-card); color: var(--dash-text); font-size: .875rem; text-decoration: none; }
+  nav.sections a:hover { color: var(--dash-heading); }
+  nav.sections a[aria-current="page"] { background: var(--dash-accent); color: var(--dash-on-accent); font-weight: 600; }
+  nav.sections a:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
+  textarea.code { display: block; width: 100%; min-height: 24rem; margin: 12px 0; resize: vertical; tab-size: 2;
+    font: .8125rem/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: auto; }
+  #file-choose { display: block; width: 100%; margin-top: 4px; }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   @media (prefers-reduced-motion: reduce) { body { transition: none; } }
 </style>

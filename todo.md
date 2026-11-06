@@ -7,15 +7,11 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 
 Goal: everything in the YAML files (and `custom.css`/`custom.js`) can be managed from `/settings`,
 not only the `FIELDS` of settings.yaml. Roughly in this order. Done so far: the writer, secrets
-as tokens, `!include` (see completed.md); every form editor shows a part that comes from an
-`!include` read-only, with a link to its file (`at` in `GET /api/settings/files`).
+as tokens, `!include`, the sections and a text editor per file (see completed.md); each form
+below replaces the text editor of its section as the main view (the text stays under a toggle),
+and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
+`GET /api/settings/files`).
 
-- [ ] **Settings page navigation.** Sections in `/settings`: General, Security (both as now),
-  Services, Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, Widgets (plugins), Layout,
-  Advanced (raw files, CSS/JS). The section in the URL (`/settings#services`). Texts in en + nl.
-- [ ] **Raw editor per file (the fallback for everything).** A plain textarea per config file (no
-  editor library), save with the validation of the foundation, errors with file › path, and
-  revert to the previous version. It covers every key, also those without a form yet.
 - [ ] **settings.yaml: the remaining keys as fields.** `description`, `favicon`, `startUrl`,
   `instanceName`, `base`, `logpath`, `pwa`, `fullWidth`, `useEqualHeights`, `disableCollapse`,
   `groupsInitiallyCollapsed`, `showStats`, `maxGroupColumns`, `maxBookmarkGroupColumns`,
