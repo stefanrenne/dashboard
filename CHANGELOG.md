@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-06
+
 ### Changed (breaking)
 - **`DASHBOARD_ALLOWED_HOSTS` (and `HOMEPAGE_ALLOWED_HOSTS`) are no longer read.** Put the names
   under Allowed hosts on the settings page (open it by the IP address to get there), or in

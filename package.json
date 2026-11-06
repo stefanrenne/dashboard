@@ -1,6 +1,6 @@
 {
   "name": "dashboard",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "description": "A self-hosted start page for your homelab, configured in YAML, with widgets anyone can publish",
   "type": "module",
