@@ -151,7 +151,9 @@ Usage limits are shared with the owner: keep a task's context small.
   32px footer buttons, Reduce Motion and Increase Contrast handled. Change the test only with a reason.
 - **README screenshots must match the current dashboard.** A visible UI change refreshes
   `docs/images/` and the alt texts in the README and `docs/README.md` in the same commit
-  (`node scripts/screenshots.mjs`).
+  (`node scripts/screenshots.mjs`); a change to the settings page refreshes `settings-*.png` and
+  their alt texts in `docs/configuration/README.md` (`--only settings`; the script's header says
+  how to run it in Docker when the host lacks the browser's libraries).
 - **The README stays short**, as homepage's: the screenshot, features, one way to start, a link to
   the site. Everything else goes in `docs/`.
 - New widget API features are shown in `examples/widget-template` when they are useful to authors.

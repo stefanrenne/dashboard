@@ -161,6 +161,8 @@ Settings of the container rather than of the page.
 
 ### Settings page
 
+![The settings page in dark mode, General section: a row of section buttons (General, Security, Groups, Widgets, Services, Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, Advanced), then Appearance with the title, language, theme, colour swatches and the styles for the header, links, status labels, cards, values, font, icons and bookmarks, then Background and Layout, with a Save button at the bottom](../images/settings-general.png)
+
 The gear in the footer opens `/settings`. General has the page's look (title, language, theme,
 colour, the header, cards, fonts and icons, the background), its layout, quick launch, the page
 and app details (description, favicon, app icons and shortcuts) and a few switches and intervals.
@@ -192,7 +194,11 @@ it includes. A save is checked first: a mistake is shown with its file and path 
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file
 was changed elsewhere in the meantime, the page says so instead of overwriting it. The previous
 versions are kept under `.history/` in the config folder (the last ten per file), and one can
-be loaded back into the editor. The section is in the address (`/settings#services`). Icon fields show a preview and suggest the
+be loaded back into the editor. ![The Services section: the Media group with its name, order buttons and Remove; the Plex service opened, with its name, link, icon with a preview of the Plex logo, description and status fields, and below them its Plex widget with the url and a hidden key](../images/settings-services.png)
+
+![The Groups section: the groups Media, Infrastructure, Home and Developer (bookmarks) with up and down buttons; Media opened, with its arrangement, cards per row, tab, icon, folding, equal heights and Show the title](../images/settings-groups.png)
+
+The section is in the address (`/settings#services`). Icon fields show a preview and suggest the
 files in `config/icons` and the icons already in use.
 
 - It opens with the [admin password](#admin-password); a login counts, and the browser stays
