@@ -1,6 +1,7 @@
 // The login page of settings.yaml `login` (src/login.js): the admin password opens the dashboard.
 // The form has a username, so password managers and the browser's keychain fill it in. Over
-// https, with a passkey made for this host in the settings, a passkey logs in too.
+// https, with a passkey made for this host in the settings, a passkey logs in too: the page asks
+// for it at once.
 'use strict';
 
 const I18N = {
@@ -130,6 +131,8 @@ async function init() {
     }
     $('passkey').disabled = false;
   });
+  // a passkey for this host: ask for it at once; cancelled, the password and the button stay
+  if (!$('passkey').hidden && !info.broken) $('passkey').click();
   $('login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const password = $('password').value;

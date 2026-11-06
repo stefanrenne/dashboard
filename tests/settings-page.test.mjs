@@ -136,7 +136,7 @@ test('settings page: passkeys over https (add, list, remove), a notice over http
   await tick();
   assert.equal(doc.querySelector('.item.passkey'), null);
 
-  // locked: the passkey button opens the settings with its one-time token
+  // locked: the passkey is asked at once and opens the settings with its one-time token
   let unlocked = false;
   const door = await page({
     'GET /api/settings': () => (unlocked ? data() : { ok: false, needsPassword: true }),
@@ -145,9 +145,7 @@ test('settings page: passkeys over https (add, list, remove), a notice over http
     'POST /api/passkey/verify': { ok: true, token: 'one-time' },
     'POST /api/settings/unlock': (init) => { unlocked = init.headers['x-dashboard-passkey'] === 'one-time'; return { ok: unlocked }; },
   }, webauthn);
-  const button = door.doc.getElementById('unlock-passkey');
-  assert.equal(button.hidden, false);
-  button.click();
+  // asked at once, without a press
   await tick();
   await tick();
   assert.equal(unlocked, true);

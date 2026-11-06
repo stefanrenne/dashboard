@@ -88,7 +88,7 @@ test('the login page: over https with a passkey for this host, a passkey logs in
   const button = dom.window.document.getElementById('passkey');
   assert.equal(button.hidden, false);
   assert.equal(button.textContent, 'Inloggen met een passkey');
-  button.click();
+  // asked at once, without a press
   await new Promise((r) => setTimeout(r, 30));
   assert.deepEqual(dom.window.calls.at(-1), { url: 'api/login', body: { passkeyToken: 'one-time' } });
   // over http the button stays hidden

@@ -848,10 +848,12 @@ test('action dialog: over https with a passkey for this host, a passkey runs the
   Object.defineProperty(w, 'isSecureContext', { value: true, configurable: true });
   w.PublicKeyCredential = function PublicKeyCredential() {};
   const asked = [];
-  Object.defineProperty(w.navigator, 'credentials', { configurable: true, value: { get: async (o) => {
+  let release;
+  const buf = new Uint8Array([1, 2, 3]).buffer;
+  Object.defineProperty(w.navigator, 'credentials', { configurable: true, value: { get: (o) => {
     asked.push(o);
-    const buf = new Uint8Array([1, 2, 3]).buffer;
-    return { id: 'cred-1', response: { clientDataJSON: buf, authenticatorData: buf, signature: buf } };
+    // the browser's passkey prompt stays open until release()
+    return new Promise((resolve) => { release = () => resolve({ id: 'cred-1', response: { clientDataJSON: buf, authenticatorData: buf, signature: buf } }); });
   } } });
   const posts = [];
   w.fetch = async (url, init = {}) => {
@@ -871,7 +873,8 @@ test('action dialog: over https with a passkey for this host, a passkey runs the
   assert.equal(button.hidden, false, 'the passkey button shows');
   assert.equal(button.textContent, 'Passkey gebruiken');
   assert.equal(dialog.querySelector('label').textContent, 'Of het admin wachtwoord');
-  button.click();
+  assert.equal(asked.length, 1, 'asked at once, without a press');
+  release();
   await new Promise((r) => setTimeout(r, 40));
   assert.deepEqual([...new Uint8Array(asked[0].publicKey.challenge)], [0, 1, 2], 'the challenge as bytes');
   assert.deepEqual(JSON.parse(posts.find((x) => x.p === '/api/passkey/verify').body), { id: 'cred-1', clientDataJSON: 'AQID', authenticatorData: 'AQID', signature: 'AQID' });

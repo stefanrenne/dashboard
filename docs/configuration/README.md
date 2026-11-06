@@ -289,8 +289,9 @@ login: true              # or { remember: 30d }
 
 Next to the admin password, a passkey (your fingerprint, face or a PIN, on this device or your
 phone) works wherever the dashboard asks for authentication: the login page, the settings and the
-buttons. Add one on the [settings page](#settings-page), under Passkeys. The admin password keeps
-working, and a new password leaves the passkeys as they are.
+buttons. Add one on the [settings page](#settings-page), under Passkeys. Where one can be used,
+the dashboard asks for it at once; cancel it to type the admin password, which keeps working. A
+new password leaves the passkeys as they are.
 
 - **Over HTTPS, by a host name only.** Browsers offer passkeys in a secure context only, and a
   passkey belongs to the host name it was added on: one made on `https://dash.example.com` works

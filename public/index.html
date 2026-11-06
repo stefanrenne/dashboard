@@ -968,6 +968,8 @@ function askPassword(title, message = '') {
       if (!ok || !dialog.isConnected) return;
       passkey.hidden = false;
       label.textContent = translate('pwOr');
+      // asked at once; not again after a refusal (a message), so a failing passkey never loops
+      if (!message) passkey.click();
     });
     close.addEventListener('click', done);
     cancel.addEventListener('click', done);

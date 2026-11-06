@@ -162,7 +162,11 @@ function askPassword(message = '') {
   el('div', { class: 'actions' }, el('div', { class: 'right' }, passkey, el('button', { type: 'submit', class: 'primary', text: t('unlock') }))));
   show(form);
   input.focus();
-  passkeyAvailable().then((ok) => { passkey.hidden = !ok; });
+  passkeyAvailable().then((ok) => {
+    passkey.hidden = !ok;
+    // asked at once; not again after a refusal (a message), so a failing passkey never loops
+    if (ok && !message) passkey.click();
+  });
 }
 
 async function load() {
