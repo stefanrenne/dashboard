@@ -21,8 +21,8 @@ choosing a Docker image. The dashboard limits the damage where it can:
   [Allowed hosts](../configuration/README.md#allowed-hosts)): a web page that points a name of its
   own at your network (DNS rebinding) gets a refusal instead of the dashboard, so it cannot read
   it or press its buttons through your browser. `*` turns this off.
-- **Actions run for anyone who can open the page, unless they ask for a password.** There is
-  no login: a widget with an `action` (the collection's `button` running a script) does its thing
+- **Actions run for anyone who can open the page, unless they ask for a password.** Without a
+  login: a widget with an `action` (the collection's `button` running a script) does its thing
   for every visitor who presses it. With an admin password (settings.yaml `adminPassword`, a scrypt
   hash), root buttons, webhooks, the widget sync and every entry
   with `confirm: password` or `always` ask for it first (see
@@ -39,7 +39,8 @@ choosing a Docker image. The dashboard limits the damage where it can:
   every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
   mode 600) and checks each time; a logout or a new admin password ends it for good. Only
   `/api/health`, `robots.txt` and the login page stay open. Without it, anyone who can open the
-  page reads it: put the dashboard behind your proxy's authentication, or keep such buttons off a
+  page reads it: put the dashboard behind your proxy's authentication (see
+  [Authentication in front](../configuration/README.md#authentication-in-front)), or keep such buttons off a
   dashboard that is reachable from outside. Only the
   configured script or command runs; nothing in the request reaches it.
 - **Root scripts are off unless you ask for them.** Only with `DASHBOARD_ALLOW_ROOT_SCRIPTS=true` on
@@ -83,6 +84,7 @@ choosing a Docker image. The dashboard limits the damage where it can:
 
 - Prefer widgets whose source you can read; pin tags or commits.
 - Put secrets in variables (`DASHBOARD_VAR_*`) or files (`DASHBOARD_FILE_*`, e.g. Docker secrets), not in the YAML.
-- Do not expose the dashboard to the internet without authentication in front of it (a reverse
-  proxy with SSO). It has no login of its own.
+- Do not expose the dashboard to the internet without authentication: its
+  [login page](../configuration/README.md#login-page), or a proxy with single sign-on in front
+  (see [Authentication in front](../configuration/README.md#authentication-in-front)).
 - Give Docker access through a socket proxy that only allows reading containers.

@@ -303,6 +303,52 @@ new password leaves the passkeys as they are.
 - The passkey has to verify you (user verification), and wrong tries are slowed down as for the
   password.
 
+### Authentication in front
+
+The [login page](#login-page) closes the dashboard with one password (and passkeys). For accounts
+of your own, single sign-on or a second factor, put an authenticating proxy in front instead, or
+as well: Authelia, Authentik, Cloudflare Access, oauth2-proxy. The dashboard needs nothing for it;
+it sees only requests the proxy let through.
+
+```yaml
+# compose.yaml: Traefik with Authelia's forward auth
+services:
+  dashboard:
+    image: ghcr.io/stefanrenne/dashboard:latest
+    volumes: [./config:/config]
+    # no ports: only the proxy reaches it
+    labels:
+      - traefik.http.routers.dashboard.rule=Host(`dash.example.com`)
+      - traefik.http.routers.dashboard.middlewares=authelia@docker   # the forwardAuth middleware from Authelia's own labels
+      - traefik.http.services.dashboard.loadbalancer.server.port=3000
+```
+
+```text
+# Caddyfile: the same with Caddy
+dash.example.com {
+  forward_auth authelia:9091 {
+    uri /api/authz/forward-auth
+    copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+  }
+  reverse_proxy dashboard:3000
+}
+```
+
+Authentik's proxy outpost works the same (its forward-auth middleware in Traefik, or
+`forward_auth` to the outpost in Caddy). With Cloudflare Access, add an Access application for the
+host name and let the tunnel point at `http://dashboard:3000`.
+
+- **Publish no port of the dashboard** (no `ports:`), or bind it to `127.0.0.1`: the dashboard
+  always answers IP addresses, so `http://<server>:3000` would go around the proxy.
+- Add the host name to [Allowed hosts](#allowed-hosts).
+- Leave everything behind the proxy, `/api/health` included: the image's health check calls it
+  inside the container, not through the proxy.
+- `/api/events` is a stream that stays open: a proxy that buffers responses (nginx: `proxy_buffering
+  off;` for it) delays the page's reloads otherwise.
+- Behind a proxy every request comes from the proxy's address, so wrong admin passwords are
+  slowed down for everyone at once. Keep the [admin password](#admin-password) for the buttons
+  anyway: the proxy decides who sees the page, the password who presses `user: root`.
+
 ### Widget worker
 
 Installed widgets run in a worker thread with a memory limit, so one that hangs cannot stop the
