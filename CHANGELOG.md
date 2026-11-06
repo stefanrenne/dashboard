@@ -24,6 +24,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Added
 - `discoverable: false` for an option in widget.yaml: taken from the YAML config only.
 - The log warns when `allowedHosts` is `"*"`: DNS rebinding is then no longer stopped.
+- A widget instance runs at most 30 new sets of params a minute (a weather widget's coordinates
+  from the page); more get an error until the minute is over, so a visitor cannot make unlimited
+  calls on an API key.
 
 ## [0.23.0] - 2026-11-06
 

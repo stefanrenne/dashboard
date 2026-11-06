@@ -296,6 +296,23 @@ test('runtime: params reach ctx.params only when the widget declares them, each 
   assert.deepEqual(seen.at(-1), {}, 'long values are dropped');
 });
 
+test('runtime: fresh runs with params are capped per instance and minute; cached ones and runs without params are not', async () => {
+  const { PARAM_RUNS_PER_MINUTE } = await import('../src/plugins/runtime.js');
+  let clock = 1_000_000;
+  let calls = 0;
+  const widget = { id: 'w', manifest: { params: ['latitude'] }, server: { fetch: () => { calls += 1; return { blocks: [] }; } } };
+  const rt = new WidgetRuntime({ registry: new Map([['w', widget]]), log: silentLog, now: () => clock });
+  rt.setInstances(new Map([['i', { type: 'w', options: {}, secretValues: [], refreshMs: 600_000 }]]));
+  for (let n = 0; n < PARAM_RUNS_PER_MINUTE; n += 1) assert.equal((await rt.get('i', { latitude: String(n) })).ok, true);
+  const refused = await rt.get('i', { latitude: 'one more' });
+  assert.deepEqual([refused.ok, /too many requests/.test(refused.error)], [false, true]);
+  assert.equal((await rt.get('i', { latitude: '0' })).ok, true, 'a cached set still answers');
+  assert.equal((await rt.get('i')).ok, true, 'no params: not counted');
+  assert.equal(calls, PARAM_RUNS_PER_MINUTE + 1);
+  clock += 61_000;
+  assert.equal((await rt.get('i', { latitude: 'one more' })).ok, true, 'a minute later it works again');
+});
+
 test('runtime.action refreshes the other instances on its card: their cache goes, and stays short for a while', async () => {
   let clock = 1_000_000;
   let state = 3;

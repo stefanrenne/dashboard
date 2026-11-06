@@ -8,11 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Medium: requests with params skip the cache.** `GET /api/widgets/<id>?<param>=…` caches
-  per set of params, so a visitor varying a declared param (the weather widgets' coordinates)
-  makes a fresh upstream call each time: unlimited calls on the user's API key (quota, cost) or
-  load on a backend. There is no rate limit on any endpoint. Fix: a cap per instance (calls per
-  refresh interval, a small LRU of param sets), and rounding/validation of params in the widgets.
 - [ ] **Low: `docker.sock:ro` protects nothing.** A read-only bind mount of the socket still
   allows every API call (start, stop, exec), so the dashboard (and any widget or button in it)
   has full control of Docker. The docs recommend a docker-socket-proxy; say plainly that `:ro`

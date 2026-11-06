@@ -94,3 +94,4 @@ Finished work, newest first.
 - 2026-11-06: Security: `allowedHosts: "*"` warns in the log. An Origin check was not added: a rebound page is same-origin, so its Origin matches its Host and the check would stop nothing.
 - 2026-11-06: Security: reading needs authentication: the login page and passkeys (0.23.0), and a docs section "Authentication in front" (Authelia, Authentik, Cloudflare Access; no published port, the health check, event stream and rate limit behind a proxy).
 - 2026-11-06: Security: the widget worker runs without the `DASHBOARD_VAR_*` / `DASHBOARD_FILE_*` variables in its environment (the config folder stays readable; documented).
+- 2026-11-06: Security: at most 30 fresh param sets a minute per widget instance; the weather widgets round and check coordinates and keep at most 50 locations.

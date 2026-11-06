@@ -14,6 +14,9 @@ export const ACTION_OUTPUT_MAX = 64 * 1024;
 // away, after 5 and after 30 seconds): their results are kept this short meanwhile.
 export const SETTLE_MS = 35_000;
 export const SETTLE_CACHE_MS = 4_000;
+// Fresh runs with params a minute, per instance: a visitor who varies them (a weather widget's
+// coordinates) cannot make unlimited calls on the user's API key.
+export const PARAM_RUNS_PER_MINUTE = 30;
 export const BLOCK_STATUSES = ['ok', 'warn', 'error', 'unknown'];
 export const SERVICE_STATUSES = ['up', 'down', 'warn', 'unknown'];
 export const ROW_ICONS = ['play', 'pause'];
@@ -38,6 +41,7 @@ export class WidgetRuntime {
     this.pending = new Map(); // instanceId -> Promise
     this.settling = new Map(); // instanceId -> { round, until }: refreshed after an action on its card
     this.stores = new Map(); // instanceId -> Map for ctx.cache
+    this.paramRuns = new Map(); // instanceId -> times of the fresh runs with params in the last minute
     this.attributeWarnings = new Set(); // widget types already warned about an attribute they did not declare
   }
 
@@ -48,6 +52,7 @@ export class WidgetRuntime {
     this.secrets = [...secrets];
     this.cache.clear();
     this.settling.clear();
+    this.paramRuns.clear();
     for (const id of this.stores.keys()) if (!instances.has(id)) this.stores.delete(id);
     this.sandbox?.keep(instances.keys());
   }
@@ -66,6 +71,13 @@ export class WidgetRuntime {
     const cached = this.cache.get(key);
     if (cached && cached.expires > this.now()) return cached.result;
     if (this.pending.has(key)) return this.pending.get(key);
+    if (key !== instanceId) {
+      const since = this.now() - 60_000;
+      const runs = (this.paramRuns.get(instanceId) ?? []).filter((t) => t > since);
+      if (runs.length >= PARAM_RUNS_PER_MINUTE) return { ok: false, error: 'too many requests with other params; try again in a minute', fetchedAt: this.now() };
+      runs.push(this.now());
+      this.paramRuns.set(instanceId, runs);
+    }
     const promise = this.#run(instanceId, instance, clean, key).finally(() => {
       if (this.pending.get(key) === promise) this.pending.delete(key);
     });
