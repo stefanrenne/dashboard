@@ -1831,3 +1831,17 @@ test('settings page server files: docker.yaml saved and the mounted socket teste
     await t.close();
   }
 });
+
+test('settings page files: custom.js made from Advanced, and the page loads it', async () => {
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n` });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/files/custom.js`, { headers: auth })).json();
+    assert.deepEqual([read.ok, read.exists, read.text], [true, false, '']);
+    const saved = await (await fetch(`${t.base}/api/settings/files/custom.js`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ text: 'console.log("hi")\n', hash: read.hash }) })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.match(await (await t.get('/')).text(), /custom\.js/);
+  } finally {
+    await t.close();
+  }
+});

@@ -528,6 +528,7 @@ export async function createApp({
         const out = writeConfigFile(configDir, file, text, { hash: body.hash, opts: { env } });
         if (out.changed) {
           log.info(`settings: ${file} saved from the settings page`);
+          // custom.css / custom.js: the open pages load them again
           await reload();
         }
         return send(res, 200, { ok: true, file, hash: out.hash, changed: out.changed, warnings: [...secretWarnings, ...out.warnings] }, 'application/json', headers);

@@ -1,5 +1,7 @@
 # Custom CSS & JS
 
+The settings page edits both files under Advanced; the previous versions are kept there too.
+
 A `custom.css` and a `custom.js` in the config folder are loaded after the page's own style and
 script, as in homepage. Refresh the browser after a change: unlike the YAML files, they do not
 reload the open pages.

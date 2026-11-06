@@ -33,7 +33,7 @@ test('configPath: only the config files on the allow-list, in the folder itself'
   assert.equal(configPath(dir, 'services.yaml'), path.join(path.resolve(dir), 'services.yaml'));
   assert.equal(configPath(dir, 'media.yaml'), path.join(path.resolve(dir), 'media.yaml'), 'included: editable');
   fs.writeFileSync(path.join(dir, 'other.yaml'), '[]');
-  for (const bad of ['other.yaml', './services.yaml', '../services.yaml', '.history/services.yaml', 'plugins/plugins.lock.yaml', 'custom.js', '/etc/passwd']) {
+  for (const bad of ['other.yaml', './services.yaml', '../services.yaml', '.history/services.yaml', 'plugins/plugins.lock.yaml', 'custom.html', '/etc/passwd']) {
     assert.throws(() => configPath(dir, bad), (err) => err.status === 404, bad);
   }
 });
@@ -145,4 +145,12 @@ test('included files: listed with the config file they end up in, checked as par
   assert.ok(fs.existsSync(path.join(dir, HISTORY_DIR, 'groups', version.id)));
   assert.deepEqual(listHistory(dir, 'media.yaml'), [], 'not the history of another file');
   assert.equal(readConfigFile(dir, 'services.yaml').text, SERVICES, 'the include stays an include');
+});
+
+test('custom.css and custom.js: written as text, no YAML check, with history', () => {
+  const dir = setup();
+  assert.equal(writeConfigFile(dir, 'custom.css', 'body { color: red; }  /* not YAML: { */\n').changed, true);
+  writeConfigFile(dir, 'custom.css', 'body { color: blue; }\n');
+  assert.match(readHistory(dir, 'custom.css', listHistory(dir, 'custom.css')[0].id), /red/);
+  assert.ok(editableFiles(dir).some((e) => e.file === 'custom.js'));
 });

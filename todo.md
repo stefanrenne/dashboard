@@ -12,8 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **custom.css / custom.js editor.** Under Advanced; custom.js behind an explicit warning; the
-  CSP keeps treating both as 'self'.
 - [ ] **Export and restore.** Download the config files (one at a time or as one bundle without a
   new dependency) and restore a previous version; the wizard's homepage import from here too.
 - [ ] **Docs and changelog.** "Settings page" in `docs/configuration/README.md` rewritten, a line

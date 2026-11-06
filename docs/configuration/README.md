@@ -185,7 +185,7 @@ reordered and removed.
 Bookmarks is a form as well: groups and bookmarks (link, abbreviation, icon, description).
 Docker, Kubernetes and Proxmox are forms of their servers (with a connection test for Docker),
 keeping keys they do not show, such as `allowVariables`; the Proxmox token secret stays hidden.
-Advanced shows `settings.yaml` itself as text, with its comments, and the files
+Advanced shows `settings.yaml` itself as text, and `custom.css` and `custom.js`, with its comments, and the files
 it includes. A save is checked first: a mistake is shown with its file and path and nothing is
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file
 was changed elsewhere in the meantime, the page says so instead of overwriting it. The previous
