@@ -33,6 +33,7 @@
   body { margin: 0; overflow-x: clip; min-height: 100vh; background: var(--dash-bg); color: var(--dash-text);
     font: 15px/1.5 Manrope, ui-sans-serif, system-ui, sans-serif; transition: background .2s, color .2s; }
   main { max-width: 52rem; margin: 0 auto; padding: 0 16px 64px; }
+  main:has(.saved) { padding-bottom: 0; } /* the save bar ends the page, with nothing below it */
   h1 { margin: 0 0 4px; font-size: 1.6rem; font-weight: 700; color: var(--dash-heading); }
   h2 { margin: 0 0 4px; font-size: 1.15rem; font-weight: 600; color: var(--dash-heading); }
   p { margin: 0 0 12px; }
