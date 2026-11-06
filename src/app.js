@@ -23,6 +23,7 @@ import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprin
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
+import { readLayout, checkLayout, writeLayout } from './settings-layout.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
@@ -548,7 +549,12 @@ export async function createApp({
     if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
     const headers = { ...SECURITY_HEADERS, ...allowed.headers };
     const rp = rpContext(req);
-    const answer = () => ({ ok: true, ...readSettings(configDir), noPassword: !gate.password, loggedIn,
+    // the groups the dashboard has now, discovered ones included, for the layout section
+    const groupInfo = () => ({
+      services: (state.layout?.groups ?? []).map((g) => ({ name: g.name, nested: (g.groups ?? []).map((n) => n.name) })),
+      bookmarks: (state.layout?.bookmarks ?? []).map((g) => g.name),
+    });
+    const answer = () => ({ ok: true, ...readSettings(configDir), layout: readLayout(configDir, groupInfo()), noPassword: !gate.password, loggedIn,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] } });
     if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
@@ -571,6 +577,18 @@ export async function createApp({
       return send(res, 200, answer(), 'application/json', headers);
     }
     if (route === '/files' || route.startsWith('/files/')) return filesRoute(res, method, route, body, headers);
+    if (method === 'POST' && route === '/layout') {
+      const checked = checkLayout(body?.groups);
+      if (checked.error) return send(res, 400, { ok: false, error: checked.error });
+      try {
+        writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo()));
+      } catch (err) {
+        return send(res, 409, { ok: false, error: err.message });
+      }
+      log.info('settings: the layout saved from the settings page');
+      await reload();
+      return send(res, 200, answer(), 'application/json', headers);
+    }
     if (method === 'POST' && route === '/passkeys/options') {
       const options = passkeys.registerOptions(req, state.config.settings.title);
       if (!options) return send(res, 400, { ok: false, error: 'passkeys need the dashboard over https, by its host name' });

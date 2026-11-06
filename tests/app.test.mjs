@@ -1690,3 +1690,23 @@ test('settings page files: included files are listed, masked by the rules of the
     await t.close();
   }
 });
+
+test('settings page layout: the groups the dashboard has, saved in a new order, and the page follows', async () => {
+  const t = await startApp({
+    'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\nlayout:\n  Media:\n    columns: 2\n`,
+    'services.yaml': '- Infra:\n    - Router:\n        href: http://router.lan\n- Media:\n    - Plex:\n        href: http://plex.lan\n',
+    'bookmarks.yaml': '- Dev:\n    - GitHub:\n        - href: https://github.com\n',
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  try {
+    const read = await (await fetch(`${t.base}/api/settings`, { headers: auth })).json();
+    assert.deepEqual(read.layout.groups.map((g) => [g.name, g.kind]), [['Media', 'services'], ['Infra', 'services'], ['Dev', 'bookmarks']]);
+    const [media, infra, dev] = read.layout.groups;
+    const saved = await (await fetch(`${t.base}/api/settings/layout`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ groups: [infra, { ...media, style: 'row' }, dev] }) })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.deepEqual(t.app.layout.groups.map((g) => [g.name, g.layout.style]), [['Infra', undefined], ['Media', 'row']]);
+    assert.equal((await fetch(`${t.base}/api/settings/layout`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ groups: [{ name: 'X', columns: 'many' }] }) })).status, 400);
+  } finally {
+    await t.close();
+  }
+});

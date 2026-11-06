@@ -30,6 +30,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   cards, layout switches and columns, quick launch, app icons and shortcuts, the plugin and
   discovery intervals and the log folder; Security is a section of its own. A save writes only
   what changed. `providers` and `blockHighlights` are edited under Advanced.
+- **Groups on the settings page**: the `layout` block per group (arrangement, columns, tab, icon,
+  title, folding, equal heights, icons only; nested groups too) and the order of the groups.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

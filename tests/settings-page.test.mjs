@@ -199,7 +199,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     },
   });
   const links = [...doc.querySelectorAll('nav.sections a')];
-  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Groepen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
@@ -282,4 +282,43 @@ test('settings page: the other settings.yaml keys as fields: background, layout,
     [sent.backgroundImage, sent.cardBlur, sent.backgroundOpacity, sent.maxGroupColumns, sent.fullWidth, sent.qlProvider, sent.qlUrl, sent.pwaShortcuts, sent.discoveryInterval],
     ['https://example.com/wall.jpg', 'md', '60', '6', true, 'custom', 'https://search.lan/?q={q}', [{ name: 'Media', url: '/#media', description: '' }], '1m'],
   );
+});
+
+test('settings page: the groups: settings per group and nested group, the order by buttons, a gone group removed', async () => {
+  const groups = [
+    { name: 'Infra', kind: 'services', inFile: true, style: 'row', columns: '', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '', tab: '',
+      nested: [{ name: 'Network', style: '', columns: '2', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '' }] },
+    { name: 'Gone', kind: null, inFile: true, style: '', columns: '3', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '', tab: '', nested: [] },
+    { name: 'Developer', kind: 'bookmarks', inFile: false, style: '', columns: '', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '', tab: '', nested: [] },
+  ];
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data({ layout: { form: 'map', groups } }),
+    'POST /api/settings/layout': (init) => data({ layout: { form: 'map', groups: JSON.parse(init.body).groups.filter((g) => !g.remove) } }),
+  }, () => {}, 'http://dash.lan/settings#layout');
+  const cards = () => [...doc.querySelectorAll('.card')].map((c) => c.querySelector('strong').textContent);
+  assert.deepEqual(cards(), ['Infra', 'Gone', 'Developer']);
+  assert.match(doc.querySelectorAll('.card')[1].textContent, /Deze groep bestaat niet meer/);
+  assert.equal(doc.getElementById('lg-2-style'), null, 'a bookmark group has no arrangement');
+  assert.ok(doc.getElementById('lg-2-iconsOnly'));
+  // settings, also of the nested group
+  const set = (id, value, event) => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  set('lg-0-columns', '4', 'input');
+  set('lg-0-tab', 'Home', 'input');
+  set('lg-0-0-initiallyCollapsed', 'true', 'change');
+  doc.getElementById('lg-2-header').click();
+  set('lg-2-iconsOnly', 'true', 'change');
+  doc.getElementById('lg-1-remove').click();
+  // Developer up twice, with the keyboard focus following it
+  doc.querySelector('[aria-label="Developer omhoog"]').click();
+  doc.querySelector('[aria-label="Developer omhoog"]').click();
+  assert.deepEqual(cards(), ['Developer', 'Infra', 'Gone']);
+  assert.equal(doc.activeElement.getAttribute('aria-label'), 'Developer omlaag', 'at the top the focus goes to the other button');
+  assert.equal(doc.getElementById('lg-0-up').disabled, true);
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/layout').at(-1).body.groups;
+  assert.deepEqual(sent.map((g) => [g.name, g.remove ?? false]), [['Developer', false], ['Infra', false], ['Gone', true]]);
+  assert.deepEqual([sent[0].header, sent[0].iconsOnly, sent[1].columns, sent[1].tab, sent[1].nested[0].initiallyCollapsed], [false, 'true', '4', 'Home', 'true']);
+  assert.deepEqual(cards(), ['Developer', 'Infra'], 'the answer shows the saved layout');
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });

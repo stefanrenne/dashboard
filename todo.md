@@ -12,8 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **Layout editor.** `layout:` per group: columns, style, header, icon, tab, initially
-  collapsed; group order by drag and drop with a keyboard alternative.
 - [ ] **Plugins editor.** The `plugins:` list: add or remove a source (git, npm, path; validated
   as `installer.js` does), pin a tag or version, the state from `plugins.lock.yaml`, and the
   sync/update buttons (`/api/plugins/sync`).

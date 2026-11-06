@@ -165,7 +165,10 @@ The gear in the footer opens `/settings`. General has the page's look (title, la
 colour, the header, cards, fonts and icons, the background), its layout, quick launch, the page
 and app details (description, favicon, app icons and shortcuts) and a few switches and intervals.
 Security has the login page or only some actions, how long a login and an unlock last, the
-allowed hosts, the admin password and passkeys. It writes them into
+allowed hosts, the admin password and passkeys. Groups has the `layout` block: per group its
+arrangement, columns, tab, icon, title and folding (nested groups too), and the order of the groups
+with up and down buttons; an entry for a group that no longer exists can be removed there. It
+writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
 `providers`, ...), which it names; the dashboard follows at once.
 

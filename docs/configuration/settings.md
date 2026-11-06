@@ -133,6 +133,9 @@ A source without `widget.yaml` at its root is a **collection**: every folder wit
 
 ## Layout
 
+The settings page edits this block under Groups, keeping its form (a map or a list) and its
+comments.
+
 **Order**, as in homepage: groups appear in the order of the `layout` block, discovered
 groups too; groups that are not in it follow, in their own order. Service and bookmark groups
 can be mixed: a bookmark group listed between service groups is shown there. The `layout`
