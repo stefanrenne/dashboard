@@ -15,6 +15,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   next release), framed options (the iframe's `src`), `provider:` and `service_group` /
   `service_name` are dropped from a label, with a message, and `target: hidden-iframe` opens as a
   link. Put such services in services.yaml.
+- **The widget worker's environment leaves out `DASHBOARD_VAR_*` and `DASHBOARD_FILE_*`** (and
+  `HOMEPAGE_`): an installed widget could read them all before. A button with `inheritEnv: true`
+  no longer passes them to its script; put the value in its command
+  (`command: TOKEN={{DASHBOARD_VAR_TOKEN}} scripts/deploy.sh`), or run widgets in the process with
+  `DASHBOARD_WIDGET_ISOLATION=off`.
 
 ### Added
 - `discoverable: false` for an option in widget.yaml: taken from the YAML config only.

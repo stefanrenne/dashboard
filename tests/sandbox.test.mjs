@@ -41,6 +41,18 @@ test('sandbox: the ctx of the API, ctx.cache kept per instance, logs and fetch',
   }
 });
 
+test('sandbox: the worker\'s environment leaves out the config\'s variables', async () => {
+  const widget = await loadWidget(writeWidget(tmpDir(), { ...base, id: 'envy' }, { 'server.js': `export default { async fetch() { return { blocks: Object.keys(process.env).sort().map((k) => ({ label: k, value: process.env[k] })) } } }` }), { source: 'path' });
+  const sandbox = new WidgetSandbox({ env: { PATH: '/bin', DASHBOARD_VAR_PW: 'x', HOMEPAGE_VAR_K: 'y', DASHBOARD_FILE_T: '/run/secrets/t', HOMEPAGE_FILE_U: '/u', DASHBOARD_WIDGET_MEMORY_MB: '64' } });
+  const runtime = new WidgetRuntime({ registry: new Map([['envy', widget]]), sandbox });
+  runtime.setInstances(new Map([['i1', { type: 'envy', options: {}, secretValues: [], refreshMs: 0 }]]));
+  try {
+    assert.deepEqual((await runtime.get('i1')).data.blocks.map((b) => b.label), ['DASHBOARD_WIDGET_MEMORY_MB', 'PATH']);
+  } finally {
+    sandbox.close();
+  }
+});
+
 test('sandbox: a widget stuck in a loop is stopped; the dashboard keeps answering, the next call works', async () => {
   const flag = `${tmpDir()}/fixed`;
   const { sandbox, get } = await setup('loop', `

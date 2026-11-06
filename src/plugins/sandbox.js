@@ -10,13 +10,24 @@ export const WORKER_FILE = new URL('./worker.js', import.meta.url);
 export const DEFAULT_MEMORY_MB = 256;
 export const GRACE_MS = 1000;
 
+// What the worker's process.env leaves out: the values behind {{DASHBOARD_VAR_*}} and
+// {{DASHBOARD_FILE_*}} (and their paths). A widget gets those through ctx.options, for the
+// instances the config gives them to, never all of them.
+const SECRET_VARIABLE = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/;
+
+/** The environment of the widget worker: the dashboard's, without the config's variables. */
+export function workerEnv(env = process.env) {
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !SECRET_VARIABLE.test(name)));
+}
+
 export class WidgetSandbox {
   #worker = null;
   #calls = new Map(); // id -> { resolve, reject, log, timer }
   #seq = 0;
 
-  constructor({ log = console, memoryMb = DEFAULT_MEMORY_MB, graceMs = GRACE_MS, file = WORKER_FILE } = {}) {
+  constructor({ log = console, memoryMb = DEFAULT_MEMORY_MB, graceMs = GRACE_MS, file = WORKER_FILE, env = process.env } = {}) {
     this.log = log;
+    this.env = workerEnv(env);
     this.memoryMb = memoryMb;
     this.graceMs = graceMs;
     this.file = file;
@@ -24,7 +35,7 @@ export class WidgetSandbox {
   }
 
   #spawn() {
-    const worker = new Worker(this.file, { resourceLimits: { maxOldGenerationSizeMb: this.memoryMb } });
+    const worker = new Worker(this.file, { env: this.env, resourceLimits: { maxOldGenerationSizeMb: this.memoryMb } });
     worker.unref();
     worker.on('message', (m) => {
       const call = this.#calls.get(m.id);

@@ -353,7 +353,9 @@ host name and let the tunnel point at `http://dashboard:3000`.
 
 Installed widgets run in a worker thread with a memory limit, so one that hangs cannot stop the
 dashboard. `DASHBOARD_WIDGET_MEMORY_MB` sets the limit (default 256); `DASHBOARD_WIDGET_ISOLATION=off` runs them
-in the dashboard process instead.
+in the dashboard process instead. The worker's environment leaves out the `DASHBOARD_VAR_*` and
+`DASHBOARD_FILE_*` variables (and `HOMEPAGE_`): a widget gets the values the config gives it,
+through its options, not every one.
 
 ### Scripts as root
 

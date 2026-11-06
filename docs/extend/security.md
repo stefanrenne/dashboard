@@ -63,7 +63,8 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - Installed widgets' `server.js` runs in a **worker thread** with a memory limit
   (`DASHBOARD_WIDGET_MEMORY_MB`, default 256): a widget stuck in a loop or eating memory stops the
   worker, which starts again, not the dashboard. A worker thread is not a security boundary: it
-  has the same network, files and environment. `DASHBOARD_WIDGET_ISOLATION=off` runs installed widgets
+  has the same network and files (the config folder too). Its environment leaves out the
+  `DASHBOARD_VAR_*` / `DASHBOARD_FILE_*` variables, so a widget reads only the values its options get. `DASHBOARD_WIDGET_ISOLATION=off` runs installed widgets
   in the dashboard process, as before.
 
 - **Labels and annotations are not config.** Whoever starts a container (or builds its image)

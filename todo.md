@@ -8,12 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Medium: an installed widget reads every secret.** `src/plugins/sandbox.js` starts the
-  worker without an `env` option, so it shares the process environment: any widget's `server.js`
-  can read all `DASHBOARD_VAR_*` / `DASHBOARD_FILE_*` values and, with `fs`, the config folder
-  (settings.yaml `providers:` too). The docs say a worker is no security boundary; still, cheap
-  hardening: `new Worker(file, { env: {} })` (widgets get their options through `ctx`), and keep
-  `DASHBOARD_FILE_*` paths out of it.
 - [ ] **Medium: requests with params skip the cache.** `GET /api/widgets/<id>?<param>=…` caches
   per set of params, so a visitor varying a declared param (the weather widgets' coordinates)
   makes a fresh upstream call each time: unlimited calls on the user's API key (quota, cost) or
