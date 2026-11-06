@@ -98,3 +98,4 @@ Finished work, newest first.
 - 2026-11-06: Docs: `:ro` on the Docker socket is said not to limit the API wherever the socket is mounted (the Access paragraph says why; a socket proxy does).
 - 2026-11-06: Security: at most 500 event streams (50 per address); headersTimeout, requestTimeout and maxConnections set in src/server.js.
 - 2026-11-06: Security: files under a widget's assets/ and the config's icons/ are served only when their real path stays inside that folder.
+- 2026-11-06: Security: the page's CSP drops `'unsafe-inline'` scripts (its own script runs by a per-response nonce); the security docs say a widget client runs with the page's rights. Not checked in a browser (none on the dev host).

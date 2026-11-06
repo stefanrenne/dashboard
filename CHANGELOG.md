@@ -31,6 +31,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   sets its header and request timeouts explicitly (20 s and 30 s).
 - A symlink in a widget's `assets/` or in the config's `icons/` that points outside that folder
   is no longer served.
+- The page's CSP no longer allows `'unsafe-inline'` scripts: its own script runs by a nonce. A
+  `custom.js` that adds inline `<script>` elements or `onclick="..."` attributes has to use
+  `addEventListener` (or a file) instead.
 
 ## [0.23.0] - 2026-11-06
 

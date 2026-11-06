@@ -506,6 +506,14 @@ test('static files: index, client.js, assets, icons, and no path traversal', asy
     assert.equal(index.status, 200);
     assert.match(index.headers.get('content-security-policy'), /connect-src 'self'/);
     assert.match(index.headers.get('content-security-policy'), /frame-src 'none'/);
+    // the page's inline script runs by its nonce, a fresh one per response; nothing else inline
+    const csp = index.headers.get('content-security-policy');
+    const nonce = /script-src 'self' 'nonce-([A-Za-z0-9+/=]+)';/.exec(csp)?.[1];
+    assert.ok(nonce, csp);
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(csp));
+    const body = await index.text();
+    assert.equal(body.match(/<script\b[^>]*>/g).filter((tag) => !/\bsrc=/.test(tag)).every((tag) => tag === `<script nonce="${nonce}">`), true);
+    assert.notEqual(/'nonce-([^']+)'/.exec((await t.get('/')).headers.get('content-security-policy'))[1], nonce);
     assert.equal((await t.get('/widgets/datetime/client.js')).headers.get('content-type'), 'text/javascript; charset=utf-8');
     assert.equal((await t.get('/widgets/example-counter/assets/README.md')).status, 200);
     assert.equal((await t.get('/widgets/example-counter/server.js')).status, 404);

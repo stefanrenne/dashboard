@@ -68,14 +68,18 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
-/** The security headers; `frames` are the origins the page may frame (the iframe widget's src). */
-export function securityHeaders(frames = []) {
+/**
+ * The security headers; `frames` are the origins the page may frame (the iframe widget's src).
+ * Scripts come from the dashboard itself; the page's one inline script carries `nonce`, so an
+ * injected inline script or event handler does not run.
+ */
+export function securityHeaders(frames = [], nonce = null) {
   return {
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
     'content-security-policy':
       "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-      "font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'; " +
+      `font-src 'self' https://fonts.gstatic.com; script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; connect-src 'self'; ` +
       `frame-src ${frames.length ? frames.join(' ') : "'none'"}; frame-ancestors 'self'`,
   };
 }
@@ -376,7 +380,8 @@ export async function createApp({
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
         const custom = CUSTOM_FILES.filter((f) => fs.existsSync(path.join(configDir, f)));
-        return send(res, 200, renderIndex(html, state.config.settings, state.config.secrets, custom), 'text/html; charset=utf-8', securityHeaders(state.frames));
+        const nonce = crypto.randomBytes(16).toString('base64');
+        return send(res, 200, renderIndex(html, state.config.settings, state.config.secrets, custom, nonce), 'text/html; charset=utf-8', securityHeaders(state.frames, nonce));
       }
       if (method === 'GET' && p === '/robots.txt') return send(res, 200, renderRobots(state.config.settings), 'text/plain; charset=utf-8');
       if (method === 'GET' && p === '/site.webmanifest') {

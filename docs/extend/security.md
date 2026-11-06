@@ -79,7 +79,12 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - Options marked `secret: true`, undeclared options, and every value from `{{DASHBOARD_VAR_*}}` /
   `{{DASHBOARD_FILE_*}}` stay on the server. `/api/layout` contains public options only (tested).
 - Error messages from widgets and config messages have secret values replaced by `***`.
-- The page's Content-Security-Policy restricts `connect-src` to the dashboard itself.
+- The page's Content-Security-Policy restricts `connect-src` to the dashboard itself, and scripts
+  to files it serves: the page's own inline script carries a nonce that changes with every load,
+  so an inline script or event handler that got into the page anyway does not run.
+- A widget's `client.js` (and `custom.js`) runs in the page itself, by design: it can do what
+  the page does (read `/api/layout`, call the endpoints with the page's header, change other
+  cards). Installing a widget trusts its client as much as its server.
 
 ## Recommendations for users
 

@@ -8,11 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Low: inline scripts and widget clients run with the page's rights.** The CSP allows
-  `'unsafe-inline'` scripts, and every widget's `client.js` runs in the page itself: it can call
-  the POST endpoints with the header, read `/api/layout`, and change other cards. By design, but
-  worth a sentence in the security docs; a nonce for the page's own script would let the CSP
-  drop `'unsafe-inline'`.
 - [ ] **Info: root mode makes every widget root.** With `DASHBOARD_ALLOW_ROOT_SCRIPTS=true` the
   sudo rule (`NOPASSWD:SETENV` for `/usr/local/bin/dashboard-root`, which runs bash with any
   arguments) lets any code in the `node` process run anything as root. Documented; keep it that way.

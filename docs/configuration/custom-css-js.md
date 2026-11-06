@@ -25,4 +25,6 @@ dark theme. Override them in `custom.css` for a theme of your own. Class names o
 between versions; variables are the steadier hook.
 
 Both files are your own code on your own page: the page's Content Security Policy allows them
-like the page's own script. Only put in what you trust.
+like the page's own script. Only put in what you trust. Inline scripts do not run: `custom.js`
+cannot add a `<script>` with code in it or an `onclick="..."` attribute; use
+`addEventListener`, or load another file from the config folder.

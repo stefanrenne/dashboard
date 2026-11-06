@@ -28,7 +28,7 @@ const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** `html` with the head filled in from normalized `settings`. */
-export function renderIndex(html, settings, secrets = new Set(), custom = []) {
+export function renderIndex(html, settings, secrets = new Set(), custom = [], nonce = null) {
   const clean = (value) => escapeHtml(scrub(value, secrets));
   const head = [];
   // settings.base first, so every relative URL after it resolves under it
@@ -43,6 +43,8 @@ export function renderIndex(html, settings, secrets = new Set(), custom = []) {
   if (custom.includes('custom.css')) head.push('<link rel="stylesheet" href="custom.css">');
   if (custom.includes('custom.js')) tail.push('<script src="custom.js" defer></script>');
   return html
+    // the page's own inline script: the CSP allows it by this nonce only (app.js securityHeaders)
+    .replace('<script>', nonce ? `<script nonce="${nonce}">` : '<script>')
     .replace(/<title>[^<]*<\/title>/, `<title>${clean(settings.title)}</title>`)
     .replace('</head>', head.map((line) => `${line}\n`).join('') + '</head>')
     .replace('</body>', tail.map((line) => `${line}\n`).join('') + '</body>');
