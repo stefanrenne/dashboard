@@ -45,6 +45,7 @@ Give each option in `widget.yaml` a line comment when its name does not explain 
   `package.json` needs `"type": "module"`.
 
 Bump `version` on every release; the dashboard installs each version in its own folder.
+Then add it to the [Catalogue](../widgets/catalogue.md#add-yours) with a pull request.
 
 ## 4. How users install it
 

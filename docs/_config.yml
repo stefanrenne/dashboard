@@ -45,6 +45,7 @@ defaults:
   - { scope: { path: configuration/custom-css-js.md }, values: { title: Custom CSS & JS, parent: Configuration, nav_order: 11 } }
   - { scope: { path: configuration/homepage.md }, values: { title: From homepage, parent: Configuration, nav_order: 12 } }
   - { scope: { path: widgets/README.md }, values: { title: Widgets, nav_order: 3, has_children: true, permalink: /widgets/ } }
+  - { scope: { path: widgets/catalogue.md }, values: { title: Catalogue, parent: Widgets, nav_order: 3 } }
   - { scope: { path: extend/README.md }, values: { title: Extend, nav_order: 4, has_children: true, permalink: /extend/ } }
   - { scope: { path: extend/local.md }, values: { title: A local widget, parent: Extend, nav_order: 1, redirect_from: [/widgets/authoring.html] } }
   - { scope: { path: extend/remote.md }, values: { title: A remote widget, parent: Extend, nav_order: 2 } }

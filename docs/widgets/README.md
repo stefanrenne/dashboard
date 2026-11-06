@@ -30,5 +30,6 @@ A widget puts live data on the dashboard. There are two kinds, as in homepage:
   ```
 
 Every widget below comes from the [widgets collection](https://github.com/stefanrenne/dashboard-widgets),
-which is always installed. Missing one? Any widget package can be added under `plugins:`; see
-[Extend](../extend/README.md) to write your own.
+which is always installed. Missing one? Any widget package can be added under `plugins:`: the
+[Catalogue](catalogue.md) lists packages by others, and [Extend](../extend/README.md) shows how
+to write your own.

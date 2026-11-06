@@ -100,3 +100,4 @@ Finished work, newest first.
 - 2026-11-06: Security: files under a widget's assets/ and the config's icons/ are served only when their real path stays inside that folder.
 - 2026-11-06: Security: the page's CSP drops `'unsafe-inline'` scripts (its own script runs by a per-response nonce); the security docs say a widget client runs with the page's rights. Not checked in a browser (none on the dev host).
 - 2026-11-06: Security audit of 2026-11-04 closed. Left as documented: root mode (`DASHBOARD_ALLOW_ROOT_SCRIPTS`) makes every widget root. Checked and fine then: no unread bodies, `/widgets/<type>/` serves client.js and assets/ only, secrets out of `/api/layout` and messages, textContent/safeHref in the page, `npm pack --ignore-scripts`, pinned tarballs and commits, `npm audit` clean, the image runs as `node`.
+- 2026-11-06: A widget catalogue: docs/widgets/catalogue.md on the Pages site (no separate repo), with the rules for adding a package by pull request.

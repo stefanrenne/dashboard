@@ -9,7 +9,3 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
   `docs/configuration/README.md` and the API reference's Changes table still name versions;
   CLAUDE.md rules 2 and 6 require them, the wish is no versions before 1.0. Decide, and change
   the rules or the pages to match.
-
-## Other
-
-- [ ] A widget catalogue: an index (YAML in a separate repo) of known widget packages, shown in the docs.
