@@ -25,7 +25,9 @@ import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
 import { readLayout, checkLayout, writeLayout } from './settings-layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './settings-plugins.js';
-import { readServices, writeServices } from './settings-services.js';
+import { readServices, writeServices, widgetCatalog } from './settings-services.js';
+import { secretsOf } from './config/mask.js';
+import { substitute } from './config/vars.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
@@ -580,6 +582,21 @@ export async function createApp({
       return send(res, 200, answer(), 'application/json', headers);
     }
     if (route === '/files' || route.startsWith('/files/')) return filesRoute(res, method, route, body, headers);
+    const schemaOf = (type) => state.registry?.get(type)?.manifest?.options ?? null;
+    if (method === 'POST' && route === '/widget-test') {
+      // a widget from the form, tried as the dashboard would run it: hidden values and variables filled in
+      const known = secretsOf(body?.file === 'widgets.yaml' ? 'widgets.yaml' : 'services.yaml', readConfigFile(configDir, body?.file === 'widgets.yaml' ? 'widgets.yaml' : 'services.yaml').text, schemaOf);
+      const raw = Object.fromEntries(Object.entries(body?.options && typeof body.options === 'object' ? body.options : {})
+        .filter(([, v]) => typeof v === 'string' && v.trim() !== '')
+        .map(([k, v]) => [k, v.replace(/__SECRET_[0-9a-f]{10}__/g, (tk) => String(known.get(tk)?.value ?? tk))]));
+      const schema = schemaOf(body?.type) ?? {};
+      for (const [k, d] of Object.entries(schema)) if (k in raw && d.type === 'number' && Number.isFinite(Number(raw[k]))) raw[k] = Number(raw[k]);
+      for (const [k, d] of Object.entries(schema)) if (k in raw && d.type === 'boolean') raw[k] = raw[k] === 'true';
+      const filled = substitute(raw, { env });
+      const out = await testWidget(body?.type, filled.value);
+      const secrets = [...[...known.values()].map((x) => String(x.value)), ...filled.secrets];
+      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), secrets) }, 'application/json', headers);
+    }
     if (route === '/services') {
       // the services the dashboard found by itself: shown, not edited (their labels are the source)
       const discovered = () => (state.layout?.groups ?? []).flatMap(function all(g, _, __, parent = '') {
@@ -588,14 +605,14 @@ export async function createApp({
       });
       try {
         if (method === 'POST') {
-          const out = writeServices(configDir, body?.items, body?.hash, { env });
+          const out = writeServices(configDir, body?.items, body?.hash, { env }, schemaOf);
           if (out.changed) {
             log.info('settings: services.yaml saved from the services form');
             await reload();
           }
-          return send(res, 200, { ok: true, ...readServices(configDir), discovered: discovered(), warnings: out.warnings ?? [] }, 'application/json', headers);
+          return send(res, 200, { ok: true, ...readServices(configDir, schemaOf), widgets: widgetCatalog(state.registry), discovered: discovered(), warnings: out.warnings ?? [] }, 'application/json', headers);
         }
-        return send(res, 200, { ok: true, ...readServices(configDir), discovered: discovered() }, 'application/json', headers);
+        return send(res, 200, { ok: true, ...readServices(configDir, schemaOf), widgets: widgetCatalog(state.registry), discovered: discovered() }, 'application/json', headers);
       } catch (err) {
         if (!(err instanceof ConfigEditError)) throw err;
         return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);

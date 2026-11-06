@@ -376,7 +376,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   const fields = (extra = {}) => ({ href: '', icon: '', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false, ...extra });
   const items = [
     { kind: 'group', id: '0', name: 'Infra', items: [
-      { kind: 'service', id: '0/0', name: 'Router', fields: fields({ href: 'http://router.lan', ping: 'router.lan' }), widgets: ['custom-api'], other: [] },
+      { kind: 'service', id: '0/0', name: 'Router', fields: fields({ href: 'http://router.lan', ping: 'router.lan' }), widgets: [{ id: 'widget', type: 'custom-api', options: { url: 'http://router.lan/api', key: '__SECRET_0123456789__' }, rest: ['mappings'] }], other: [] },
       { kind: 'group', id: '0/1', name: 'Network', items: [] },
     ] },
     { kind: 'group', id: '1', name: 'Media', include: 'media.yaml', items: [] },
@@ -384,7 +384,9 @@ test('settings page: services as a form: fields, rename, move to another group, 
   ];
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/services': { ok: true, hash: 'h1', items, discovered: [{ group: 'Media', name: 'Jellyfin', origin: 'docker:local' }] },
+    'GET /api/settings/services': { ok: true, hash: 'h1', items, discovered: [{ group: 'Media', name: 'Jellyfin', origin: 'docker:local' }],
+      widgets: [{ id: 'custom-api', name: 'Custom API', options: { url: { type: 'url', required: true }, key: { type: 'string', secret: true }, live: { type: 'boolean' } } }, { id: 'ping', name: 'Ping', options: { host: { type: 'string' } } }] },
+    'POST /api/settings/widget-test': (init) => (JSON.parse(init.body).options.url ? { ok: true, blocks: [{ label: 'Up', value: 'yes' }] } : { ok: false, error: 'url: required' }),
     'POST /api/settings/services': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items, discovered: [] }),
   }, () => {}, 'http://dash.lan/settings#services');
   await tick();
@@ -392,13 +394,24 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.match(panel(), /De services van deze groep staan in media\.yaml/);
   assert.match(panel(), /Ingevoegd uit apps\.yaml/);
   assert.match(panel(), /Media › Jellyfin \(docker:local\)/);
-  assert.match(panel(), /Widgets: custom-api \(bewerk ze als tekst\)/);
+  assert.match(panel(), /Ook: mappings \(bewerk ze als tekst\)/);
+  assert.match(panel(), /Verborgen; typ om te vervangen/);
   const router = doc.querySelector('.card');
   const id = router.querySelector('input[id$="-name"]').id.replace('-name', '');
   const set = (sid, value, event = 'input') => { const n = doc.getElementById(sid); n.value = value; n.dispatchEvent(new w.Event(event)); };
   set(`${id}-name`, 'Gateway');
   set(`${id}-ping`, '');
   set(`${id}-showStats`, 'true', 'change');
+  // its widget: an option changed and tested; a second widget added
+  const wid = doc.querySelector(`[id^="${id}-w"][id$="-url"]`).id.replace('-url', '');
+  assert.equal(doc.getElementById(`${wid}-key`).type, 'password');
+  set(`${wid}-url`, 'http://router.lan/v2');
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Testen').click();
+  await tick();
+  assert.match(panel(), /Het antwoordt: Up: yes/);
+  assert.equal(calls.filter((c) => c.p === '/api/settings/widget-test').at(-1).body.file, 'services.yaml');
+  set(`${id}-add`, 'ping', 'change');
+  set(doc.activeElement.id.replace('-type', '-host'), 'router.lan');
   // into the nested group Network
   const move = doc.getElementById(`${id}-move`);
   assert.deepEqual([...move.options].map((o) => o.textContent), ['Infra', 'Infra › Network', 'Apps']);
@@ -421,6 +434,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.deepEqual(sent.items.map((g) => [g.name, g.items.map((x) => x.name ?? x.file ?? x.id)]), [['Infra', ['Network']], ['Media', []], ['Apps', ['Wiki', '2/0']]]);
   const gateway = sent.items[0].items[0].items[0];
   assert.deepEqual([gateway.id, gateway.name, gateway.fields.ping, gateway.fields.showStats, gateway.fields.href], ['0/0', 'Gateway', '', 'true', 'http://router.lan']);
+  assert.deepEqual(gateway.widgets, [{ id: 'widget', type: 'custom-api', options: { url: 'http://router.lan/v2', key: '__SECRET_0123456789__' } }, { id: null, type: 'ping', options: { host: 'router.lan' } }]);
   assert.equal(sent.items[2].items[0].id, null);
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });

@@ -12,10 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **Service widgets in the services editor.** `widget:`/`widgets:` per service: the type from
-  the registry (`widgetList` in `src/onboarding.js`), a form generated from the widget's option
-  schema (`OPTION_TYPES` in `src/plugins/options.js`: enums, lists, objects), secret options
-  masked, a test button (the wizard's `testWidget`). Keys the schema does not know are kept.
 - [ ] **widgets.yaml editor (header widgets).** Add, remove and order header widgets, with the
   same schema forms.
 - [ ] **bookmarks.yaml editor.** Groups and bookmarks: name, href, abbr, icon, description, order.

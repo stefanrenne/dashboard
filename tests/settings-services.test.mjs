@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readServices, writeServices } from '../src/settings-services.js';
+import { readServices, writeServices, widgetCatalog } from '../src/settings-services.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 
@@ -39,7 +39,7 @@ test('readServices: groups, nested groups, services with their fields and widget
   const [infra, media, apps] = items;
   assert.deepEqual([infra.kind, infra.id, infra.name, infra.items.map((i) => [i.kind, i.id, i.name])], ['group', '0', 'Infra', [['service', '0/0', 'Router'], ['group', '0/1', 'Network']]]);
   const router = infra.items[0];
-  assert.deepEqual([router.fields.href, router.fields.ping, router.fields.showStats, router.fields.external, router.widgets, router.other], ['http://router.lan', 'router.lan', '', false, ['custom-api'], []]);
+  assert.deepEqual([router.fields.href, router.fields.ping, router.fields.showStats, router.fields.external, router.widgets.map((w) => [w.id, w.type]), router.other], ['http://router.lan', 'router.lan', '', false, [['widget', 'custom-api']], []]);
   assert.deepEqual([media.kind, media.include], ['group', 'media.yaml']);
   assert.deepEqual(apps.items.map((i) => [i.kind, i.file ?? i.name]), [['include', 'apps.yaml'], ['service', 'Empty']]);
 });
@@ -99,4 +99,76 @@ test('writeServices: refuses a stale tree, an entry twice, a bad field, and what
   filter.items[0].items[0].fields.filter = 'container.status ==';
   assert.throws(() => writeServices(dir, filter.items, filter.hash), (err) => err.status === 400 && err.errors?.some((e) => /filter/.test(e.path)));
   assert.equal(file(dir), TEXT, 'nothing written');
+});
+
+const SCHEMA = { counter: { url: { type: 'url', required: true }, key: { type: 'string', secret: true }, every: { type: 'number' }, live: { type: 'boolean' }, unit: { type: 'enum', values: ['s', 'm'] }, mappings: { type: 'list' } } };
+const schemaFor = (type) => SCHEMA[type] ?? null;
+const WIDGETS = `- Apps:
+    - Counter:
+        href: http://counter.lan
+        widget:
+          type: counter
+          url: http://counter.lan   # the API
+          key: literal-key-123
+          mappings: [a, b]
+    - Other:
+        widgets:
+          - type: counter
+            url: http://other.lan
+            key: "{{DASHBOARD_VAR_KEY}}"
+          - type: unknown
+            x: 1
+`;
+
+test('widgets: options by their schema, secrets as tokens, lists and undeclared keys kept aside', () => {
+  const dir = tmpDir('dash-services-');
+  fs.writeFileSync(path.join(dir, 'services.yaml'), WIDGETS);
+  const { items } = readServices(dir, schemaFor);
+  const [counter, other] = items[0].items;
+  const [w] = counter.widgets;
+  assert.deepEqual([w.id, w.type, w.options.url, w.options.every, w.options.live, w.rest], ['widget', 'counter', 'http://counter.lan', '', '', ['mappings']]);
+  assert.match(w.options.key, /^__SECRET_[0-9a-f]{10}__$/);
+  assert.ok(!JSON.stringify(items).includes('literal-key-123'));
+  assert.equal(other.widgets[0].options.key, '{{DASHBOARD_VAR_KEY}}', 'a placeholder is no secret');
+  assert.deepEqual([other.widgets[1].id, other.widgets[1].type, other.widgets[1].rest], ['widgets/1', 'unknown', ['x']]);
+});
+
+test('widgets: edits keep comments, the secret behind its token, the form widget: or widgets:', () => {
+  const dir = tmpDir('dash-services-');
+  fs.writeFileSync(path.join(dir, 'services.yaml'), WIDGETS);
+  const read = readServices(dir, schemaFor);
+  assert.equal(writeServices(dir, read.items, read.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor).changed, false, 'unchanged');
+  const [counter, other] = read.items[0].items;
+  counter.widgets[0].options.every = '30';
+  counter.widgets[0].options.live = 'true';
+  counter.widgets[0].options.unit = 'm';
+  // Other: its unknown widget removed, a new one added; one widget left in a list stays a list
+  other.widgets = [other.widgets[0]];
+  const out = writeServices(dir, read.items, read.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor);
+  assert.deepEqual(out.warnings, []);
+  let text = fs.readFileSync(path.join(dir, 'services.yaml'), 'utf8');
+  assert.match(text, /url: http:\/\/counter\.lan +# the API/);
+  assert.match(text, /key: literal-key-123/);
+  assert.match(text, /mappings: \[ a, b \]|mappings: \[a, b\]/);
+  assert.match(text, /every: 30\n +live: true\n +unit: m/);
+  assert.match(text, /widgets:\n +- type: counter/);
+  assert.doesNotMatch(text, /unknown/);
+  // a second widget for Counter turns widget: into widgets:; a new secret typed in warns
+  const again = readServices(dir, schemaFor);
+  again.items[0].items[0].widgets.push({ id: null, type: 'counter', options: { url: 'http://two.lan', key: 'typed-key' } });
+  const two = writeServices(dir, again.items, again.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor);
+  assert.deepEqual(two.warnings.map((w) => w.path), ['[0].Apps[0].Counter.widgets[1].key']);
+  text = fs.readFileSync(path.join(dir, 'services.yaml'), 'utf8');
+  const config = loadConfig(dir);
+  assert.deepEqual(config.errors, []);
+  assert.deepEqual(config.services[0].services[0].widgets.map((w) => [w.type, w.options.key]), [['counter', 'literal-key-123'], ['counter', 'typed-key']]);
+  assert.doesNotMatch(text, /^ +widget:/m);
+  // a token moved to another option is refused; a bad number too
+  const bad = readServices(dir, schemaFor);
+  bad.items[0].items[1].widgets[0].options.url = bad.items[0].items[0].widgets[0].options.key;
+  assert.throws(() => writeServices(dir, bad.items, bad.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor), (err) => err.status === 400);
+  const nan = readServices(dir, schemaFor);
+  nan.items[0].items[0].widgets[0].options.every = 'often';
+  assert.throws(() => writeServices(dir, nan.items, nan.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor), (err) => err.status === 400 && /every/.test(err.message));
+  assert.deepEqual(widgetCatalog(new Map([['counter', { manifest: { id: 'counter', name: 'Counter', options: SCHEMA.counter } }]]))[0].options.key, { type: 'string', required: false, secret: true });
 });

@@ -21,7 +21,7 @@ export const TOKEN = /__SECRET_([0-9a-f]{10})__/g;
 const HAS_TOKEN = /__SECRET_[0-9a-f]{10}__/;
 const PLACEHOLDER = /\{\{\s*(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Za-z0-9_]+\s*\}\}/;
 
-const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
+export const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
 const keyOf = (pair) => (YAML.isScalar(pair.key) ? String(pair.key.value) : null);
 const join = (p, k) => (typeof k === 'number' ? `${p}[${k}]` : p ? `${p}.${k}` : String(k));
 

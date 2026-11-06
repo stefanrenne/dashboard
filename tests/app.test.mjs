@@ -1753,3 +1753,32 @@ test('settings page services: the tree read and saved, the dashboard follows; st
     await t.close();
   }
 });
+
+test('settings page widgets: the form gets the schemas, a test fills in the hidden key on the server', async () => {
+  const upstream = await serve((req, res) => {
+    if (req.headers.authorization !== 'Bearer literal-key-123') { res.statusCode = 401; return res.end('{}'); }
+    res.end(JSON.stringify({ count: 7 }));
+  });
+  const t = await startApp({
+    'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\nplugins:\n  - path: ${path.resolve('examples/widget-template')}\n`,
+    'services.yaml': `- Apps:\n    - Counter:\n        widget:\n          type: example-counter\n          url: ${upstream.url}\n          key: literal-key-123\n`,
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const post = (body) => fetch(`${t.base}/api/settings/widget-test`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) }).then((r) => r.json());
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/services`, { headers: auth })).text();
+    assert.ok(!read.includes('literal-key-123'));
+    const { items, widgets } = JSON.parse(read);
+    assert.equal(widgets.find((w) => w.id === 'example-counter').options.key.secret, true);
+    const w = items[0].items[0].widgets[0];
+    assert.match(w.options.key, /^__SECRET_/);
+    const ok = await post({ type: w.type, options: w.options, file: 'services.yaml' });
+    assert.equal(ok.ok, true, JSON.stringify(ok));
+    const wrong = await post({ type: w.type, options: { ...w.options, key: 'other-key' }, file: 'services.yaml' });
+    assert.equal(wrong.ok, false);
+    assert.equal((await post({ type: 'nope', options: {} })).ok, false);
+  } finally {
+    await t.close();
+    upstream.close();
+  }
+});

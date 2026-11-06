@@ -175,7 +175,9 @@ writes them into
 `providers`, ...), which it names; the dashboard follows at once.
 
 Services is a form: groups, nested groups and services (link, icon, description, the status
-check and the rest of a service's keys), renamed, moved to another group, added and removed; a
+check and the rest of a service's keys) and their widgets (a form per widget from its options,
+with a test button; secret options stay hidden, lists and keys a widget does not declare stay
+as written), renamed, moved to another group, added and removed; a
 group or list that comes from an `!include` is a block with a link to its file, and the services
 found by discovery are listed (their labels are their source). "Edit as text" shows the file.
 The other sections (Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, and
