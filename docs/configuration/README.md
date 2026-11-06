@@ -162,7 +162,8 @@ header widgets' box, where links open, the status labels), the security (the log
 some actions, how long a login and an unlock last, the allowed hosts), the admin password and a
 few switches (the versions in the footer, the update check, search engines). It writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
-`providers`, ...), which it names; the dashboard follows at once.
+`providers`, ...), which it names; the dashboard follows at once. The previous version of the file is kept under
+`.history/` in the config folder (the last ten).
 
 - It opens with the [admin password](#admin-password); a login counts, and the browser stays
   unlocked as after a press (`actions.remember`).

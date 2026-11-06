@@ -2,6 +2,15 @@
 
 Why things are the way they are. Newest first.
 
+## The settings page writes the config files (2026-11-06)
+Everything in the YAML files is to be managed from the settings page, so hard rule 5 ("the
+user's files are never written") became "only on an admin's explicit save". The app still never
+writes a config file on its own. Every save goes through `src/config/edit.js`: only the config
+files themselves, checked the way `loadConfig` loads them (a save that adds errors is refused), a
+409 when the file changed since the page read it, and the previous version kept under
+`.history/` (the last ten per file) so a mistake can be undone. The YAML Document API keeps
+comments, `!include` and variables as written.
+
 ## Root scripts through one sudo rule, off by default (2026-10-25)
 Scripts that maintain the homelab (swag configs) write files that must stay owned by root, and the
 dashboard runs as `node`. The server itself stays unprivileged (see the pitfalls); instead the

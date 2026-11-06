@@ -2,10 +2,9 @@
 // the file's comments and every other key (layout, plugins, providers, ...) as they are. Only the
 // admin password's hash is ever written, and changing it needs the current one.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import YAML from 'yaml';
 import { parseDuration } from './util.js';
+import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
 import { LANGUAGES, THEMES, COLORS } from './onboarding.js';
 
 // the fields the page shows, by settings.yaml key; `at` is a path into the file when nested
@@ -28,25 +27,18 @@ export const FIELDS = {
 };
 const HOST = /^(\*|[a-z0-9.-]+(:\d{1,5})?|\[[0-9a-f:]+\](:\d{1,5})?)$/;
 
+const FILE = 'settings.yaml';
+
 function readDoc(configDir) {
-  const file = path.join(configDir, 'settings.yaml');
-  let text = '';
-  try {
-    text = fs.readFileSync(file, 'utf8');
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw err;
-  }
-  const doc = YAML.parseDocument(text);
-  if (doc.errors.length) throw new Error(`settings.yaml: ${doc.errors[0].message.split('\n')[0]}`);
+  const doc = parseDocument(readConfigFile(configDir, FILE).text, FILE);
   if (doc.contents === null) doc.contents = doc.createNode({});
   if (!YAML.isMap(doc.contents)) throw new Error('settings.yaml: expected a map');
-  return { file, doc };
+  return { doc };
 }
 
-function writeDoc(file, doc) {
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, doc.toString({ lineWidth: 0 }));
-  fs.renameSync(tmp, file);
+// the fields are checked by checkSettings; the previous version is kept in the history
+function writeDoc(configDir, doc) {
+  writeConfigFile(configDir, FILE, documentText(doc), { check: false });
 }
 
 /** The page's fields as settings.yaml has them now, and the other keys it leaves alone. */
@@ -110,7 +102,7 @@ export function checkSettings(input) {
 
 /** Writes the page's values into settings.yaml: set where they differ from the default, left out where not. */
 export function writeSettings(configDir, values) {
-  const { file, doc } = readDoc(configDir);
+  const { doc } = readDoc(configDir);
   for (const [key, v] of Object.entries(values)) {
     const def = FIELDS[key];
     if (key === 'login') continue; // with loginRemember below
@@ -137,12 +129,12 @@ export function writeSettings(configDir, values) {
     } else if (YAML.isMap(actions)) actions.set('remember', values.actionsRemember);
     else doc.set('actions', doc.createNode({ remember: values.actionsRemember }));
   }
-  writeDoc(file, doc);
+  writeDoc(configDir, doc);
 }
 
 /** Writes a new admin password's hash into settings.yaml. */
 export function writeAdminPassword(configDir, hash) {
-  const { file, doc } = readDoc(configDir);
+  const { doc } = readDoc(configDir);
   doc.set('adminPassword', hash);
-  writeDoc(file, doc);
+  writeDoc(configDir, doc);
 }

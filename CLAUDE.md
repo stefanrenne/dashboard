@@ -17,7 +17,7 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 |---|---|
 | `src/server.js` | Entry point: arguments, listen, signals. |
 | `src/app.js` | Application state (config → plugins → registry → discovery → layout), HTTP routes, SSE reload. |
-| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`). |
+| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`), `edit.js` (the settings page's writes: allow-list, check, conflict, history). |
 | `src/plugins/` | `loader.js` (widget.yaml + server.js → registry), `options.js` (option schema, public/secret split), `runtime.js` (ctx, timeout, cache), `sandbox.js` + `worker.js` (installed widgets in a worker thread), `installer.js` (git/npm/path sources + lock file). |
 | `src/discovery/` | `docker.js` (labels, Swarm services), `kubernetes.js` (Ingress, IngressRoute and HTTPRoute annotations), `kubeconfig.js` (service account or kubeconfig connection), `labels.js`, `index.js` (polling + merge with YAML, weights). |
 | `src/layout.js` | Widget instances (server side) and the layout JSON (browser side). |
@@ -75,9 +75,13 @@ gets commits of its own; the release tag goes on `main`. Steps in
 4. **A widget can never take down the server.** Every call has a timeout and a try/catch; a failure
    ends up on the widget's card. The same holds for broken packages, unknown types and bad options:
    they become messages, never exceptions.
-5. **The user's files are never written.** The app only writes under `<config>/plugins/`
-   (downloaded packages and `plugins.lock.yaml`), and a log file under `logpath` when the user
-   sets one (`src/log.js`).
+5. **The user's files are written only on an admin's explicit save.** The config files change
+   only when an admin saves them in the setup wizard or on the settings page; the settings page
+   writes through `src/config/edit.js` (allow-list, checked as `loadConfig` loads it, 409 on a concurrent edit,
+   the previous version under `<config>/.history/`, comments kept). On its own the app only
+   writes under `<config>/plugins/` (downloaded packages and `plugins.lock.yaml`), its state
+   files (`.sessions.json`, `.passkeys.json`), and a log file under `logpath` when the user sets
+   one (`src/log.js`).
 6. **Config files are a contract** with existing installations. Before 1.0 a renamed or removed
    key needs no fallback, but every such change is in the CHANGELOG with what the old form
    becomes. From 1.0 on the old form keeps working with a warning, covered by a test with config

@@ -67,3 +67,12 @@ test('writeSettings: changes only the fields, keeps comments and every other key
   fs.writeFileSync(file, 'title: [broken');
   assert.throws(() => writeSettings(dir, { title: 'x' }), /settings\.yaml/, 'a file that does not parse is not written over');
 });
+
+test('writeSettings: the previous settings.yaml is kept in the history', async () => {
+  const { listHistory, readHistory } = await import('../src/config/edit.js');
+  const dir = tmpDir('dash-set-');
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), SETTINGS);
+  writeSettings(dir, { title: 'Thuis' });
+  const [last] = listHistory(dir, 'settings.yaml');
+  assert.equal(readHistory(dir, 'settings.yaml', last.id), SETTINGS);
+});

@@ -8,16 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Goal: everything in the YAML files (and `custom.css`/`custom.js`) can be managed from `/settings`,
 not only the `FIELDS` of settings.yaml. Roughly in this order; 1–3 come before any editor.
 
-- [ ] **Foundation: a general config-file writer.** Move `readDoc`/`writeDoc` out of
-  `src/settings.js` into `src/config/edit.js`, for any file in the config folder (an allow-list of
-  names, the resolved-path check, never `plugins/`). Validate before writing: parse the new
-  document, run the file's `normalize*` from `src/config/load.js` with a collecting ctx, refuse on
-  errors and return the warnings (file › path). Keep the previous version (`<file>.bak` or a
-  `.history/` folder) and detect concurrent edits (a hash sent with the read, 409 when the file
-  changed since). Revise hard rule 5 in `CLAUDE.md` and `docs/extend/contributing/decisions.md`:
-  the user's files are written only on an admin's explicit save from the settings page. Tests:
-  comments and key order survive, `!include` and `{{DASHBOARD_VAR_*}}` survive, a refused save
-  leaves the file untouched.
 - [ ] **Secrets and placeholders on the page.** The settings API sends values as the file has
   them: `{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}` as text, never the substituted value; options
   marked `secret: true` are masked and stay unchanged unless retyped. The "a secret never reaches

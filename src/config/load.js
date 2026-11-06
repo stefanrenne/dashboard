@@ -114,55 +114,72 @@ function pluginUpdateMs(value, file, ctx) {
   return ms;
 }
 
-export function loadConfig(dir, opts = {}) {
-  const errors = [];
-  const warnings = [];
-  const secrets = new Set();
-  const raw = {};
+/** One file's text → its value with includes and variables resolved; undefined when it does not parse. */
+function parseFile(dir, file, text, opts, out) {
+  let parsed;
+  try {
+    parsed = parseConfigYaml(text);
+  } catch (err) {
+    const line = err.linePos?.[0]?.line;
+    out.errors.push({ file, path: line ? `line ${line}` : '', message: err.message.split('\n')[0] });
+    return undefined;
+  }
+  // includes first, so variables and secrets in included files are handled the same way
+  parsed = resolveIncludes(parsed, { configDir: dir, file, errors: out.errors });
+  const sub = substitute(parsed, opts);
+  for (const s of sub.secrets) out.secrets.add(s);
+  for (const w of sub.warnings) out.warnings.push({ file, path: '', message: w });
+  return sub.value;
+}
 
+const NORMALIZE = {
+  settings: (raw, ctx) => normalizeSettings(raw, ctx),
+  services: (raw, ctx) => normalizeServices(raw, ctx),
+  widgets: (raw, ctx) => normalizeHeaderWidgets(raw, ctx),
+  bookmarks: (raw, ctx) => normalizeBookmarks(raw, ctx),
+  docker: (raw, ctx, dir) => normalizeDocker(raw, ctx, dir),
+  kubernetes: (raw, ctx, dir) => normalizeKubernetes(raw, ctx, dir),
+  proxmox: (raw, ctx) => normalizeProxmox(raw, ctx),
+};
+
+function collector() {
+  const out = { errors: [], warnings: [], secrets: new Set() };
+  out.ctx = {
+    error: (file, p, message) => out.errors.push({ file, path: p, message }),
+    warn: (file, p, message) => out.warnings.push({ file, path: p, message }),
+  };
+  return out;
+}
+
+export function loadConfig(dir, opts = {}) {
+  const out = collector();
+  const raw = {};
   for (const name of CONFIG_FILES) {
     const file = `${name}.yaml`;
-    const full = path.join(dir, file);
     let text;
     try {
-      text = fs.readFileSync(full, 'utf8');
+      text = fs.readFileSync(path.join(dir, file), 'utf8');
     } catch (err) {
-      if (err.code !== 'ENOENT') errors.push({ file, path: '', message: `cannot read: ${err.code || err.message}` });
+      if (err.code !== 'ENOENT') out.errors.push({ file, path: '', message: `cannot read: ${err.code || err.message}` });
       continue;
     }
-    let parsed;
-    try {
-      parsed = parseConfigYaml(text);
-    } catch (err) {
-      const line = err.linePos?.[0]?.line;
-      errors.push({ file, path: line ? `line ${line}` : '', message: err.message.split('\n')[0] });
-      continue;
-    }
-    // includes first, so variables and secrets in included files are handled the same way
-    parsed = resolveIncludes(parsed, { configDir: dir, file, errors });
-    const sub = substitute(parsed, opts);
-    for (const s of sub.secrets) secrets.add(s);
-    for (const w of sub.warnings) warnings.push({ file, path: '', message: w });
-    raw[name] = sub.value;
+    raw[name] = parseFile(dir, file, text, opts, out);
   }
+  const config = {};
+  for (const name of CONFIG_FILES) config[name] = NORMALIZE[name](raw[name], out.ctx, dir);
+  return { ...config, errors: out.errors, warnings: out.warnings, secrets: out.secrets };
+}
 
-  const ctx = {
-    error: (file, p, message) => errors.push({ file, path: p, message }),
-    warn: (file, p, message) => warnings.push({ file, path: p, message }),
-  };
-
-  return {
-    settings: normalizeSettings(raw.settings, ctx),
-    services: normalizeServices(raw.services, ctx),
-    widgets: normalizeHeaderWidgets(raw.widgets, ctx),
-    bookmarks: normalizeBookmarks(raw.bookmarks, ctx),
-    docker: normalizeDocker(raw.docker, ctx, dir),
-    kubernetes: normalizeKubernetes(raw.kubernetes, ctx, dir),
-    proxmox: normalizeProxmox(raw.proxmox, ctx),
-    errors,
-    warnings,
-    secrets,
-  };
+/**
+ * Checks `text` as the new contents of config file `name` ('services', ...) the way loadConfig
+ * loads it: { errors, warnings, secrets }, each message with its file and a path into it.
+ */
+export function checkConfigFile(dir, name, text, opts = {}) {
+  if (!NORMALIZE[name]) throw new Error(`not a config file: ${name}`);
+  const out = collector();
+  const raw = parseFile(dir, `${name}.yaml`, text, opts, out);
+  NORMALIZE[name](raw, out.ctx, dir);
+  return { errors: out.errors, warnings: out.warnings, secrets: out.secrets };
 }
 
 /** `- Key: value` entries: a list of single-key maps. Returns [[key, value, index]]. */
