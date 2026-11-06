@@ -1845,3 +1845,27 @@ test('settings page files: custom.js made from Advanced, and the page loads it',
     await t.close();
   }
 });
+
+test('settings page import: homepage files checked, then written all or none; the admin password stays', async () => {
+  const password = hashPassword('Sesam-123', { N: 1024 });
+  const t = await startApp({ 'settings.yaml': `title: Mine\nadminPassword: "${password}"\nallowedHosts: [dash.lan]\n`, 'services.yaml': '- Old:\n    - A:\n        href: http://a.lan\n' });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const post = (p, files) => fetch(`${t.base}/api/settings${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ files }) });
+  const files = { 'settings.yaml': 'title: From homepage\n', 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n', 'other.txt': 'x' };
+  try {
+    const check = await (await post('/import/check', files)).json();
+    assert.deepEqual([check.ok, check.services.length, check.replaces], [true, 1, ['settings.yaml', 'services.yaml']]);
+    assert.equal((await post('/import', { ...files, 'services.yaml': 'just: a map\n' })).status, 400, 'a broken file: nothing written');
+    assert.match(fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8'), /title: Mine/);
+    const done = await (await post('/import', files)).json();
+    assert.deepEqual(done, { ok: true, files: ['settings.yaml', 'services.yaml'] });
+    const settings = fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8');
+    assert.match(settings, /title: From homepage/);
+    assert.ok(settings.includes(password), 'the admin password stays');
+    assert.match(settings, /allowedHosts: \[ ?dash\.lan ?\]/);
+    assert.deepEqual(t.app.layout.groups.map((g) => g.name), ['Media']);
+    assert.equal((await post('/import', { 'x.yaml': 'a' })).status, 400);
+  } finally {
+    await t.close();
+  }
+});

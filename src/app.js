@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import YAML from 'yaml';
 import { loadConfig } from './config/load.js';
 import { watchConfig } from './config/watch.js';
 import { loadRegistry } from './plugins/loader.js';
@@ -30,7 +31,7 @@ import { secretsOf } from './config/mask.js';
 import { readBookmarks, writeBookmarks } from './settings-bookmarks.js';
 import { readServers, writeServers, SPECS as SERVER_FILES } from './settings-servers.js';
 import { substitute } from './config/vars.js';
-import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
+import { checkConfigText, parseDocument, documentText, editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
 import { parseConfigYaml } from './config/include.js';
@@ -568,7 +569,7 @@ export async function createApp({
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
     let body;
     try {
-      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || ['/services', '/bookmarks', '/header'].includes(route) ? BODY_LIMIT : 64 * 1024) : null;
+      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || ['/services', '/bookmarks', '/header', '/import', '/import/check'].includes(route) ? BODY_LIMIT : 64 * 1024) : null;
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
@@ -616,6 +617,38 @@ export async function createApp({
         if (!(err instanceof ConfigEditError)) throw err;
         return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
       }
+    }
+    if (method === 'POST' && (route === '/import/check' || route === '/import')) {
+      // homepage's files from the settings page: checked as the wizard does, then written all or none
+      const given = Object.fromEntries(Object.entries(body?.files && typeof body.files === 'object' ? body.files : {}).filter(([k, v]) => HOMEPAGE_FILES.includes(k) && typeof v === 'string'));
+      if (!Object.keys(given).length) return send(res, 400, { ok: false, error: `none of ${HOMEPAGE_FILES.join(', ')}` }, 'application/json', headers);
+      // this dashboard's admin password, login and allowed hosts stay: an import does not undo the security
+      if (given['settings.yaml'] !== undefined) {
+        try {
+          const doc = parseDocument(given['settings.yaml'], 'settings.yaml');
+          const mine = parseDocument(readConfigFile(configDir, 'settings.yaml').text, 'settings.yaml');
+          if (doc.contents === null) doc.contents = doc.createNode({});
+          if (YAML.isMap(doc.contents) && YAML.isMap(mine.contents)) {
+            for (const key of ['adminPassword', 'login', 'allowedHosts', 'actions']) {
+              if (mine.contents.has(key)) doc.contents.set(key, mine.contents.get(key, true));
+              else doc.contents.delete(key);
+            }
+          }
+          given['settings.yaml'] = documentText(doc);
+        } catch (err) {
+          return send(res, 400, { ok: false, error: err.message }, 'application/json', headers);
+        }
+      }
+      if (route === '/import/check') {
+        const dry = homepageDryRun(given);
+        return send(res, 200, { ...dry, replaces: Object.keys(given).filter((k) => readConfigFile(configDir, k).exists) }, 'application/json', headers);
+      }
+      const problems = Object.entries(given).flatMap(([name, text]) => checkConfigText(configDir, name, text, { env }).errors);
+      if (problems.length) return send(res, 400, { ok: false, error: 'not imported: fix these first', errors: problems }, 'application/json', headers);
+      for (const [name, text] of Object.entries(given)) writeConfigFile(configDir, name, text, { check: false });
+      log.info(`settings: imported homepage's ${Object.keys(given).join(', ')}`);
+      await reload();
+      return send(res, 200, { ok: true, files: Object.keys(given) }, 'application/json', headers);
     }
     if (method === 'POST' && route === '/docker-test') {
       // a saved server, as the dashboard uses it (the mounted socket included)

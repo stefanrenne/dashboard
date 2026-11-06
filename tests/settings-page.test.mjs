@@ -535,3 +535,25 @@ test('settings page: Docker, Proxmox and Kubernetes as forms', async () => {
   const kube = calls.filter((c) => c.p === '/api/settings/servers/kubernetes.yaml' && c.init.method === 'POST').at(-1).body;
   assert.deepEqual([kube.hash, kube.fields.mode, kube.fields.traefik], ['k1', 'cluster', 'true']);
 });
+
+test('settings page: Advanced imports homepage files after a check', async () => {
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true }] },
+    'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
+    'POST /api/settings/import/check': { ok: true, files: ['services.yaml'], services: [{ name: 'Plex' }], bookmarks: 0, header: 0, errors: [], warnings: [], replaces: ['services.yaml'] },
+    'POST /api/settings/import': { ok: true, files: ['services.yaml'] },
+  }, () => {}, 'http://dash.lan/settings#advanced');
+  await tick();
+  await tick();
+  const input = doc.getElementById('import-files');
+  Object.defineProperty(input, 'files', { value: [{ name: 'services.yaml', text: async () => '- Media: []\n' }, { name: 'notes.txt', text: async () => 'x' }] });
+  input.dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.deepEqual(calls.filter((c) => c.p === '/api/settings/import/check').at(-1).body, { files: { 'services.yaml': '- Media: []\n' } });
+  assert.match(doc.getElementById('panel').textContent, /services\.yaml: 1 services, 0 bladwijzers, 0 kopwidgets\.Vervangt services\.yaml\./);
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Importeren').click();
+  await tick();
+  assert.match(doc.getElementById('panel').textContent, /Geïmporteerd: services\.yaml\./);
+  assert.ok([...doc.querySelectorAll('.saved button')].some((b) => b.textContent === 'Downloaden'));
+});
