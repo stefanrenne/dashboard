@@ -34,6 +34,7 @@ remote:
 | `tls` | | `caFile` (the CA that signed the daemon's certificate), `certFile` and `keyFile` (the client certificate, together). Read when the config loads; their contents stay on the server |
 | `discover` | `true` | `false`: use the server for `container:` status only, without adding its containers |
 | `swarm` | `false` | `true`: a Docker Swarm manager; discovery lists its services, and `container:` also finds a service by name (see [Docker Swarm](#docker-swarm)) |
+| `allowVariables` | none | The `{{DASHBOARD_VAR_*}}` / `{{DASHBOARD_FILE_*}}` (and `HOMEPAGE_`) variables its containers' labels may use, e.g. `[DASHBOARD_VAR_GRAFANA]`, or `true` for all. See [What labels may do](#what-labels-may-do) |
 
 The name is what `server:` refers to in `services.yaml`, and what config messages show.
 
@@ -88,6 +89,9 @@ labels:
   dashboard.statusStyle: dot           # also target, showStats
 ```
 
+The variable in the last widget label needs `allowVariables: [DASHBOARD_VAR_GRAFANA]` on the
+server in docker.yaml (see [What labels may do](#what-labels-may-do)).
+
 Several widgets and lists use homepage's index notation:
 
 ```yaml
@@ -114,9 +118,29 @@ labels:
 A discovered container always gets its Docker state as a status label, next to `siteMonitor`
 or `ping` when those are set.
 
+### What labels may do
+
+A label is written by whoever starts a container, and an image can bring labels of its own (a
+`LABEL` in its Dockerfile). So a discovered service gets less than one in services.yaml:
+
+- **Variables only where you allow them.** `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` in a
+  label are filled in only when the server's `allowVariables` lists the variable (`true`: every
+  one). Otherwise the service is left out, and the config messages name it. A label could
+  otherwise send any of the dashboard's passwords to a server of its own.
+- **Nothing that runs or frames.** Widget options marked `discoverable: false` (the `button`'s
+  `script`, `command`, `user` and `inheritEnv`), options the page shows in a frame (the `iframe`'s
+  `src`), `provider:` and references to another service's widget (`service_group` /
+  `service_name`) are dropped, with a message. `target: hidden-iframe` opens as a link instead
+  of calling the address from the server.
+- What remains, such as a widget's `url`, is called by the dashboard: a label can make it call
+  an address in your network. Only people you trust should start containers on a discovered
+  server; `discover: false` turns discovery off for a server.
+
+The same holds for Kubernetes annotations (`allowVariables` in kubernetes.yaml).
+
 **Coming from homepage?** Containers labelled for homepage (`homepage.group` + `homepage.name`,
-`homepage.widget.*`, ...) are discovered as they are, and `{{HOMEPAGE_VAR_*}}` in their
-labels is filled in from the environment. `dashboard.*` labels win when a container has both.
+`homepage.widget.*`, ...) are discovered as they are; `{{HOMEPAGE_VAR_*}}` in their labels is
+filled in from the environment when `allowVariables` lists it. `dashboard.*` labels win when a container has both.
 See [From homepage](homepage.md) for the rest of a move.
 
 **Access.** The dashboard only calls `GET /containers/json` and `GET /containers/<name>/json|stats`

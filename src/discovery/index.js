@@ -3,7 +3,7 @@
 import { discoverDocker } from './docker.js';
 import { discoverKubernetes } from './kubernetes.js';
 import { normalizeService } from '../config/load.js';
-import { substitute } from '../config/vars.js';
+import { substitute, variablesIn } from '../config/vars.js';
 import { parseDuration } from '../util.js';
 
 export class Discovery {
@@ -38,29 +38,40 @@ export class Discovery {
     for (const server of this.config.docker.filter((s) => s.discover)) {
       try {
         const withInstance = { ...server, instanceName: this.config.settings?.instanceName ?? null };
-        found.push(...(await this.sources.docker(withInstance)).map((s) => ({ ...s, origin: `docker:${server.name}` })));
+        const source = { file: 'docker.yaml', path: `${server.name}.allowVariables`, allow: server.allowVariables };
+        found.push(...(await this.sources.docker(withInstance)).map((s) => ({ ...s, origin: `docker:${server.name}`, source })));
       } catch (err) {
         errors.push({ file: 'docker.yaml', path: server.implicit ? `${server.name} (the mounted ${server.socket})` : server.name, message: `discovery: ${err.message}` });
       }
     }
     if (['cluster', 'default'].includes(this.config.kubernetes.mode)) {
       try {
-        found.push(...(await this.sources.kubernetes({ config: this.config.kubernetes, instanceName: this.config.settings?.instanceName ?? null })).map((s) => ({ ...s, origin: 'kubernetes' })));
+        const source = { file: 'kubernetes.yaml', path: 'allowVariables', allow: this.config.kubernetes.allowVariables };
+        found.push(...(await this.sources.kubernetes({ config: this.config.kubernetes, instanceName: this.config.settings?.instanceName ?? null })).map((s) => ({ ...s, origin: 'kubernetes', source })));
       } catch (err) {
         errors.push({ file: 'kubernetes.yaml', path: 'mode', message: `discovery: ${err.message}` });
       }
     }
-    // Labels may use {{DASHBOARD_VAR_*}} / {{HOMEPAGE_VAR_*}} too; those values are secrets (hard rule 1).
+    // Labels may use {{DASHBOARD_VAR_*}} / {{HOMEPAGE_VAR_*}} only where the source's allowVariables
+    // lists them: a label is written by whoever starts a container (or builds its image) and could
+    // send the value anywhere. Substituted values are secrets (hard rule 1).
     const secrets = new Set();
-    for (const svc of found) {
+    const kept = [];
+    for (const { source, ...svc } of found) {
+      const refused = variablesIn(svc.def).filter((name) => source.allow !== true && !(source.allow ?? []).includes(name));
+      if (refused.length) {
+        errors.push({ file: source.file, path: source.path, message: `discovery: "${svc.name}" is left out: its labels use ${refused.map((n) => `{{${n}}}`).join(', ')}, which allowVariables does not list` });
+        continue;
+      }
       const sub = substitute(svc.def, { env: this.env });
       svc.def = sub.value;
       for (const s of sub.secrets) secrets.add(s);
+      kept.push(svc);
     }
-    this.found = found;
+    this.found = kept;
     this.errors = errors;
     this.secrets = secrets;
-    const signature = JSON.stringify([found, errors]);
+    const signature = JSON.stringify([kept, errors]);
     if (signature !== this.signature) {
       this.signature = signature;
       this.onChange();

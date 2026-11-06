@@ -104,6 +104,11 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     if (!isPlainObject(value)) return value;
     const out = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withReferences(v, where, depth + 1)]));
     if (out.service_group === undefined || out.service_name === undefined) return out;
+    // a label could borrow a configured widget's key and point the url elsewhere
+    if (where.discovered) {
+      errors.push({ ...where, message: `service_group/service_name: not taken from a discovered service; set this widget in services.yaml` });
+      return out;
+    }
     const service = servicesByName.get(`${out.service_group}\u0000${out.service_name}`);
     const id = (t) => registry.get(t)?.id ?? t;
     const widget = service?.widgets.find((w) => !out.type || id(w.type) === id(out.type));
@@ -152,6 +157,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       return { instanceId: id, type, options: {}, known: false };
     }
     const { own, options: widgetOptions } = splitInstanceKeys(widget.manifest.options, withConnection(widget.id, rawOptions, where));
+    if (where.discovered) refuseFromLabels(widget, own, widgetOptions, where, type);
     if (own.provider !== undefined) applyProvider(widget.manifest.options, String(own.provider), widgetOptions, where, type);
     const { options, publicOptions, errors: optionErrors } = validateOptions(widget.manifest.options, widgetOptions, secrets);
     // `type: icon` options arrive as URLs, resolved like service icons (mdi-/si- with #dash-mask)
@@ -239,6 +245,26 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         : `${type}: anyone who can open the page can run this; set an admin password on the settings page to ask for it first (or confirm: none to keep it as is)` });
     }
     return confirm;
+  }
+
+  /**
+   * What a discovered service may not set: labels come from whoever starts a container, or from
+   * its image. Options marked `discoverable: false` in widget.yaml (a button's command), the
+   * options the page frames (`frames`: they widen the CSP) and `provider` (it hands out a key
+   * the label could send to its own url) only come from the YAML config.
+   */
+  function refuseFromLabels(widget, own, options, where, type) {
+    const schema = widget.manifest.options;
+    const framed = widget.manifest.frames ?? [];
+    for (const name of Object.keys(options)) {
+      if (schema[name]?.discoverable !== false && !framed.includes(name)) continue;
+      delete options[name];
+      errors.push({ ...where, message: `${type}: ${name} is not taken from a discovered service; set this widget in services.yaml` });
+    }
+    if (own.provider !== undefined) {
+      delete own.provider;
+      errors.push({ ...where, message: `${type}: provider is not taken from a discovered service; set this widget in services.yaml` });
+    }
   }
 
   /**
@@ -371,10 +397,15 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       const where = { file: service.discovered ?? 'services.yaml', path: `${group.name}.${service.name}`, ...(service.discovered ? { discovered: true } : {}) };
       const id = stableId('svc', group.name, service.name);
       // homepage's `target: hidden-iframe` (a webhook): the server calls it and reports back.
-      const target = service.target ?? config.settings.target;
-      // the webhook asks for the admin password unless the (configured, not discovered) service says confirm: none
+      // Not for a discovered service: its label would make the server call any address; it opens as a link.
+      let target = service.target ?? config.settings.target;
+      if (target === 'hidden-iframe' && service.discovered) {
+        if (service.target) warnings.push({ ...where, message: 'target: hidden-iframe is not taken from a discovered service; it opens as a link' });
+        target = '_blank';
+      }
+      // the webhook asks for the admin password unless the service says confirm: none
       const hook = target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '');
-      const hookConfirm = !hook ? null : service.confirm === 'none' && !service.discovered ? null : service.confirm === 'always' ? 'always' : 'password';
+      const hookConfirm = !hook ? null : service.confirm === 'none' ? null : service.confirm === 'always' ? 'always' : 'password';
       if (hook) actions.set(id, { name: service.name, href: service.href, confirm: hookConfirm });
       const statuses = statusesFor(group, service, where);
       const card = {
@@ -382,7 +413,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         name: service.name,
         ...serviceFilter(service, statuses, where),
         href: service.href ?? null,
-        target: service.target ?? config.settings.target,
+        target,
         icon: resolveIcon(service.icon),
         description: service.description ?? null,
         discovered: service.discovered ?? null,

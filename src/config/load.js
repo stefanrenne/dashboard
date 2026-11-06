@@ -507,6 +507,23 @@ export function normalizeBookmarks(raw, ctx) {
   return groups;
 }
 
+/**
+ * `allowVariables:` of a discovery source: the {{DASHBOARD_VAR_*}} / {{DASHBOARD_FILE_*}} names its
+ * labels may use (`true`: all). Without it labels use none: whoever starts a container (or builds
+ * its image) could otherwise send any secret of the dashboard to a server of their choice.
+ */
+function allowVariables(raw, file, p, ctx) {
+  if (raw === undefined || raw === null || raw === false) return {};
+  if (raw === true) return { allowVariables: true };
+  const names = [];
+  for (const item of Array.isArray(raw) ? raw : [raw]) {
+    const name = String(item).trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+    if (/^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Z0-9_]+$/.test(name)) names.push(name);
+    else ctx.warn(file, p, `"${item}" is not a variable name such as DASHBOARD_VAR_GRAFANA_PASSWORD, ignored`);
+  }
+  return names.length ? { allowVariables: names } : {};
+}
+
 export function normalizeDocker(raw, ctx, configDir = '.') {
   const file = 'docker.yaml';
   if (raw === undefined || raw === null) return [];
@@ -521,13 +538,14 @@ export function normalizeDocker(raw, ctx, configDir = '.') {
       continue;
     }
     const swarm = def.swarm === true ? { swarm: true } : {};
-    if (def.socket) servers.push({ name, socket: String(def.socket), discover: def.discover !== false, ...swarm });
+    const allow = allowVariables(def.allowVariables, file, `${name}.allowVariables`, ctx);
+    if (def.socket) servers.push({ name, socket: String(def.socket), discover: def.discover !== false, ...swarm, ...allow });
     else if (def.host) {
       const tls = def.tls === undefined ? undefined : dockerTls(def.tls, `${name}.tls`, ctx, configDir);
       if (tls === null) continue;
       // tls means https, as in homepage
       const protocol = tls || def.protocol === 'https' ? 'https' : 'http';
-      servers.push({ name, url: `${protocol}://${def.host}:${def.port ?? 2375}`, discover: def.discover !== false, ...swarm, ...(tls ? { tls } : {}) });
+      servers.push({ name, url: `${protocol}://${def.host}:${def.port ?? 2375}`, discover: def.discover !== false, ...swarm, ...allow, ...(tls ? { tls } : {}) });
     } else ctx.error(file, name, 'needs "socket" or "host"');
   }
   return servers;
@@ -592,7 +610,7 @@ export function normalizeKubernetes(raw, ctx, configDir = '.') {
     ctx.error(file, 'mode', 'expected "mode: cluster" (in the cluster), "mode: default" (a kubeconfig) or "mode: disabled"');
     return { mode: 'disabled' };
   }
-  const out = { mode: raw.mode ?? 'disabled' };
+  const out = { mode: raw.mode ?? 'disabled', ...allowVariables(raw.allowVariables, file, 'allowVariables', ctx) };
   if (raw.kubeconfig) out.kubeconfig = path.resolve(configDir, String(raw.kubeconfig));
   if (raw.context) out.context = String(raw.context);
   // what discovery lists, as in homepage: Ingresses (default on), Traefik IngressRoutes, Gateway API HTTPRoutes

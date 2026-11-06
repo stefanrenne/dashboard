@@ -65,6 +65,13 @@ choosing a Docker image. The dashboard limits the damage where it can:
   has the same network, files and environment. `DASHBOARD_WIDGET_ISOLATION=off` runs installed widgets
   in the dashboard process, as before.
 
+- **Labels and annotations are not config.** Whoever starts a container (or builds its image)
+  writes its labels, so discovered services cannot use variables unless `allowVariables` lists
+  them, nor set options marked `discoverable: false`, framed options, `provider`, references to
+  other services or `target: hidden-iframe` (see
+  [What labels may do](../configuration/docker.md#what-labels-may-do)). Mark an option
+  `discoverable: false` when it runs something or reaches elsewhere with the dashboard's rights.
+
 ## Secrets
 
 - Options marked `secret: true`, undeclared options, and every value from `{{DASHBOARD_VAR_*}}` /

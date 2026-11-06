@@ -274,16 +274,29 @@ test('kubernetes: gethomepage.dev annotations work too', () => {
   assert.deepEqual(out.map((s) => [s.group, s.name, s.def.href]), [['G', 'X', 'http://x.lan/']]);
 });
 
-test('Discovery substitutes variables in labels and records them as secrets', async () => {
+test('Discovery substitutes the variables allowVariables lists and records them as secrets; others leave the service out', async () => {
   const d = new Discovery({
     log: silentLog,
-    env: { HOMEPAGE_VAR_K: 'k-123' },
-    docker: async () => [{ group: 'G', name: 'S', def: { widget: { type: 'x', key: '{{HOMEPAGE_VAR_K}}' } }, weight: 0 }],
+    env: { HOMEPAGE_VAR_K: 'k-123', DASHBOARD_VAR_OTHER: 'o-456' },
+    docker: async () => [
+      { group: 'G', name: 'S', def: { widget: { type: 'x', key: '{{HOMEPAGE_VAR_K}}' } }, weight: 0 },
+      { group: 'G', name: 'T', def: { widget: { type: 'x', key: '{{DASHBOARD_VAR_OTHER}}' } }, weight: 0 },
+    ],
   });
-  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true }], kubernetes: { mode: 'disabled' } });
+  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true, allowVariables: ['HOMEPAGE_VAR_K'] }], kubernetes: { mode: 'disabled' } });
   d.stop();
+  assert.deepEqual(d.found.map((s) => s.name), ['S']);
   assert.equal(d.found[0].def.widget.key, 'k-123');
   assert.deepEqual([...d.secrets], ['k-123']);
+  assert.match(d.errors[0].message, /"T" is left out: its labels use \{\{DASHBOARD_VAR_OTHER\}\}/);
+  assert.equal(d.errors[0].path, 'l.allowVariables');
+  // true: every variable; nothing set: none
+  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true, allowVariables: true }], kubernetes: { mode: 'disabled' } });
+  d.stop();
+  assert.equal(d.found.length, 2);
+  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true }], kubernetes: { mode: 'disabled' } });
+  d.stop();
+  assert.equal(d.found.length, 0);
 });
 
 test('merge: weight orders a group as in homepage: YAML (position + 1) x 100, discovered 0, ties by name', () => {

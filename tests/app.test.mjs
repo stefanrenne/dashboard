@@ -315,7 +315,7 @@ test('without fields, a widget shows its defaultFields; fields in the entry win'
 
 test('secrets from discovered labels stay out of the layout', async () => {
   const configDir = tmpDir('hd-app-');
-  fs.writeFileSync(path.join(configDir, 'docker.yaml'), 'local:\n  socket: /tmp/x.sock\n');
+  fs.writeFileSync(path.join(configDir, 'docker.yaml'), 'local:\n  socket: /tmp/x.sock\n  allowVariables: [HOMEPAGE_VAR_KEY]\n');
   const app = await createApp({
     configDir,
     env: { HOMEPAGE_VAR_KEY: SECRET },
@@ -332,6 +332,59 @@ test('secrets from discovered labels stay out of the layout', async () => {
     const raw = JSON.stringify(app.layout);
     assert.equal(raw.includes(SECRET), false);
     assert.equal(app.layout.groups[0].services[0].name, 'S');
+  } finally {
+    app.close();
+  }
+});
+
+test('discovered labels cannot run commands, frame pages, borrow keys or use variables they are not allowed', async () => {
+  const configDir = tmpDir('hd-app-');
+  const plugin = writeWidget(path.join(configDir, 'src', 'runner'), {
+    id: 'runner', name: 'Runner', version: '1.0.0', apiVersion: 2, frames: ['src'],
+    options: { text: { type: 'string' }, command: { type: 'string', secret: true, discoverable: false }, src: { type: 'url' }, url: { type: 'url' }, key: { type: 'string', secret: true } },
+  }, { 'server.js': 'export default { async fetch(ctx) { return { blocks: [{ label: "k", value: ctx.options.key ?? null }] } } }' });
+  fs.writeFileSync(path.join(configDir, 'settings.yaml'), `plugins:\n  - path: ${plugin}\nproviders:\n  mine: ${SECRET}\n`);
+  fs.writeFileSync(path.join(configDir, 'services.yaml'), `- G:\n    - Real:\n        widget: { type: runner, url: http://real.lan/, key: ${SECRET} }\n`);
+  fs.writeFileSync(path.join(configDir, 'docker.yaml'), 'local:\n  socket: /tmp/x.sock\n  allowVariables: [DASHBOARD_VAR_OK]\n');
+  const label = (name, def) => ({ group: 'L', name, weight: 0, def });
+  const app = await createApp({
+    configDir,
+    env: { DASHBOARD_VAR_OK: 'fine-value', DASHBOARD_VAR_PASSWORD: SECRET },
+    log: silentLog,
+    defaultPlugins: [],
+    dockerSocket: null,
+    releasesUrl: null,
+    discovery: {
+      docker: async () => [
+        label('Cmd', { widget: { type: 'runner', text: 'x', command: 'id > /tmp/pwned' } }),
+        label('Frame', { widget: { type: 'runner', src: 'https://evil.example/' } }),
+        label('Borrow', { widget: { type: 'runner', service_group: 'G', service_name: 'Real', url: 'https://evil.example/' } }),
+        label('Provider', { widget: { type: 'runner', provider: 'mine', url: 'https://evil.example/' } }),
+        label('Hook', { href: 'https://evil.example/hook', target: 'hidden-iframe' }),
+        label('Steal', { widget: { type: 'runner', url: 'https://evil.example/', key: '{{DASHBOARD_VAR_PASSWORD}}' } }),
+        label('Allowed', { widget: { type: 'runner', url: 'https://ok.example/', key: '{{DASHBOARD_VAR_OK}}' } }),
+      ],
+    },
+  });
+  try {
+    const services = app.layout.groups.find((g) => g.name === 'L').services;
+    assert.deepEqual(services.map((s) => s.name).sort(), ['Allowed', 'Borrow', 'Cmd', 'Frame', 'Hook', 'Provider']);
+    const msgs = [...app.layout.messages.errors, ...app.layout.messages.warnings].map((m) => m.message).join('\n');
+    assert.match(msgs, /runner: command is not taken from a discovered service/);
+    assert.match(msgs, /runner: src is not taken from a discovered service/);
+    assert.match(msgs, /service_group\/service_name: not taken from a discovered service/);
+    assert.match(msgs, /runner: provider is not taken from a discovered service/);
+    assert.match(msgs, /target: hidden-iframe is not taken from a discovered service/);
+    assert.match(msgs, /"Steal" is left out: its labels use \{\{DASHBOARD_VAR_PASSWORD\}\}/);
+    assert.equal(services.find((s) => s.name === 'Hook').target, '_blank');
+    const options = (name) => app.runtime.instances.get(services.find((s) => s.name === name).widgets[0].instanceId).options;
+    assert.equal(options('Cmd').command, undefined);
+    assert.equal(options('Frame').src, undefined);
+    // nothing of the configured key or the provider reaches a discovered widget; its own url does
+    assert.equal(options('Borrow').key, undefined);
+    assert.equal(options('Provider').key, undefined);
+    assert.equal(options('Provider').url, 'https://evil.example/');
+    assert.equal(options('Allowed').key, 'fine-value');
   } finally {
     app.close();
   }

@@ -70,6 +70,7 @@ formatted for the card ("1.2 TB", "2d 4h") makes a poor filter, so return the ra
 | `required` | `true` makes a missing option an error on the card and in the config messages. |
 | `default` | Used when the option is missing. |
 | `secret` | `true` keeps the option on the server. |
+| `discoverable` | `false`: the option is only taken from the YAML config, never from a Docker label or Kubernetes annotation (whoever starts a container writes those). For options that run something or reach elsewhere with the dashboard's rights, such as the `button`'s `command`. Options listed in `frames` are never taken from a label either. |
 
 An `icon` option takes what a service's `icon:` takes (`plex.svg`, `mdi-home`, `si-ubuntu`,
 `sh-plex`, `/icons/x.png`, a URL) and reaches the widget as a URL. A single-colour icon (`mdi-`,
@@ -264,6 +265,7 @@ Languages: `en`, `nl`, `fr`, `de`, `es`. Missing keys fall back to English, then
 
 | API | Dashboard | Change |
 |---|---|---|
+| 2 | next | `discoverable: false` on an option: not taken from a discovered service. Discovered services also lose `frames` options, `provider` and `service_group`/`service_name`. Older dashboards ignore the key. |
 | 2 | next | `images` in widget.yaml, for the setup wizard. Widgets need no change. |
 | 2 | next | With `login: true` every endpoint (also `GET api/widgets/<instanceId>`) answers 401 `{ needsLogin: true }` without a session; the page goes to its login. Widgets need no change. |
 | 2 | next | `confirmWhen` in widget.yaml, and the admin password: `POST api/widgets/<instanceId>/action` answers 401 `{ needsPassword: true }` (or 429 with `retryAfter`) until it has one; the page asks for it. Widgets need no change. |

@@ -16,6 +16,18 @@ const PLACEHOLDER = /\{\{\s*((?:DASHBOARD|HOMEPAGE)_(?:VAR|FILE)_[A-Z0-9_]+)\s*\
 // `{{ states.x }}` are lowercase and left alone.
 const LOOKALIKE = /\{\{\s*([A-Z][A-Z0-9_]*)\s*\}\}/g;
 
+/** The variable names (DASHBOARD_VAR_X, ...) whose placeholders appear in `value`. */
+export function variablesIn(value) {
+  const names = new Set();
+  const walk = (node) => {
+    if (typeof node === 'string') for (const [, name] of node.matchAll(PLACEHOLDER)) names.add(name);
+    else if (Array.isArray(node)) node.forEach(walk);
+    else if (isPlainObject(node)) Object.values(node).forEach(walk);
+  };
+  walk(value);
+  return [...names];
+}
+
 export function substitute(value, { env = process.env, readFile = (p) => fs.readFileSync(p, 'utf8') } = {}) {
   const secrets = new Set();
   const warnings = [];

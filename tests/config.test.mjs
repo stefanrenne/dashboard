@@ -127,6 +127,16 @@ test('docker servers and header widgets are normalized', () => {
   assert.deepEqual(cfg.widgets.map((w) => [w.type, w.options]), [['datetime', { locale: 'nl' }], ['search', {}]]);
 });
 
+test('allowVariables: names (with or without braces) or true, in docker.yaml and kubernetes.yaml', () => {
+  const cfg = loadConfig(configDir({
+    'docker.yaml': 'a:\n  socket: /s\n  allowVariables: [DASHBOARD_VAR_X, "{{HOMEPAGE_FILE_Y}}", nope]\nb:\n  socket: /s\n  allowVariables: true\nc:\n  socket: /s\n',
+    'kubernetes.yaml': 'mode: cluster\nallowVariables: DASHBOARD_VAR_Z\n',
+  }));
+  assert.deepEqual(cfg.docker.map((s) => s.allowVariables), [['DASHBOARD_VAR_X', 'HOMEPAGE_FILE_Y'], true, undefined]);
+  assert.deepEqual(cfg.kubernetes.allowVariables, ['DASHBOARD_VAR_Z']);
+  assert.ok(cfg.warnings.some((w) => w.path === 'a.allowVariables' && /"nope" is not a variable name/.test(w.message)));
+});
+
 test('docker.yaml tls: homepage\'s caFile, certFile and keyFile, read relative to the config folder', () => {
   const pem = (f) => fs.readFileSync(path.resolve('tests/fixtures/tls', f), 'utf8');
   const cfg = loadConfig(configDir({

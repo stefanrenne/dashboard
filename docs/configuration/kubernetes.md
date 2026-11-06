@@ -88,6 +88,11 @@ metadata:
 
 homepage's `gethomepage.dev/*` annotations work as well.
 
+Annotations get what Docker labels get (see [What labels may do](docker.md#what-labels-may-do)):
+`{{DASHBOARD_VAR_*}}` in them is filled in only for the variables `allowVariables:` in
+kubernetes.yaml lists (`true`: all), and options that run or frame something come from
+services.yaml only.
+
 **Pod status.** As in homepage, a discovered Ingress or route gets the state of its app's pods
 as a label (the [Kubernetes pods](../widgets/collection/kubernetes-pods.html) widget): the pods
 labelled `app.kubernetes.io/name=<its name>` in its namespace. `getdashboard.dev/app` names another

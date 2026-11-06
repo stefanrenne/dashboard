@@ -4,6 +4,21 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed (breaking)
+- **Docker labels and Kubernetes annotations no longer fill in variables by themselves.** A label
+  with `{{DASHBOARD_VAR_*}}` / `{{HOMEPAGE_VAR_*}}` (or `_FILE_`) leaves its service out, with a
+  message, unless the server in docker.yaml (or kubernetes.yaml) lists the variable under
+  `allowVariables:` (`true`: all). A label could otherwise send any of the dashboard's secrets to
+  a server of its own. To keep the old behaviour: `allowVariables: true`.
+- **Discovered services cannot run or frame anything.** Options marked `discoverable: false` in
+  widget.yaml (the button's `script`, `command`, `user` and `inheritEnv`, with the collection's
+  next release), framed options (the iframe's `src`), `provider:` and `service_group` /
+  `service_name` are dropped from a label, with a message, and `target: hidden-iframe` opens as a
+  link. Put such services in services.yaml.
+
+### Added
+- `discoverable: false` for an option in widget.yaml: taken from the YAML config only.
+
 ## [0.23.0] - 2026-11-06
 
 ### Changed (breaking)

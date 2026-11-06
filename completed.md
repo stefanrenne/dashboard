@@ -90,3 +90,4 @@ Finished work, newest first.
 - 2026-11-04: Security: a broken request path or target is a 400 instead of ending the process; server.js catches every failing request.
 - 2026-11-04: Security: host names are checked by default (DASHBOARD_ALLOWED_HOSTS; localhost and IP addresses always work), with a page that says what to set.
 - 2026-11-06: Passkeys (WebAuthn) next to the admin password over HTTPS: login page, settings and buttons; managed on the settings page.
+- 2026-11-06: Security: discovered labels/annotations fill in variables only when `allowVariables` lists them, and cannot set `discoverable: false` options (button command/script/user), framed options, `provider`, service references or `target: hidden-iframe`.

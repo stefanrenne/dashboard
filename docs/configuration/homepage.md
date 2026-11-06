@@ -56,6 +56,10 @@ also homepage's own spellings such as `customapi`, `overseerr`, `jellyseerr`, `u
 - **Allowed hosts** are checked as in homepage, but they live in settings.yaml (`allowedHosts`,
   or the settings page) instead of `HOMEPAGE_ALLOWED_HOSTS`, which is not read. Unlike homepage,
   IP addresses always work (see [Allowed hosts](README.md#allowed-hosts)).
+- **Variables in labels** (`{{HOMEPAGE_VAR_*}}` in a `homepage.*` label or annotation) are filled
+  in only when the server in docker.yaml, or kubernetes.yaml, lists them under `allowVariables:`
+  (`true` for all, as homepage does); otherwise the service is left out with a message. Buttons
+  and frames from labels are refused (see [What labels may do](docker.md#what-labels-may-do)).
 - **Widgets are packages.** They come from the widgets collection, which updates itself to its
   newest release; `plugins:` in `settings.yaml` pins a release or adds widgets of others (see
   [Settings](settings.md)).
