@@ -116,7 +116,7 @@ Usage limits are shared with the owner: keep a task's context small.
     route groups `settingsRoute` (with `filesRoute` for the config files), `loginRoute`, `onboardingRoute` (with `setupFiles`,
     `testWidget`, `homepageDryRun`), `runAction`.
   - The other pages each have their own script: `setup.js` (wizard), `login.js`, `settings.js`;
-    the server side of each is `src/onboarding.js`, `src/login.js`, `src/settings.js` (with `src/settings-layout.js`, `src/settings-plugins.js`, `src/settings-services.js` (also widgets.yaml), `src/settings-bookmarks.js` and `src/settings-servers.js` (docker, proxmox, kubernetes) for the layout block, the plugins and those files);
+    the server side of each is `src/onboarding.js`, `src/login.js`, `src/settings.js` (with `src/settings-layout.js`, `src/settings-plugins.js`, `src/settings-services.js` (also widgets.yaml), `src/settings-bookmarks.js` , `src/settings-servers.js` (docker, proxmox, kubernetes) and `src/settings-tests.js` (their connection tests) for the layout block, the plugins and those files);
     passwords and unlocks are `src/actionauth.js`.
 - **Run a test file, not the suite, while working** (`node --test tests/<file>.test.mjs`); the
   whole suite once before the commit. Print only the summary (`grep -E '^# (pass|fail)|^not ok'`).

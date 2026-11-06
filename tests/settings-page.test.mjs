@@ -557,3 +557,25 @@ test('settings page: Advanced imports homepage files after a check', async () =>
   assert.match(doc.getElementById('panel').textContent, /Geïmporteerd: services\.yaml\./);
   assert.ok([...doc.querySelectorAll('.saved button')].some((b) => b.textContent === 'Downloaden'));
 });
+
+test('settings page: connection tests for a Proxmox node and Kubernetes', async () => {
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, other: [] }] },
+    'POST /api/settings/proxmox-test': { ok: true, version: '8.2.4' },
+    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', fields: { mode: 'cluster', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
+    'POST /api/settings/kubernetes-test': { ok: true, version: 'v1.30.2', services: 3 },
+  }, () => {}, 'http://dash.lan/settings#proxmox');
+  await tick();
+  const test = () => [...doc.querySelectorAll('button')].find((b) => b.textContent === 'De verbinding testen').click();
+  test();
+  await tick();
+  assert.match(doc.getElementById('panel').textContent, /Proxmox VE 8\.2\.4/);
+  assert.deepEqual(calls.filter((c) => c.p === '/api/settings/proxmox-test').at(-1).body, { name: 'pve' });
+  w.location.hash = '#kubernetes';
+  await tick();
+  await tick();
+  test();
+  await tick();
+  assert.match(doc.getElementById('panel').textContent, /Kubernetes v1\.30\.2; discovery vindt 3 services/);
+});

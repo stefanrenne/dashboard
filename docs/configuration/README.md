@@ -183,7 +183,7 @@ found by discovery are listed (their labels are their source). "Edit as text" sh
 Header widgets is a form too: the widgets in the header, each with the form of its options, added,
 reordered and removed.
 Bookmarks is a form as well: groups and bookmarks (link, abbreviation, icon, description).
-Docker, Kubernetes and Proxmox are forms of their servers (with a connection test for Docker),
+Docker, Kubernetes and Proxmox are forms of their servers, each with a connection test of what is saved,
 keeping keys they do not show, such as `allowVariables`; the Proxmox token secret stays hidden.
 Advanced shows `settings.yaml` itself as text, and `custom.css` and `custom.js`; it also imports
 homepage's files (checked first, then all of them or none; the admin password, login and allowed

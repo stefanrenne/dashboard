@@ -42,8 +42,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   with a test button that runs it as the dashboard would; secret options stay hidden.
 - **Header widgets as a form on the settings page**, with the same widget forms.
 - **Bookmarks as a form on the settings page**: groups and bookmarks, moved, added and removed.
-- **Docker, Kubernetes and Proxmox as forms on the settings page**, with a connection test for a
-  Docker server; the Proxmox token secret stays hidden.
+- **Docker, Kubernetes and Proxmox as forms on the settings page**, each with a connection test
+  (Kubernetes also counts the services discovery finds); the Proxmox token secret stays hidden.
 - `custom.css` and `custom.js` can be edited under Advanced on the settings page.
 - **homepage's files can be imported from the settings page** (Advanced), checked first; the admin
   password, login and allowed hosts stay. Each text editor downloads its text.

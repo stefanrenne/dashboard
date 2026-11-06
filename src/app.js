@@ -30,6 +30,7 @@ import { readServices, writeServices, widgetCatalog, readHeader, writeHeader } f
 import { secretsOf } from './config/mask.js';
 import { readBookmarks, writeBookmarks } from './settings-bookmarks.js';
 import { readServers, writeServers, SPECS as SERVER_FILES } from './settings-servers.js';
+import { testKubernetes, testProxmox } from './settings-tests.js';
 import { substitute } from './config/vars.js';
 import { checkConfigText, parseDocument, documentText, editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
@@ -649,6 +650,16 @@ export async function createApp({
       log.info(`settings: imported homepage's ${Object.keys(given).join(', ')}`);
       await reload();
       return send(res, 200, { ok: true, files: Object.keys(given) }, 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/kubernetes-test') {
+      const out = await testKubernetes(state.config?.kubernetes, { configDir, env });
+      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), [...(state.config?.secrets ?? [])]) }, 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/proxmox-test') {
+      const node = state.config?.proxmox?.[typeof body?.name === 'string' ? body.name : ''];
+      if (!node) return send(res, 404, { ok: false, error: 'no such node in proxmox.yaml; save it first' }, 'application/json', headers);
+      const out = await testProxmox(node);
+      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), [node.secret, node.token, ...(state.config?.secrets ?? [])]) }, 'application/json', headers);
     }
     if (method === 'POST' && route === '/docker-test') {
       // a saved server, as the dashboard uses it (the mounted socket included)

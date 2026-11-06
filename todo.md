@@ -12,4 +12,3 @@ every file has a form or a text editor there (see completed.md); what is left:
   sections (General, Services, Groups) for `docs/configuration/README.md` need a browser
   (`scripts/screenshots.mjs` with Playwright), which the last sessions did not have.
 - [ ] **An icon picker with a preview** for the icon fields (services, bookmarks, groups).
-- [ ] **A connection test for Kubernetes and Proxmox** on their forms (Docker has one).
