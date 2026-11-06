@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-06
+
+### Docs
+- Screenshots of the settings page (General, Services, Groups) in the configuration docs.
+
 ## [0.24.0] - 2026-11-06
 
 ### Changed (breaking)
