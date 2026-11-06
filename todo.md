@@ -12,12 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **settings.yaml: the remaining keys as fields.** `description`, `favicon`, `startUrl`,
-  `instanceName`, `base`, `logpath`, `pwa`, `fullWidth`, `useEqualHeights`, `disableCollapse`,
-  `groupsInitiallyCollapsed`, `showStats`, `maxGroupColumns`, `maxBookmarkGroupColumns`,
-  `cardStyle`, `blockStyle`, `font`, `discovery.interval`, `pluginUpdateInterval`, `providers`,
-  quicklaunch/search and every other key `normalizeSettings` and
-  `docs/configuration/settings.md` know, grouped under General, Look and Behaviour.
 - [ ] **Layout editor.** `layout:` per group: columns, style, header, icon, tab, initially
   collapsed; group order by drag and drop with a keyboard alternative.
 - [ ] **Plugins editor.** The `plugins:` list: add or remove a source (git, npm, path; validated

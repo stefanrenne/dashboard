@@ -161,10 +161,11 @@ Settings of the container rather than of the page.
 
 ### Settings page
 
-The gear in the footer opens `/settings`: the page's look (title, language, theme, colour, the
-header widgets' box, where links open, the status labels), the security (the login page or only
-some actions, how long a login and an unlock last, the allowed hosts), the admin password and a
-few switches (the versions in the footer, the update check, search engines). It writes them into
+The gear in the footer opens `/settings`. General has the page's look (title, language, theme,
+colour, the header, cards, fonts and icons, the background), its layout, quick launch, the page
+and app details (description, favicon, app icons and shortcuts) and a few switches and intervals.
+Security has the login page or only some actions, how long a login and an unlock last, the
+allowed hosts, the admin password and passkeys. It writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
 `providers`, ...), which it names; the dashboard follows at once.
 

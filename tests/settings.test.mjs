@@ -25,8 +25,14 @@ test("readSettings: the page's fields with their defaults, and the other keys it
   fs.writeFileSync(path.join(dir, 'settings.yaml'), SETTINGS);
   const { values, other, hasPassword } = readSettings(dir);
   assert.deepEqual(values, {
-    title: 'Lab', language: 'nl', theme: 'auto', color: 'emerald', showTitle: true, headerStyle: 'boxed', target: '_blank', statusStyle: '',
+    title: 'Lab', description: '', favicon: '', startUrl: '', base: '', instanceName: '', language: 'nl', theme: 'auto', color: 'emerald', showTitle: true,
+    headerStyle: 'boxed', target: '_blank', statusStyle: '', cardStyle: '', blockStyle: '', font: '', iconStyle: 'gradient', bookmarksStyle: '', cardBlur: '',
+    backgroundImage: '', backgroundBlur: '', backgroundSaturate: '', backgroundBrightness: '', backgroundOpacity: '',
+    fullWidth: false, maxGroupColumns: '', maxBookmarkGroupColumns: '', useEqualHeights: false, disableCollapse: false, groupsInitiallyCollapsed: false, showStats: false,
+    qlSearchDescriptions: false, qlProvider: '', qlUrl: '', qlSuggestionUrl: '', qlTarget: '', qlShowSearchSuggestions: '', qlHideInternetSearch: false, qlHideVisitURL: false, qlMobileButtonPosition: '',
+    pwaIcons: [], pwaShortcuts: [],
     allowedHosts: [], login: false, loginRemember: '7d', actionsRemember: '30m', hideVersion: false, disableUpdateCheck: false, disableIndexing: false,
+    pluginUpdateInterval: '1h', discoveryInterval: '30s', logpath: '',
   });
   assert.deepEqual(other, ['layout', 'plugins', 'providers']);
   assert.equal(hasPassword, true);
@@ -75,4 +81,51 @@ test('writeSettings: the previous settings.yaml is kept in the history', async (
   writeSettings(dir, { title: 'Thuis' });
   const [last] = listHistory(dir, 'settings.yaml');
   assert.equal(readHistory(dir, 'settings.yaml', last.id), SETTINGS);
+});
+
+test('the other settings.yaml keys: nested paths, defaults left out, only what changed written, loadConfig agrees', () => {
+  const dir = tmpDir('dash-set-');
+  const text = `# mine
+background: https://example.com/wall.jpg   # the wallpaper
+quicklaunch:
+  hideVisitURL: true   # keep me
+pwa:
+  icons:
+    - { src: /icons/app-192.png, sizes: 192x192 }   # the small one
+discovery: { interval: 1m }
+pluginUpdateInterval: false
+`;
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), text);
+  const { values, other } = readSettings(dir);
+  assert.deepEqual([values.backgroundImage, values.qlHideVisitURL, values.discoveryInterval, values.pluginUpdateInterval], ['https://example.com/wall.jpg', true, '1m', 'off']);
+  assert.deepEqual(values.pwaIcons, [{ src: '/icons/app-192.png', sizes: '192x192', type: '', purpose: '' }]);
+  assert.deepEqual(other, []);
+  // the whole form sent back unchanged: the file stays as it is
+  writeSettings(dir, checkSettings(values).values);
+  assert.equal(fs.readFileSync(path.join(dir, 'settings.yaml'), 'utf8'), text);
+  // changes: nested keys made and removed, defaults left out, background becomes a map
+  const changed = checkSettings({ ...values, backgroundBlur: 'sm', backgroundOpacity: '50', qlHideVisitURL: false, qlProvider: 'brave', qlShowSearchSuggestions: 'false',
+    discoveryInterval: '30s', pluginUpdateInterval: '2h', fullWidth: true, maxGroupColumns: '6', description: 'My lab', base: 'https://lab.example.com/dash',
+    pwaShortcuts: [{ name: 'Media', url: '/#media', description: '' }, { name: '', url: '', description: '' }] });
+  assert.equal(changed.error, undefined);
+  writeSettings(dir, changed.values);
+  const out = fs.readFileSync(path.join(dir, 'settings.yaml'), 'utf8');
+  assert.match(out, /^# mine$/m);
+  assert.match(out, /- \{ src: \/icons\/app-192\.png, sizes: 192x192 \} +# the small one/, 'an untouched list keeps its comments');
+  assert.match(out, /- \{ name: Media, url: \/#media \}/);
+  assert.doesNotMatch(out, /discovery/, 'the default: left out, with the emptied map');
+  const config = loadConfig(dir);
+  assert.deepEqual(config.errors, []);
+  assert.deepEqual(config.warnings, []);
+  const st = config.settings;
+  assert.deepEqual(st.background, { image: 'https://example.com/wall.jpg', blur: 8, opacity: 50 });
+  assert.deepEqual([st.quicklaunch.hideVisitURL, st.quicklaunch.provider, st.quicklaunch.showSearchSuggestions], [undefined, 'brave', false]);
+  assert.deepEqual([st.fullWidth, st.maxGroupColumns, st.description, st.base, st.pluginUpdateInterval], [true, 6, 'My lab', 'https://lab.example.com/dash/', '2h']);
+  assert.deepEqual(st.pwa.shortcuts, [{ name: 'Media', url: '/#media' }]);
+  // back to only an image: the short form
+  writeSettings(dir, checkSettings({ ...readSettings(dir).values, backgroundBlur: '', backgroundOpacity: '' }).values);
+  assert.match(fs.readFileSync(path.join(dir, 'settings.yaml'), 'utf8'), /^background: https:\/\/example\.com\/wall\.jpg$/m);
+  for (const bad of [{ base: 'lab.example.com' }, { maxGroupColumns: '9' }, { backgroundSaturate: '-1' }, { pwaIcons: [{ sizes: '1x1' }] }, { qlShowSearchSuggestions: 'yes' }, { pluginUpdateInterval: 'soon' }]) {
+    assert.ok(checkSettings(bad).error, JSON.stringify(bad));
+  }
 });

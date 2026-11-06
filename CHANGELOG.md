@@ -25,6 +25,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - **Every config file on the settings page**: sections for services, header widgets, bookmarks,
   Docker, Kubernetes, Proxmox and `settings.yaml` (Advanced) show the file as text, also the files
   it includes, and save it checked, with earlier versions to go back to. Forms follow.
+- The settings page has fields for the rest of settings.yaml: description, favicon, start URL,
+  base, instance name, header/card/block/font/icon/bookmark styles, the background and frosted
+  cards, layout switches and columns, quick launch, app icons and shortcuts, the plugin and
+  discovery intervals and the log folder; Security is a section of its own. A save writes only
+  what changed. `providers` and `blockHighlights` are edited under Advanced.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

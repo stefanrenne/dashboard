@@ -12,6 +12,11 @@ const INDEX = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
 const VALUES = {
   title: 'Lab', language: 'nl', theme: 'dark', color: 'slate', showTitle: true, headerStyle: 'boxed', target: '_blank', statusStyle: '',
   allowedHosts: ['dash.lan'], login: false, loginRemember: '7d', actionsRemember: '15m', hideVersion: false, disableUpdateCheck: false, disableIndexing: false,
+  description: '', favicon: '', startUrl: '', base: '', instanceName: '', cardStyle: '', blockStyle: '', font: '', iconStyle: 'gradient', bookmarksStyle: '', cardBlur: '',
+  backgroundImage: '', backgroundBlur: '', backgroundSaturate: '', backgroundBrightness: '', backgroundOpacity: '',
+  fullWidth: false, maxGroupColumns: '', maxBookmarkGroupColumns: '', useEqualHeights: false, disableCollapse: false, groupsInitiallyCollapsed: false, showStats: false,
+  qlSearchDescriptions: false, qlProvider: '', qlUrl: '', qlSuggestionUrl: '', qlTarget: '', qlShowSearchSuggestions: '', qlHideInternetSearch: false, qlHideVisitURL: false, qlMobileButtonPosition: '',
+  pwaIcons: [], pwaShortcuts: [], pluginUpdateInterval: '1h', discoveryInterval: '30s', logpath: '',
 };
 
 const opened = new Set();
@@ -20,11 +25,11 @@ afterEach(() => {
   opened.clear();
 });
 
-async function page(answers, setup = () => {}) {
+async function page(answers, setup = () => {}, url = 'http://dash.lan/settings') {
   const calls = [];
   const dom = new JSDOM(HTML, {
     runScripts: 'dangerously',
-    url: 'http://dash.lan/settings',
+    url,
     beforeParse(window) {
       window.scrollTo = () => {};
       setup(window);
@@ -71,8 +76,15 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
   // the form, in settings.yaml's language
   assert.equal(doc.getElementById('heading').textContent, 'Instellingen');
   assert.equal(doc.getElementById('title').value, 'Lab');
-  assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan']);
   assert.doesNotMatch(doc.body.textContent, /environment/);
+  assert.match(doc.body.textContent, /Ook in settings\.yaml, blijven zoals ze zijn \(pas ze aan onder Geavanceerd\): layout, plugins/);
+  doc.getElementById('title').value = 'Thuis';
+  doc.getElementById('title').dispatchEvent(new w.Event('input'));
+  // security: its own section, the same save
+  w.location.hash = '#security';
+  await tick();
+  assert.equal(doc.getElementById('title'), null);
+  assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan']);
   // a host name added with the button (what people paste, cleaned up) and with Enter; one removed
   doc.getElementById('new-host').value = 'https://Dash.Example.com/home';
   doc.getElementById('new-host').dispatchEvent(new w.Event('input'));
@@ -86,9 +98,6 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
   assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan', 'dash.example.com', 'other.lan'], 'no duplicates');
   doc.querySelector('[aria-label="other.lan verwijderen"]').click();
   assert.equal(doc.getElementById('login-actions').checked, true);
-  assert.match(doc.body.textContent, /Ook in settings\.yaml, blijven zoals ze zijn \(pas ze aan onder Geavanceerd\): layout, plugins/);
-  doc.getElementById('title').value = 'Thuis';
-  doc.getElementById('title').dispatchEvent(new w.Event('input'));
   doc.getElementById('login-page').click();
   await tick();
   assert.ok(doc.getElementById('loginRemember'), 'the login\'s duration shows once it is on');
@@ -114,7 +123,7 @@ test('settings page: no admin password yet, setting one comes first', async () =
 });
 
 test('settings page: passkeys over https (add, list, remove), a notice over http, and a passkey opens the settings', async () => {
-  const http = await page({ 'GET /api/settings': data({ passkeys: { secure: false, host: null, list: [] } }) });
+  const http = await page({ 'GET /api/settings': data({ passkeys: { secure: false, host: null, list: [] } }) }, () => {}, 'http://dash.lan/settings#security');
   assert.match(http.doc.getElementById('panel').textContent, /Passkeys werken als het dashboard via https wordt geopend/);
   assert.equal(http.doc.querySelector('.item.passkey'), null);
 
@@ -135,7 +144,7 @@ test('settings page: passkeys over https (add, list, remove), a notice over http
     'POST /api/settings/passkeys/options': { ok: true, publicKey: { challenge: 'AAEC', rp: { id: 'dash.lan', name: 'Lab' }, user: { id: 'BAUG', name: 'admin', displayName: 'Lab (admin)' }, pubKeyCredParams: [], excludeCredentials: [{ type: 'public-key', id: 'BwgJ' }] } },
     'POST /api/settings/passkeys': (init) => { list.push({ id: 'cred-1', name: JSON.parse(init.body).name, created: '2026-11-06T10:00:00Z', lastUsed: null }); return data({ passkeys: pk() }); },
     'POST /api/settings/passkeys/remove': () => { list.length = 0; return data({ passkeys: pk() }); },
-  }, webauthn);
+  }, webauthn, 'http://dash.lan/settings#security');
   assert.match(doc.getElementById('panel').textContent, /Nog geen passkeys voor dash\.lan/);
   doc.getElementById('passkey-name').value = 'MacBook';
   doc.getElementById('passkey-name').dispatchEvent(new doc.defaultView.Event('input'));
@@ -190,7 +199,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     },
   });
   const links = [...doc.querySelectorAll('nav.sections a')];
-  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
@@ -235,4 +244,42 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   w.location.hash = '#advanced';
   await tick();
   assert.equal(doc.querySelector('#panel h2').textContent, 'settings.yaml');
+});
+
+test('settings page: the other settings.yaml keys as fields: background, layout, quick launch, app icons and shortcuts', async () => {
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'POST /api/settings': (init) => data({ values: { ...VALUES, ...JSON.parse(init.body).values } }),
+  });
+  const set = (id, value, event = 'input') => { const node = doc.getElementById(id); node.value = value; node.dispatchEvent(new w.Event(event)); };
+  assert.equal(doc.getElementById('backgroundBlur'), null, 'the image first');
+  set('backgroundImage', 'https://example.com/wall.jpg');
+  doc.getElementById('backgroundImage').dispatchEvent(new w.Event('change'));
+  set('cardBlur', 'md', 'change');
+  await tick();
+  assert.ok(doc.getElementById('backgroundBlur'), 'its settings once there is an image');
+  set('backgroundOpacity', '60');
+  set('maxGroupColumns', '6');
+  doc.getElementById('fullWidth').click();
+  assert.equal(doc.getElementById('qlUrl'), null);
+  set('qlProvider', 'custom', 'change');
+  await tick();
+  set('qlUrl', 'https://search.lan/?q={q}');
+  assert.match(doc.getElementById('panel').textContent, /waar \{q\} staat/);
+  // a row added and filled, another added and removed
+  const add = (legend) => [...doc.querySelectorAll('fieldset')].find((f) => f.querySelector('legend').textContent === legend).querySelector('.row:last-child button').click();
+  add('App-snelkoppelingen');
+  set('pwaShortcuts-0-name', 'Media');
+  set('pwaShortcuts-0-url', '/#media');
+  add('App-snelkoppelingen');
+  doc.querySelector('[aria-label="Rij 2 verwijderen"]').click();
+  assert.equal(doc.getElementById('pwaShortcuts-1-name'), null);
+  set('discoveryInterval', '1m');
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings' && c.init.method === 'POST').at(-1).body.values;
+  assert.deepEqual(
+    [sent.backgroundImage, sent.cardBlur, sent.backgroundOpacity, sent.maxGroupColumns, sent.fullWidth, sent.qlProvider, sent.qlUrl, sent.pwaShortcuts, sent.discoveryInterval],
+    ['https://example.com/wall.jpg', 'md', '60', '6', true, 'custom', 'https://search.lan/?q={q}', [{ name: 'Media', url: '/#media', description: '' }], '1m'],
+  );
 });
