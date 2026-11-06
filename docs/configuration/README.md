@@ -192,7 +192,8 @@ it includes. A save is checked first: a mistake is shown with its file and path 
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file
 was changed elsewhere in the meantime, the page says so instead of overwriting it. The previous
 versions are kept under `.history/` in the config folder (the last ten per file), and one can
-be loaded back into the editor. The section is in the address (`/settings#services`).
+be loaded back into the editor. The section is in the address (`/settings#services`). Icon fields show a preview and suggest the
+files in `config/icons` and the icons already in use.
 
 - It opens with the [admin password](#admin-password); a login counts, and the browser stays
   unlocked as after a press (`actions.remember`).

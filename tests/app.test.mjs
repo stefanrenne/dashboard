@@ -1869,3 +1869,25 @@ test('settings page import: homepage files checked, then written all or none; th
     await t.close();
   }
 });
+
+test('settings page icons: a name resolved for the preview; the local files and the icons in use suggested', async () => {
+  const t = await startApp({
+    'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\nlayout:\n  Media:\n    icon: mdi-movie\n`,
+    'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        icon: plex.svg\n',
+    'icons/lab.png': 'x',
+    'icons/apps/wiki.svg': '<svg/>',
+    'icons/notes.txt': 'x',
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  try {
+    const one = await (await fetch(`${t.base}/api/settings/icon?name=plex.svg`, { headers: auth })).json();
+    assert.match(one.url, /\/svg\/plex\.svg$/);
+    assert.equal((await (await fetch(`${t.base}/api/settings/icon?name=${encodeURIComponent('no such!')}`, { headers: auth })).json()).url, null);
+    const list = await (await fetch(`${t.base}/api/settings/icons`, { headers: auth })).json();
+    assert.deepEqual(list.local, ['/icons/apps/wiki.svg', '/icons/lab.png']);
+    assert.deepEqual(list.used, ['mdi-movie', 'plex.svg']);
+    assert.equal((await fetch(`${t.base}/api/settings/icons`, { headers: { 'x-forwarded-for': '203.0.113.7' } })).status, 401);
+  } finally {
+    await t.close();
+  }
+});

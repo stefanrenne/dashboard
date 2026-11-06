@@ -15,7 +15,7 @@ import { WidgetRuntime } from './plugins/runtime.js';
 import { WidgetSandbox } from './plugins/sandbox.js';
 import { Discovery, mergeDiscovered } from './discovery/index.js';
 import { withMountedSocket, dockerGet, DEFAULT_SOCKET } from './discovery/docker.js';
-import { buildState } from './layout.js';
+import { buildState, resolveIcon } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
@@ -650,6 +650,38 @@ export async function createApp({
       log.info(`settings: imported homepage's ${Object.keys(given).join(', ')}`);
       await reload();
       return send(res, 200, { ok: true, files: Object.keys(given) }, 'application/json', headers);
+    }
+    if (method === 'GET' && route === '/icon') {
+      // the address an icon name stands for, for the preview on the page
+      const name = String(new URL(req.url, 'http://x').searchParams.get('name') ?? '').trim().slice(0, 300);
+      return send(res, 200, { ok: true, name, url: name ? resolveIcon(name) : null }, 'application/json', headers);
+    }
+    if (method === 'GET' && route === '/icons') {
+      // suggestions for the icon fields: the files in config/icons and the icons already in use
+      const local = [];
+      const dir = path.join(configDir, 'icons');
+      const walk = (rel, depth) => {
+        let names = [];
+        try {
+          names = fs.readdirSync(path.join(dir, rel), { withFileTypes: true });
+        } catch {
+          return;
+        }
+        for (const e of names) {
+          if (local.length >= 500) return;
+          const r = rel ? `${rel}/${e.name}` : e.name;
+          if (e.isDirectory() && depth < 2 && !e.name.startsWith('.')) walk(r, depth + 1);
+          else if (e.isFile() && /\.(svg|png|webp|jpe?g|gif|ico)$/i.test(e.name)) local.push(`/icons/${r}`);
+        }
+      };
+      walk('', 0);
+      const used = new Set();
+      const add = (v) => { if (typeof v === 'string' && v.trim()) used.add(v.trim()); };
+      const groups = (list) => (list ?? []).forEach((g) => { g.services?.forEach((x) => add(x.icon)); groups(g.groups); });
+      groups(state.config?.services);
+      (state.config?.bookmarks ?? []).forEach((g) => g.bookmarks.forEach((b) => add(b.icon)));
+      Object.values(state.config?.settings?.layout ?? {}).forEach((l) => add(l?.icon));
+      return send(res, 200, { ok: true, local: local.sort(), used: [...used].sort() }, 'application/json', headers);
     }
     if (method === 'POST' && route === '/kubernetes-test') {
       const out = await testKubernetes(state.config?.kubernetes, { configDir, env });

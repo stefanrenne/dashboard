@@ -45,6 +45,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - **Docker, Kubernetes and Proxmox as forms on the settings page**, each with a connection test
   (Kubernetes also counts the services discovery finds); the Proxmox token secret stays hidden.
 - `custom.css` and `custom.js` can be edited under Advanced on the settings page.
+- Icon fields on the settings page show a preview and suggest the files in `config/icons` and the
+  icons already in use.
 - **homepage's files can be imported from the settings page** (Advanced), checked first; the admin
   password, login and allowed hosts stay. Each text editor downloads its text.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin

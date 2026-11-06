@@ -37,7 +37,7 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
         const p = new URL(url, 'http://dash.lan/').pathname;
         calls.push({ p, init, body: init.body ? JSON.parse(init.body) : undefined });
         const a = answers[`${init.method ?? 'GET'} ${p}`];
-        return { json: async () => structuredClone(typeof a === 'function' ? a(init) : a) };
+        return { json: async () => structuredClone(typeof a === 'function' ? a(init, new URL(url, 'http://dash.lan/')) : a) };
       };
     },
   });
@@ -578,4 +578,30 @@ test('settings page: connection tests for a Proxmox node and Kubernetes', async 
   test();
   await tick();
   assert.match(doc.getElementById('panel').textContent, /Kubernetes v1\.30\.2; discovery vindt 3 services/);
+});
+
+test('settings page: icon fields suggest the icons in use and show a preview', async () => {
+  const fields = { href: '', icon: 'plex.svg', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false };
+  const urls = { 'plex.svg': 'https://cdn.example.com/svg/plex.svg', 'mdi-server': 'https://cdn.example.com/mdi/server.svg#dash-mask' };
+  const { doc, w } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/icons': { ok: true, local: ['/icons/lab.png'], used: ['plex.svg'] },
+    'GET /api/settings/icon': (init, u) => ({ ok: true, url: urls[u.searchParams.get('name')] ?? null }),
+    'GET /api/settings/services': { ok: true, hash: 'h', items: [{ kind: 'group', id: '0', name: 'Media', items: [{ kind: 'service', id: '0/0', name: 'Plex', fields, widgets: [], other: [] }] }], discovered: [], widgets: [] },
+  }, () => {}, 'http://dash.lan/settings#services');
+  await tick();
+  await tick();
+  assert.deepEqual([...doc.querySelectorAll('#icon-list option')].map((o) => o.value), ['plex.svg', '/icons/lab.png']);
+  const input = doc.querySelector('.icon-field input');
+  assert.equal(input.getAttribute('list'), 'icon-list');
+  assert.equal(doc.querySelector('.icon-preview img').getAttribute('src'), 'https://cdn.example.com/svg/plex.svg');
+  input.value = 'mdi-server';
+  input.dispatchEvent(new w.Event('input'));
+  input.dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.match(doc.querySelector('.icon-preview .mask').getAttribute('style'), /mask-image: url\("https:\/\/cdn\.example\.com\/mdi\/server\.svg"\)/);
+  input.value = 'not a name!';
+  input.dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.equal(doc.querySelector('.icon-preview').textContent, '?');
 });

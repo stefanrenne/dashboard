@@ -316,7 +316,7 @@ function render() {
       el('h2', { text: t('secPage') }),
       el('div', { class: 'grid' },
         field('description', t('description'), text('description', { maxlength: '300' }), t('descriptionHelp')),
-        field('favicon', t('favicon'), text('favicon', { spellcheck: 'false' }), t('faviconHelp')),
+        field('favicon', t('favicon'), iconInput('favicon', v.favicon, (x) => { v.favicon = x; }, 'proxmox.svg'), t('faviconHelp')),
         field('startUrl', t('startUrl'), text('startUrl', { spellcheck: 'false', placeholder: '/' }), t('startUrlHelp')),
         field('base', t('base'), text('base', { spellcheck: 'false', type: 'url' }), t('baseHelp')),
         field('instanceName', t('instanceName'), text('instanceName', { spellcheck: 'false' }), t('instanceNameHelp'))),
@@ -390,7 +390,7 @@ function groupFields(g, id, { nested = false, kind = 'services' } = {}) {
       kind === 'services' ? sel('style', t('groupStyle'), [['', t('styleDefault')], ['row', t('styleRow')], ['column', t('styleColumn')]]) : null,
       kind === 'services' ? field(`${id}-columns`, t('groupColumns'), el('input', { type: 'number', id: `${id}-columns`, min: '1', max: '12', step: '1', inputmode: 'numeric', value: g.columns, oninput: (e) => { g.columns = e.target.value; } }), t('groupColumnsHelp')) : null,
       nested ? null : txt('tab', t('groupTab'), t('groupTabHelp')),
-      txt('icon', t('groupIcon'), '', { placeholder: 'mdi-server' }),
+      field(`${id}-icon`, t('groupIcon'), iconInput(`${id}-icon`, g.icon, (v) => { g.icon = v; }, 'mdi-server')),
       tri('initiallyCollapsed', t('groupCollapsed')),
       kind === 'services' ? tri('useEqualHeights', t('groupEqual')) : tri('iconsOnly', t('groupIconsOnly'))),
     el('label', { class: 'check', for: `${id}-header` }, el('input', { type: 'checkbox', id: `${id}-header`, checked: g.header, onchange: (e) => { g.header = e.target.checked; } }), t('groupHeader')),
@@ -603,7 +603,7 @@ function serviceCard(s, list, i) {
         el('div', { class: 'grid' },
           field(`s${id}-name`, t('colName'), el('input', { type: 'text', id: `s${id}-name`, value: s.name, oninput: (e) => { s.name = e.target.value; } })),
           txt('href', t('fHref'), '', { type: 'url', placeholder: 'http://app.lan' }),
-          txt('icon', t('fIcon'), '', { placeholder: 'plex.svg' }),
+          field(`s${id}-icon`, t('fIcon'), iconInput(`s${id}-icon`, f.icon, (v) => { f.icon = v; })),
           txt('description', t('description'))),
         el('div', { class: 'grid' },
           txt('siteMonitor', t('fSiteMonitor'), '', { placeholder: 'http://app.lan/health' }),
@@ -745,6 +745,7 @@ function widgetEditor(list, catalog, file, prefix) {
           el('option', { value: '', selected: !w.options[k], text: def.default !== undefined ? `${t('styleDefault')} (${def.default})` : '—' }),
           ...values.map((v) => el('option', { value: v, selected: w.options[k] === v, text: def.type === 'boolean' ? t(v === 'true' ? 'on' : 'off') : v }))), help);
       }
+      if (def.type === 'icon') return field(fid, label, iconInput(fid, w.options[k], (v) => { w.options[k] = v; }), help);
       return field(fid, label, el('input', { type: def.secret ? 'password' : 'text', id: fid, value: w.options[k] ?? '', spellcheck: 'false', autocapitalize: 'off',
         autocomplete: def.secret ? 'new-password' : 'off', inputmode: def.type === 'number' ? 'numeric' : null,
         placeholder: def.default !== undefined ? String(def.default) : null, oninput: set }), help);
@@ -854,7 +855,7 @@ function bookmarkCard(b, list, i) {
       field(`b${id}-name`, t('colName'), el('input', { type: 'text', id: `b${id}-name`, value: b.name, oninput: (e) => { b.name = e.target.value; } })),
       txt('href', t('fHref'), { type: 'url', placeholder: 'https://example.com' }),
       txt('abbr', t('bAbbr'), { maxlength: '4' }),
-      txt('icon', t('fIcon'), { placeholder: 'github.svg' }),
+      field(`b${id}-icon`, t('fIcon'), iconInput(`b${id}-icon`, b.fields.icon, (v) => { b.fields.icon = v; }, 'github.svg')),
       txt('description', t('description')),
       groups.length > 1 ? field(`b${id}-move`, t('svcMoveTo'), el('select', { id: `b${id}-move`, onchange: (e) => {
         const target = groups[Number(e.target.value)];
@@ -1116,6 +1117,57 @@ function downloadText(name, text) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ---------------------------------------------------------------- icon fields: suggestions and a preview
+const iconUrls = new Map(); // name → Promise of the address it stands for (src/layout.js resolveIcon)
+function iconUrl(name) {
+  if (!iconUrls.has(name)) iconUrls.set(name, api(`/icon?name=${encodeURIComponent(name)}`).then((out) => out.url ?? null).catch(() => null));
+  return iconUrls.get(name);
+}
+
+function loadIcons() {
+  if (state.icons) return;
+  state.icons = { local: [], used: [] };
+  api('/icons').then((out) => {
+    if (!out.ok) return;
+    state.icons = { local: out.local ?? [], used: out.used ?? [] };
+    const list = document.getElementById('icon-list');
+    if (list) list.replaceChildren(...iconOptions());
+  }).catch(() => {});
+}
+const iconOptions = () => [...new Set([...(state.icons?.used ?? []), ...(state.icons?.local ?? [])])].map((v) => el('option', { value: v }));
+
+/** The <datalist> the icon fields share; nav() puts it on every section. */
+function iconList() {
+  loadIcons();
+  return el('datalist', { id: 'icon-list' }, ...iconOptions());
+}
+
+/** A text field for an icon name or address, with a preview of what it shows. */
+function iconInput(id, value, set, placeholder = 'plex.svg') {
+  const preview = el('span', { class: 'icon-preview', 'aria-hidden': 'true' });
+  const update = async (name) => {
+    const v = String(name ?? '').trim();
+    if (!v) return preview.replaceChildren();
+    const url = await iconUrl(v);
+    if (!url) return preview.replaceChildren(el('span', { class: 'error', text: '?' }));
+    // single-colour icons (mdi-, si-) are a mask in the text colour, as on the dashboard
+    if (url.includes('#dash-mask')) {
+      const mask = el('span', { class: 'mask' });
+      const src = `url("${url.replace(/#dash-mask.*$/, '')}")`;
+      mask.style.setProperty('mask-image', src);
+      mask.style.setProperty('-webkit-mask-image', src);
+      return preview.replaceChildren(mask);
+    }
+    const img = el('img', { src: url, alt: '', loading: 'lazy' });
+    img.addEventListener('error', () => preview.replaceChildren(el('span', { class: 'error', text: '?' })));
+    preview.replaceChildren(img);
+  };
+  update(value);
+  const input = el('input', { type: 'text', id, value: value ?? '', list: 'icon-list', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', placeholder,
+    oninput: (e) => set(e.target.value), onchange: (e) => update(e.target.value) });
+  return el('span', { class: 'icon-field' }, preview, input);
+}
+
 // ---------------------------------------------------------------- sections and the config files
 // [id, text key, the config file it edits]; General, Security, Groups and Widgets are the forms above. The sections with a file
 // show it as text until their own form is there.
@@ -1136,8 +1188,8 @@ const sectionOf = (hash) => (SECTIONS.some((x) => x[0] === String(hash).slice(1)
 const fileUrl = (name) => `/files/${encodeURIComponent(name)}`;
 
 function nav() {
-  return el('nav', { class: 'sections', 'aria-label': t('navLabel') },
-    ...SECTIONS.map(([id, key]) => el('a', { href: `#${id}`, 'aria-current': id === state.section ? 'page' : null, text: t(key) })));
+  return [el('nav', { class: 'sections', 'aria-label': t('navLabel') },
+    ...SECTIONS.map(([id, key]) => el('a', { href: `#${id}`, 'aria-current': id === state.section ? 'page' : null, text: t(key) }))), iconList()];
 }
 
 async function loadFiles() {
