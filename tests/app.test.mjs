@@ -1710,3 +1710,22 @@ test('settings page layout: the groups the dashboard has, saved in a new order, 
     await t.close();
   }
 });
+
+test('settings page plugins: a package added from the page is installed, a bad source refused', async () => {
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n` });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const post = (entries) => fetch(`${t.base}/api/settings/plugins`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ entries }) });
+  try {
+    const before = await (await fetch(`${t.base}/api/settings`, { headers: auth })).json();
+    assert.deepEqual(before.plugins.entries, []);
+    const saved = await (await post([{ kind: 'path', value: path.resolve('examples/widget-template'), subdir: '', only: '' }])).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.equal(saved.plugins.entries.length, 1);
+    assert.ok(saved.plugins.packages.some((p) => p.name === 'widget-template'), JSON.stringify(saved.plugins.packages));
+    assert.deepEqual(saved.plugins.errors, []);
+    assert.match(fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8'), /^plugins:\n {2}- path: /m);
+    assert.equal((await post([{ kind: 'git', value: 'ftp://nope', subdir: '', only: '' }])).status, 400);
+  } finally {
+    await t.close();
+  }
+});

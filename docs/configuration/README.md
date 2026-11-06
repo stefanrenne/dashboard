@@ -167,7 +167,9 @@ and app details (description, favicon, app icons and shortcuts) and a few switch
 Security has the login page or only some actions, how long a login and an unlock last, the
 allowed hosts, the admin password and passkeys. Groups has the `layout` block: per group its
 arrangement, columns, tab, icon, title and folding (nested groups too), and the order of the groups
-with up and down buttons; an entry for a group that no longer exists can be removed there. It
+with up and down buttons; an entry for a group that no longer exists can be removed there.
+Widgets has the `plugins` list: add, change, order and remove packages (a git repository, an npm
+package or a folder), see what each is pinned to, and install again or update to the newest. It
 writes them into
 `settings.yaml`, keeping your comments and every key it does not show (`layout`, `plugins`,
 `providers`, ...), which it names; the dashboard follows at once.

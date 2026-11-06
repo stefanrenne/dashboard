@@ -32,6 +32,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   what changed. `providers` and `blockHighlights` are edited under Advanced.
 - **Groups on the settings page**: the `layout` block per group (arrangement, columns, tab, icon,
   title, folding, equal heights, icons only; nested groups too) and the order of the groups.
+- **Widget packages on the settings page**: the `plugins` list (git, npm or a folder, with subdir
+  and only), what each is pinned to, the widgets collection it extends, and buttons to install
+  again or update to the newest.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

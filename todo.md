@@ -12,9 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **Plugins editor.** The `plugins:` list: add or remove a source (git, npm, path; validated
-  as `installer.js` does), pin a tag or version, the state from `plugins.lock.yaml`, and the
-  sync/update buttons (`/api/plugins/sync`).
 - [ ] **services.yaml editor.** Groups (add, rename, remove, order, nested groups) and services
   (add, edit, move between groups, order, remove): name, href, icon (a picker with preview),
   description, siteMonitor / ping / container + server, weight, target, filter. Discovered

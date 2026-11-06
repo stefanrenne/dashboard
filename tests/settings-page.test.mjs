@@ -199,7 +199,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     },
   });
   const links = [...doc.querySelectorAll('nav.sections a')];
-  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Groepen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Groepen', 'Widgets', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
@@ -321,4 +321,50 @@ test('settings page: the groups: settings per group and nested group, the order 
   assert.deepEqual([sent[0].header, sent[0].iconsOnly, sent[1].columns, sent[1].tab, sent[1].nested[0].initiallyCollapsed], [false, 'true', '4', 'Home', 'true']);
   assert.deepEqual(cards(), ['Developer', 'Infra'], 'the answer shows the saved layout');
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+});
+
+test('settings page: widget packages: the defaults, entries edited, added, reordered and removed; install again', async () => {
+  const plugins = (entries) => ({
+    entries,
+    defaults: [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', replaced: false, pin: { tag: 'v0.20.0', commit: 'abc', version: null } }],
+    packages: [{ name: 'widgets', version: 'v0.20.0', url: 'https://github.com/stefanrenne/dashboard-widgets/releases/tag/v0.20.0' }],
+    errors: [{ source: 'git+https://github.com/someone/broken#v1', message: 'cannot clone' }], warnings: [],
+  });
+  const entries = [
+    { index: 0, kind: 'git', value: 'https://github.com/someone/pihole#v1.2.0', subdir: '', only: '', pin: { tag: 'v1.2.0', commit: 'abc', version: null }, error: null },
+    { index: 1, kind: 'path', value: './my-widgets/garage', subdir: '', only: '', pin: null, error: null },
+  ];
+  let synced = '';
+  const { doc, w, calls } = await page({
+    'GET /api/settings': () => data({ plugins: plugins(entries) }),
+    'POST /api/settings/plugins': (init) => data({ plugins: plugins(JSON.parse(init.body).entries.map((e, i) => ({ ...e, index: i, pin: null, error: null }))) }),
+    'POST /api/plugins/sync': (init) => { synced = init; return { errors: [], warnings: [] }; },
+  }, () => {}, 'http://dash.lan/settings#plugins');
+  const text = doc.getElementById('panel').textContent;
+  assert.match(text, /Altijd geïnstalleerd: git\+https:\/\/github\.com\/stefanrenne\/dashboard-widgets#latest · Vastgezet op v0\.20\.0/);
+  assert.match(text, /Vastgezet op v1\.2\.0/);
+  assert.match(text, /cannot clone/);
+  const set = (id, value, event) => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  set('pl-0-value', 'https://github.com/someone/pihole#v1.3.0', 'input');
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Een widgetpakket toevoegen').click();
+  assert.equal(doc.activeElement.id, 'pl-2-value');
+  set('pl-2-kind', 'npm', 'change');
+  assert.equal(doc.getElementById('pl-2-value').getAttribute('placeholder'), 'dashboard-widget-x@1.0.0');
+  set('pl-2-value', 'dashboard-widget-adguard@2.0.1', 'input');
+  set('pl-2-only', 'adguard', 'input');
+  doc.querySelector('[aria-label="./my-widgets/garage verwijderen"]').click();
+  doc.querySelector('[aria-label="dashboard-widget-adguard@2.0.1 omhoog"]').click();
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/plugins').at(-1).body.entries;
+  assert.deepEqual(sent, [
+    { kind: 'npm', value: 'dashboard-widget-adguard@2.0.1', subdir: '', only: 'adguard', index: null },
+    { kind: 'git', value: 'https://github.com/someone/pihole#v1.3.0', subdir: '', only: '', index: 0 },
+  ]);
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Bijwerken naar de nieuwste').click();
+  await tick();
+  assert.equal(calls.some((c) => c.p === '/api/plugins/sync' && c.init.method === 'POST'), true);
+  assert.equal(synced.headers['x-requested-with'], 'dashboard');
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Klaar.');
 });

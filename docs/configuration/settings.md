@@ -100,6 +100,8 @@ plugins:
 
 ## Plugins
 
+The settings page edits this list under Widgets, and installs again or updates from there.
+
 The [widgets collection](https://github.com/stefanrenne/dashboard-widgets) is always
 installed, as `git+https://github.com/stefanrenne/dashboard-widgets#latest`; the entries
 under `plugins:` extend it. To pin it or take only some of its widgets, list that repository
