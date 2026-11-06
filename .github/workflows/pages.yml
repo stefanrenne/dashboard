@@ -16,20 +16,30 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
+
+# Only main deploys (the github-pages environment allows main only). A scheduled run, or one by
+# hand, starts on the default branch (develop): it starts this workflow on main and builds nothing.
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  to-main:
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      # the docs of main, the released state: a scheduled run or one by hand starts on the default
-      # branch (develop), whose docs may describe what is not released yet
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      # the docs of main, the released state
       - uses: actions/checkout@v7
-        with:
-          ref: main
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -75,6 +85,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
