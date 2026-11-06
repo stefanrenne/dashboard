@@ -1,5 +1,5 @@
-// Prints the scrypt hash of an admin password, for settings.yaml adminPassword or DASHBOARD_ADMIN_PASSWORD
-// (or the file of DASHBOARD_ADMIN_PASSWORD_FILE), so the password itself is stored nowhere:
+// Prints the scrypt hash of an admin password, for settings.yaml adminPassword (the settings page
+// sets it too), so the password itself is stored nowhere:
 //
 //   docker exec -it dashboard node src/hash-password.mjs
 //   echo -n 'secret' | node src/hash-password.mjs

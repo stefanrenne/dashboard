@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { Passkeys, PASSKEYS_FILE, rpContext, TOKEN_MS } from '../src/passkeys.js';
-import { ActionGate } from '../src/actionauth.js';
+import { ActionGate, hashPassword } from '../src/actionauth.js';
 import { createApp } from '../src/app.js';
 import { tmpDir, silentLog } from './helpers.mjs';
 
@@ -128,8 +128,8 @@ test('ActionGate: a passkey token counts as the password, once', async () => {
 
 test('the routes: a passkey made in the settings logs in over https, and opens the settings', async () => {
   const configDir = tmpDir('hd-passkey-app-');
-  fs.writeFileSync(path.join(configDir, 'settings.yaml'), 'allowedHosts: [dash.lan]\nlogin: true\n');
-  const app = await createApp({ configDir, env: { DASHBOARD_ADMIN_PASSWORD: 'Geheim-Admin-1' }, log: silentLog, defaultPlugins: [], dockerSocket: null, releasesUrl: null });
+  fs.writeFileSync(path.join(configDir, 'settings.yaml'), `allowedHosts: [dash.lan]\nlogin: true\nadminPassword: "${hashPassword('Geheim-Admin-1', { N: 1024 })}"\n`);
+  const app = await createApp({ configDir, env: {}, log: silentLog, defaultPlugins: [], dockerSocket: null, releasesUrl: null });
   const server = http.createServer(app.handler);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const { port } = server.address();

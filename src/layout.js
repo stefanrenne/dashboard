@@ -235,8 +235,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     }
     if (!actionsProtected && (confirm || (asked && own !== 'none'))) {
       warnings.push({ ...where, message: own === 'password' || own === 'always'
-        ? `${type}: confirm: ${own} needs DASHBOARD_ADMIN_PASSWORD on the dashboard; it runs without a password now`
-        : `${type}: anyone who can open the page can run this; set DASHBOARD_ADMIN_PASSWORD to ask for a password first (or confirm: none to keep it as is)` });
+        ? `${type}: confirm: ${own} needs an admin password (set one on the settings page); it runs without one now`
+        : `${type}: anyone who can open the page can run this; set an admin password on the settings page to ask for it first (or confirm: none to keep it as is)` });
     }
     return confirm;
   }

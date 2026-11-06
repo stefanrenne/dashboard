@@ -151,7 +151,6 @@ Settings of the container rather than of the page.
 | `DASHBOARD_VAR_*`, `DASHBOARD_FILE_*` | Values for `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` (see [Variables](#variables)) |
 | `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
 | `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
-| `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ADMIN_PASSWORD_FILE` | The admin password, in place of `adminPassword` in settings.yaml (see [Admin password](#admin-password)) |
 | `DASHBOARD_WATCH_POLL` | Check the config files every so many seconds, for network shares |
 | `DASHBOARD_CONFIG_DIR` | The config folder, when not run from the image |
 | `LOG_TARGETS` | `both`, `stdout` or `file` (with `logpath` in [settings.yaml](settings.md)) |
@@ -202,8 +201,9 @@ buttons. Such a page always uses its own name, never an IP address, so IP addres
 
 The admin password guards what runs something, and with `login: true` the whole page. It is
 `adminPassword` in [settings.yaml](settings.md): **only its scrypt hash**, never the password
-itself (a plain one is refused, and what it guards stays locked). The setup wizard writes it;
-`node src/hash-password.mjs` in the container asks for a password and prints a new hash:
+itself (a plain one is refused, and what it guards stays locked). The setup wizard writes it, the
+[settings page](#settings-page) changes it, and `node src/hash-password.mjs` in the container
+asks for a password and prints a new hash:
 
 ```sh
 docker exec -it dashboard node src/hash-password.mjs
@@ -214,9 +214,9 @@ docker exec -it dashboard node src/hash-password.mjs
 adminPassword: "scrypt:16384:8:1:..."   # the printed line
 ```
 
-`DASHBOARD_ADMIN_PASSWORD` on the container (plain text or the hash), or a file named by
-`DASHBOARD_ADMIN_PASSWORD_FILE` (a Docker secret), takes its place; a file that cannot be read
-keeps everything it guards locked (the log says why), rather than leaving it open.
+There is no environment variable for it (`DASHBOARD_ADMIN_PASSWORD` and
+`DASHBOARD_ADMIN_PASSWORD_FILE` are no longer read). Next to the password, a
+[passkey](#passkeys) works too.
 
 These presses ask for it:
 

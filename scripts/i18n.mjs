@@ -6,7 +6,7 @@
 //   npm run i18n -- apply todo.json      the translated file back into the pages
 //
 // The translator fills each value of todo.json in its language, keeping {placeholders} and
-// names such as settings.yaml, DASHBOARD_ADMIN_PASSWORD or confirm: as they are.
+// names such as settings.yaml, DASHBOARD_VAR_* or confirm: as they are.
 
 import fs from 'node:fs';
 import path from 'node:path';

@@ -8,6 +8,7 @@ import { watchConfig } from '../src/config/watch.js';
 import { execFileSync } from 'node:child_process';
 import { tmpDir, serve, silentLog, writeWidget, COLLECTION_WIDGETS } from './helpers.mjs';
 import { readLock } from '../src/plugins/installer.js';
+import { hashPassword } from '../src/actionauth.js';
 
 const SECRET = 'super-secret-api-key-123';
 
@@ -1078,7 +1079,7 @@ const ACTION_SERVICES = [
 ].join('\n');
 
 test('action password: root asks by default, others when they say so; a header or the unlock cookie; webhooks and the sync too', async () => {
-  const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\nactions: { remember: 10m }\n`, 'services.yaml': ACTION_SERVICES }, { DASHBOARD_ADMIN_PASSWORD: 'Sesam-123' });
+  const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\nactions: { remember: 10m }\nadminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n`, 'services.yaml': ACTION_SERVICES });
   // from outside: a proxy passed it on (a loopback request without one is a script in the container)
   const outside = { 'x-requested-with': 'dashboard', 'x-forwarded-for': '203.0.113.7' };
   const post = (p, headers = {}) => fetch(`${t.base}${p}`, { method: 'POST', headers: { ...outside, ...headers } });
@@ -1122,7 +1123,7 @@ test('action password: root asks by default, others when they say so; a header o
   }
 });
 
-test('action password: without one everything runs as before, with warnings for what would ask; a file that cannot be read locks', async () => {
+test('action password: without one everything runs as before, with warnings for what would ask', async () => {
   const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES });
   const outside = { 'x-requested-with': 'dashboard', 'x-forwarded-for': '203.0.113.7' };
   try {
@@ -1130,20 +1131,13 @@ test('action password: without one everything runs as before, with warnings for 
     assert.equal(layout.settings.actionsProtected, false);
     assert.ok(layout.groups[0].services.every((s) => !s.confirm && !s.widgets[0]?.confirm), 'nothing asks');
     const warnings = layout.messages.warnings.map((m) => `${m.path}: ${m.message}`);
-    assert.ok(warnings.some((w) => w.includes('Root.widget: runner: anyone who can open the page can run this; set DASHBOARD_ADMIN_PASSWORD')), warnings.join('\n'));
-    assert.ok(warnings.some((w) => w.includes('Always.widget: runner: confirm: always needs DASHBOARD_ADMIN_PASSWORD')), warnings.join('\n'));
+    assert.ok(warnings.some((w) => w.includes('Root.widget: runner: anyone who can open the page can run this; set an admin password on the settings page')), warnings.join('\n'));
+    assert.ok(warnings.some((w) => w.includes('Always.widget: runner: confirm: always needs an admin password')), warnings.join('\n'));
     assert.ok(!warnings.some((w) => w.includes('Open.widget') || w.includes('Plain.widget')), 'confirm: none and a plain button say nothing');
     const root = layout.groups[0].services[0].widgets[0].instanceId;
     assert.equal((await fetch(`${t.base}/api/widgets/${root}/action`, { method: 'POST', headers: outside })).status, 200);
   } finally {
     await t.close();
-  }
-  const broken = await startApp({ 'settings.yaml': `plugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES }, { DASHBOARD_ADMIN_PASSWORD_FILE: '/nonexistent/password' });
-  try {
-    const root = (await broken.json('/api/layout')).groups[0].services[0].widgets[0].instanceId;
-    assert.equal((await fetch(`${broken.base}/api/widgets/${root}/action`, { method: 'POST', headers: outside })).status, 401, 'a password meant but unreadable keeps it locked');
-  } finally {
-    await broken.close();
   }
 });
 
@@ -1170,7 +1164,7 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
     assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
     const docker = await (await post('docker', { docker: [{ address: '127.0.0.1:1' }, { address: 'not valid!' }] })).json();
     assert.deepEqual([docker.servers.length, docker.servers[0].ok, docker.errors.length], [1, false, 1], 'an added server is checked, a bad address said');
-    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1', envPassword: false });
+    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1' });
     assert.match((await (await post('test', { type: 'nope', options: {} })).json()).error, /unknown widget/);
     assert.match((await (await post('test', { type: 'radarr', options: {} })).json()).error, /url/, 'the options are checked first');
     const dry = await (await post('homepage', { files: { 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        widget: { type: plex, url: http://plex.lan, key: "{{HOMEPAGE_VAR_PLEX}}" }\n    - Odd:\n        widget: { type: oddity }\n' } })).json();
@@ -1226,7 +1220,6 @@ test('onboarding: nothing without the marker, and a file that appeared meanwhile
 });
 
 test('login: the admin password opens the page; a session on the server; logged in counts as unlocked except for confirm: always', async () => {
-  const { hashPassword } = await import('../src/actionauth.js');
   const hash = hashPassword('Geheim-Admin-1', { N: 1024 });
   const t = await startApp({ 'settings.yaml': `adminPassword: "${hash}"\nlogin: { remember: 7d }\nplugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES });
   const outside = { 'x-forwarded-for': '203.0.113.7' };
@@ -1320,11 +1313,11 @@ test('settings page: without an admin password the local network sets one first;
   } finally {
     await t.close();
   }
-  // with the password in the environment it is changed there
+  // DASHBOARD_ADMIN_PASSWORD is not read any more: without adminPassword there is none
   const env = await startApp({}, { DASHBOARD_ADMIN_PASSWORD: 'Geheim-Admin-1' });
   try {
-    const r = await fetch(`${env.base}/api/settings/password`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', 'x-dashboard-password': 'Geheim-Admin-1', 'x-forwarded-for': '203.0.113.7' }, body: JSON.stringify({ current: 'Geheim-Admin-1', next: 'Iets-Anders-3' }) });
-    assert.equal(r.status, 409);
+    const r = await fetch(`${env.base}/api/settings`, { headers: { 'x-dashboard-password': 'Geheim-Admin-1' } });
+    assert.equal((await r.json()).noPassword, true);
   } finally {
     await env.close();
   }

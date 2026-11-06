@@ -42,7 +42,7 @@ async function page(answers, setup = () => {}) {
   return { w: dom.window, doc: dom.window.document, calls };
 }
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, envPassword: false, noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });

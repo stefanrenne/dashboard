@@ -1,12 +1,10 @@
 // The admin password: in front of the actions (buttons, hidden-iframe webhooks, the widget sync)
-// and, with settings.yaml `login`, the whole page (src/login.js). From DASHBOARD_ADMIN_PASSWORD or
-// the file DASHBOARD_ADMIN_PASSWORD_FILE names (plain text or a scrypt hash), else settings.yaml
-// `adminPassword` (a scrypt hash, as src/hash-password.mjs and the setup wizard make). A correct
+// and, with settings.yaml `login`, the whole page (src/login.js). It is settings.yaml
+// `adminPassword`, a scrypt hash (as the settings page, the setup wizard and src/hash-password.mjs make). A correct
 // password unlocks that browser for a while (a random token in an HttpOnly cookie, kept in
 // memory); failures per address are slowed down.
 
 import crypto from 'node:crypto';
-import fs from 'node:fs';
 
 export const COOKIE = 'dash_unlock';
 export const PASSWORD_HEADER = 'x-dashboard-password';
@@ -23,26 +21,6 @@ export function hashPassword(password, { N = 16384, r = 8, p = 1 } = {}) {
   const salt = crypto.randomBytes(16);
   const hash = crypto.scryptSync(String(password), salt, 32, { N, r, p, maxmem: 64 * 1024 * 1024 });
   return `scrypt:${N}:${r}:${p}:${salt.toString('base64')}:${hash.toString('base64')}`;
-}
-
-/**
- * The admin password from the environment: { value, hashed } or null when none is set. Throws
- * when DASHBOARD_ADMIN_PASSWORD_FILE names a file that cannot be read, or a hash is malformed:
- * a password the user meant to set must never silently fall away.
- */
-export function loadPassword(env = process.env) {
-  let value = env.DASHBOARD_ADMIN_PASSWORD;
-  if (env.DASHBOARD_ADMIN_PASSWORD_FILE) {
-    try {
-      value = fs.readFileSync(env.DASHBOARD_ADMIN_PASSWORD_FILE, 'utf8');
-    } catch (err) {
-      throw new Error(`DASHBOARD_ADMIN_PASSWORD_FILE: ${err.code === 'ENOENT' ? 'no such file' : err.message}`);
-    }
-  }
-  value = String(value ?? '').trim();
-  if (!value) return null;
-  if (value.startsWith('scrypt:') && !SCRYPT.test(value)) throw new Error('DASHBOARD_ADMIN_PASSWORD: a scrypt hash, but not of the form src/hash-password.mjs prints');
-  return { value, hashed: value.startsWith('scrypt:') };
 }
 
 const digest = (text) => crypto.createHash('sha256').update(String(text)).digest();

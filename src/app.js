@@ -19,7 +19,7 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
-import { ActionGate, loadPassword, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
+import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
@@ -152,20 +152,14 @@ export async function createApp({
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
   const discovery = new Discovery({ log, env, onChange: () => state.config && rebuild(), ...discoveryOptions });
   let chain = Promise.resolve();
-  // DASHBOARD_ADMIN_PASSWORD(_FILE) wins over settings.yaml adminPassword; one that cannot be read
-  // keeps what it guards locked (never open)
-  let envPassword = null;
-  try {
-    envPassword = loadPassword(env);
-  } catch (err) {
-    log.error(`${err.message}: what asks for the admin password is refused until it is fixed`);
-    envPassword = { broken: true };
+  // the admin password is settings.yaml adminPassword only (a hash the settings page writes)
+  if (['DASHBOARD_ADMIN_PASSWORD', 'DASHBOARD_ADMIN_PASSWORD_FILE', 'DASHBOARD_ACTION_PASSWORD', 'DASHBOARD_ACTION_PASSWORD_FILE'].some((k) => env[k] !== undefined)) {
+    log.warn('DASHBOARD_ADMIN_PASSWORD (and _FILE, and the older DASHBOARD_ACTION_PASSWORD) are no longer read: the admin password is adminPassword in settings.yaml; set it on the settings page');
   }
   const passkeys = new Passkeys({ configDir, log });
-  const gate = new ActionGate({ password: envPassword, log, passkeys });
+  const gate = new ActionGate({ password: null, log, passkeys });
   const onboarding = new Onboarding({ configDir, log });
   const sessions = new SessionStore({ configDir, log });
-  const passwordSecrets = envPassword?.value && !envPassword.hashed ? [envPassword.value] : [];
   // the allowed hosts: settings.yaml allowedHosts (the settings page writes it); `*` allows every host
   const hostsNow = () => allowedHosts(state.config?.settings.allowedHosts);
   if (env.DASHBOARD_ALLOWED_HOSTS !== undefined || env.HOMEPAGE_ALLOWED_HOSTS !== undefined) {
@@ -173,7 +167,7 @@ export async function createApp({
   }
 
   function rebuild() {
-    gate.password = envPassword ?? state.config.settings.adminPassword ?? null;
+    gate.password = state.config.settings.adminPassword ?? null;
     const merged = mergeDiscovered(state.config.services, discovery.found);
     const pluginMessages = (list) =>
       list.map((e) => ({ file: 'settings.yaml', path: `plugins: ${e.source}`, message: e.message }));
@@ -183,10 +177,10 @@ export async function createApp({
       groups: merged.groups,
       extraErrors: [...pluginMessages(state.pluginResult.errors), ...pluginMessages(state.registryErrors), ...discovery.errors],
       extraWarnings: [...pluginMessages(state.pluginResult.warnings), ...merged.warnings],
-      secrets: new Set([...state.config.secrets, ...discovery.secrets, ...passwordSecrets]),
+      secrets: new Set([...state.config.secrets, ...discovery.secrets]),
       actionsProtected: gate.protected,
     });
-    runtime.setInstances(instances, state.registry, new Set([...state.config.secrets, ...discovery.secrets, ...passwordSecrets]));
+    runtime.setInstances(instances, state.registry, new Set([...state.config.secrets, ...discovery.secrets]));
     gate.rememberMs = state.config.settings.actionRememberMs;
     state.actions = actions;
     state.frames = frames;
@@ -201,7 +195,7 @@ export async function createApp({
     // the login page needs an admin password; without one the page stays open, and says so
     const loginOn = Boolean(state.config.settings.login?.required && gate.password);
     const messages = state.config.settings.login?.required && !gate.password
-      ? { ...layout.messages, warnings: [...layout.messages.warnings, { file: 'settings.yaml', path: 'login', message: 'needs an admin password (adminPassword, or DASHBOARD_ADMIN_PASSWORD); the page opens without a login now' }] }
+      ? { ...layout.messages, warnings: [...layout.messages.warnings, { file: 'settings.yaml', path: 'login', message: 'needs an admin password (set one on the settings page); the page opens without a login now' }] }
       : layout.messages;
     state.layout = { ...layout, settings: { ...layout.settings, login: loginOn }, messages, version: VERSION, versionUrl: showVersion ? versionUrl(VERSION) : null, showVersion, update, plugins };
     const hosts = hostsNow();
@@ -466,7 +460,7 @@ export async function createApp({
     if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
     const headers = { ...SECURITY_HEADERS, ...allowed.headers };
     const rp = rpContext(req);
-    const answer = () => ({ ok: true, ...readSettings(configDir), envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn,
+    const answer = () => ({ ok: true, ...readSettings(configDir), noPassword: !gate.password, loggedIn,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] } });
     if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
@@ -514,7 +508,6 @@ export async function createApp({
       return send(res, 200, answer(), 'application/json', headers);
     }
     if (method === 'POST' && route === '/password') {
-      if (envPassword) return send(res, 409, { ok: false, error: 'the admin password is set in the environment (DASHBOARD_ADMIN_PASSWORD)' });
       if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) return send(res, 400, { ok: false, error: `at least ${MIN_PASSWORD} characters` });
       if (gate.password) {
         // the current password, every time: also when logged in or unlocked
@@ -654,7 +647,7 @@ export async function createApp({
     }
     if (method === 'GET' && route === 'status') {
       // what the environment sets already: those win over what the wizard writes
-      return send(res, 200, { host: hostName(req.headers.host), envPassword: Boolean(envPassword) });
+      return send(res, 200, { host: hostName(req.headers.host) });
     }
     if (method === 'POST' && route === 'test') return send(res, 200, await testWidget(body?.type, body?.options));
     if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files));
@@ -736,13 +729,13 @@ export async function createApp({
   function setupFiles(body) {
     const s = body.settings ?? {};
     const sec = body.security ?? {};
-    // the admin password: required, unless the environment sets one; only its hash is written
-    if (!envPassword && (typeof sec.adminPassword !== 'string' || sec.adminPassword.length < MIN_PASSWORD)) {
+    // the admin password: required; only its hash is written
+    if (typeof sec.adminPassword !== 'string' || sec.adminPassword.length < MIN_PASSWORD) {
       return { error: `security.adminPassword: at least ${MIN_PASSWORD} characters` };
     }
     const hosts = Array.isArray(sec.allowedHosts) ? sec.allowedHosts.map((h) => String(h).trim().toLowerCase()).filter(Boolean) : [];
     if (hosts.some((h) => h !== '*' && !/^[a-z0-9.-]+(:\d{1,5})?$|^\[[0-9a-f:]+\](:\d{1,5})?$/.test(h)) || hosts.length > 20) return { error: 'security.allowedHosts: host names such as dash.lan' };
-    const security = { allowedHosts: [...new Set(hosts)], adminPassword: envPassword ? null : hashPassword(sec.adminPassword), login: sec.login === true };
+    const security = { allowedHosts: [...new Set(hosts)], adminPassword: hashPassword(sec.adminPassword), login: sec.login === true };
     const title = typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 100) : 'Homelab';
     if (s.language !== undefined && !LANGUAGES.includes(s.language)) return { error: 'settings.language: not a known language' };
     if (s.theme !== undefined && !THEMES.includes(s.theme)) return { error: 'settings.theme: auto, dark or light' };

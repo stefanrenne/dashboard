@@ -8,10 +8,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - **`DASHBOARD_ALLOWED_HOSTS` (and `HOMEPAGE_ALLOWED_HOSTS`) are no longer read.** Put the names
   under Allowed hosts on the settings page (open it by the IP address to get there), or in
   `allowedHosts` in settings.yaml; the log says so while the variable is still set.
-- **The action password is the admin password.** `DASHBOARD_ACTION_PASSWORD` and
-  `DASHBOARD_ACTION_PASSWORD_FILE` (0.22.0) are now `DASHBOARD_ADMIN_PASSWORD` and
-  `DASHBOARD_ADMIN_PASSWORD_FILE`; rename them on the container. It can also be in settings.yaml
-  as `adminPassword`, as a scrypt hash only (`node src/hash-password.mjs`); the variable wins.
+- **The action password is the admin password, in settings.yaml only.** `DASHBOARD_ACTION_PASSWORD`
+  and `DASHBOARD_ACTION_PASSWORD_FILE` (0.22.0) are no longer read, nor is any other variable for
+  it: the password is `adminPassword` in settings.yaml, as a scrypt hash only. Set it on the
+  settings page (from the local network while there is none yet), in the setup wizard, or with
+  `node src/hash-password.mjs`; the log says so while a variable is still set.
 
 ### Added
 - **A login page:** `login: true` in settings.yaml asks for the admin password before the page
