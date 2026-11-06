@@ -8,10 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Low (with `*` only): DNS rebinding past the CSRF check.** Host names are checked by
-  default now (only `localhost`, IP addresses and `allowedHosts`), which stops it. With
-  `allowedHosts: "*"` a rebound page is same-origin again and may send
-  `X-Requested-With: dashboard`. Fix: the POST endpoints also check that `Origin` matches `Host`.
 - [ ] **Medium: no authentication for reading.** Presses can ask for the action password now
   (`DASHBOARD_ACTION_PASSWORD`), but every viewer still reads everything, and buttons without
   `confirm:` run for anyone. A docs page for forward-auth (Authelia, Authentik, Cloudflare Access)

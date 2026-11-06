@@ -191,7 +191,8 @@ allowedHosts: [dash.lan, dash.example.com]   # every name you open it by
 - **Ports**: an entry without a port allows every port (`dash.lan`); with one, only that port
   (`dash.example.com:8443`).
 - **`*`** answers every host, as before this check. Only use it when something else checks the
-  host, such as a reverse proxy that answers your names only.
+  host, such as a reverse proxy that answers your names only; the log warns about it. Nothing
+  else can make up for it: to the browser a rebinding page is the dashboard's own site.
 
 This stops DNS rebinding: a web page that points a name of its own at your network would
 otherwise be the same site as the dashboard to your browser, and could read it and press its

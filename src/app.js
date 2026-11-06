@@ -203,6 +203,12 @@ export async function createApp({
       state.hostsNoted = true;
       log.info('no allowed hosts set: answering localhost and IP addresses only; add the host names you open the dashboard by under Allowed hosts on the settings page (allowedHosts in settings.yaml)');
     }
+    // `*`: a page that points a name of its own at the dashboard (DNS rebinding) is the same site to
+    // the browser; no Origin check can tell it apart, so only the proxy in front can.
+    if (hosts === null && !state.anyHostNoted) {
+      state.anyHostNoted = true;
+      log.warn('allowedHosts: "*" answers every host name, so a web page can reach this dashboard through a name of its own (DNS rebinding); keep it only behind a proxy that answers your own names');
+    }
     broadcast('reload');
   }
 

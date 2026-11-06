@@ -483,6 +483,19 @@ test('allowedHosts: listed host names, loopback and IP addresses get an answer; 
   }
 });
 
+test('allowedHosts "*" warns once in the log that DNS rebinding is no longer stopped', async () => {
+  const configDir = tmpDir('hd-app-');
+  fs.writeFileSync(path.join(configDir, 'settings.yaml'), 'allowedHosts: "*"\n');
+  const warnings = [];
+  const app = await createApp({ configDir, log: { ...silentLog, warn: (m) => warnings.push(m) }, defaultPlugins: [], dockerSocket: null, releasesUrl: null });
+  try {
+    await app.reload();
+    assert.equal(warnings.filter((m) => /DNS rebinding/.test(m)).length, 1);
+  } finally {
+    app.close();
+  }
+});
+
 test('static files: index, client.js, assets, icons, and no path traversal', async () => {
   const t = await startApp({
     'settings.yaml': `plugins:\n  - path: ${path.resolve('examples/widget-template')}\n`,
