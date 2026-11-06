@@ -1782,3 +1782,19 @@ test('settings page widgets: the form gets the schemas, a test fills in the hidd
     upstream.close();
   }
 });
+
+test('settings page header widgets: read with the catalog, saved, the header follows', async () => {
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n`, 'widgets.yaml': '- datetime:\n    dateStyle: full\n' });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/header`, { headers: auth })).json();
+    assert.equal(read.widgets[0].type, 'datetime');
+    assert.ok(read.catalog.some((w) => w.id === 'search'));
+    const saved = await (await fetch(`${t.base}/api/settings/header`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth },
+      body: JSON.stringify({ hash: read.hash, widgets: [...read.widgets, { id: null, type: 'search', options: {} }] }) })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.deepEqual(t.app.layout.header.map((h) => h.type), ['datetime', 'search']);
+  } finally {
+    await t.close();
+  }
+});

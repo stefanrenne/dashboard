@@ -180,7 +180,9 @@ with a test button; secret options stay hidden, lists and keys a widget does not
 as written), renamed, moved to another group, added and removed; a
 group or list that comes from an `!include` is a block with a link to its file, and the services
 found by discovery are listed (their labels are their source). "Edit as text" shows the file.
-The other sections (Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, and
+Header widgets is a form too: the widgets in the header, each with the form of its options, added,
+reordered and removed.
+The other sections (Bookmarks, Docker, Kubernetes, Proxmox, and
 Advanced for `settings.yaml` itself) show their file as text, with its comments, and the files
 it includes. A save is checked first: a mistake is shown with its file and path and nothing is
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file

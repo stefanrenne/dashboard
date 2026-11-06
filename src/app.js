@@ -25,7 +25,7 @@ import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
 import { readLayout, checkLayout, writeLayout } from './settings-layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './settings-plugins.js';
-import { readServices, writeServices, widgetCatalog } from './settings-services.js';
+import { readServices, writeServices, widgetCatalog, readHeader, writeHeader } from './settings-services.js';
 import { secretsOf } from './config/mask.js';
 import { substitute } from './config/vars.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
@@ -596,6 +596,22 @@ export async function createApp({
       const out = await testWidget(body?.type, filled.value);
       const secrets = [...[...known.values()].map((x) => String(x.value)), ...filled.secrets];
       return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), secrets) }, 'application/json', headers);
+    }
+    if (route === '/header') {
+      try {
+        if (method === 'POST') {
+          const out = writeHeader(configDir, body?.widgets, body?.hash, { env }, schemaOf);
+          if (out.changed) {
+            log.info('settings: widgets.yaml saved from the header widgets form');
+            await reload();
+          }
+          return send(res, 200, { ok: true, ...readHeader(configDir, schemaOf), catalog: widgetCatalog(state.registry), warnings: out.warnings ?? [] }, 'application/json', headers);
+        }
+        return send(res, 200, { ok: true, ...readHeader(configDir, schemaOf), catalog: widgetCatalog(state.registry) }, 'application/json', headers);
+      } catch (err) {
+        if (!(err instanceof ConfigEditError)) throw err;
+        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
+      }
     }
     if (route === '/services') {
       // the services the dashboard found by itself: shown, not edited (their labels are the source)

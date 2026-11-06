@@ -234,9 +234,9 @@ export function widgetCatalog(registry) {
 }
 
 /** A widget's options as the form has them: { type, options, rest }; secrets as tokens. */
-export function widgetForm(map, schemaFor) {
+export function widgetForm(map, schemaFor, typeOf = null) {
   const o = YAML.isMap(map) ? map.toJSON() : {};
-  const type = typeof o.type === 'string' ? o.type : '';
+  const type = typeOf ?? (typeof o.type === 'string' ? o.type : '');
   const schema = schemaFor(type) ?? {};
   const options = {};
   for (const [k, def] of Object.entries(schema)) {
@@ -255,10 +255,10 @@ export function widgetForm(map, schemaFor) {
  * are written; a secret left as its token stays as it is. Returns the warnings (a secret written
  * into the file).
  */
-export function applyWidget(doc, map, w, schemaFor, at) {
+export function applyWidget(doc, map, w, schemaFor, at, { file = FILE, typeKey = true } = {}) {
   const warnings = [];
   if (typeof w?.type !== 'string' || !w.type.trim()) throw new ConfigEditError(`${at}: a widget needs a type`, 400);
-  if (String(map.get('type') ?? '') !== w.type) map.set('type', w.type);
+  if (typeKey && String(map.get('type') ?? '') !== w.type) map.set('type', w.type);
   const schema = schemaFor(w.type) ?? {};
   for (const [k, raw] of Object.entries(w.options ?? {})) {
     const def = schema[k];
@@ -283,8 +283,69 @@ export function applyWidget(doc, map, w, schemaFor, at) {
       if (map.has(k)) map.delete(k);
     } else if (current === undefined || current === null || String(current) !== String(value)) {
       map.set(k, value);
-      if (def.secret && !PLACEHOLDER.test(String(value))) warnings.push({ file: FILE, path: `${at}.${k}`, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' });
+      if (def.secret && !PLACEHOLDER.test(String(value))) warnings.push({ file, path: `${at}.${k}`, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' });
     }
   }
   return warnings;
+}
+
+// ---------------------------------------------------------------- widgets.yaml: the header widgets
+const HEADER = 'widgets.yaml';
+
+/** The header widgets: { hash, widgets: [{ id, type, options, rest }] }; id is the list position. */
+export function readHeader(configDir, schemaFor = () => null) {
+  const read = readConfigFile(configDir, HEADER);
+  const doc = parseDocument(read.text, HEADER);
+  if (doc.contents !== null && !YAML.isSeq(doc.contents)) throw new ConfigEditError('widgets.yaml: expected a list; edit it as text', 400);
+  const items = YAML.isSeq(doc.contents) ? doc.contents.items : [];
+  return {
+    hash: read.hash,
+    widgets: items.map((node, i) => {
+      const pair = single(node);
+      if (!pair) return { id: String(i), type: '', options: {}, rest: [], other: String(node).trim() };
+      return { id: String(i), ...widgetForm(YAML.isMap(pair.value) ? pair.value : null, schemaFor, keyName(pair)) };
+    }),
+  };
+}
+
+/** Writes the header widgets from the form; each keeps its node (comments, other keys). */
+export function writeHeader(configDir, list, hash, opts = {}, schemaFor = () => null) {
+  if (!Array.isArray(list)) throw new ConfigEditError('expected the list of widgets', 400);
+  const read = readConfigFile(configDir, HEADER);
+  if (hash !== read.hash) throw new ConfigEditError('widgets.yaml changed since it was opened: reload it and make your change again', 409);
+  const doc = parseDocument(read.text, HEADER);
+  if (doc.contents !== null && !YAML.isSeq(doc.contents)) throw new ConfigEditError('widgets.yaml: expected a list; edit it as text', 400);
+  const old = YAML.isSeq(doc.contents) ? doc.contents.items : [];
+  const warnings = [];
+  const taken = new Set();
+  const nodes = list.map((w, i) => {
+    const at = `[${i}]`;
+    const node = w?.id !== null && w?.id !== undefined ? old[Number(w.id)] : null;
+    if (w?.id !== null && w?.id !== undefined && !node) throw new ConfigEditError(`${at}: no such widget any more; reload the page`, 409);
+    if (node && taken.has(node)) throw new ConfigEditError(`${at}: the same widget twice`, 400);
+    if (node && !single(node)) return node; // not a widget entry: kept as it is
+    const item = node ?? doc.createNode({ [String(w?.type ?? '')]: null });
+    taken.add(item);
+    const pair = single(item);
+    if (typeof w?.type !== 'string' || !w.type.trim()) throw new ConfigEditError(`${at}: a widget needs a type`, 400);
+    if (keyName(pair) !== w.type) pair.key = YAML.isScalar(pair.key) ? Object.assign(pair.key, { value: w.type }) : doc.createNode(w.type);
+    const filled = Object.values(w.options ?? {}).some((v) => v !== '');
+    if (!YAML.isMap(pair.value)) {
+      if (!filled) return item;
+      pair.value = doc.createNode({});
+    }
+    warnings.push(...applyWidget(doc, pair.value, w, schemaFor, `${at}.${w.type}`, { file: HEADER, typeKey: false }));
+    return item;
+  });
+  if (!YAML.isSeq(doc.contents)) doc.contents = doc.createNode([]);
+  const first = doc.contents.items[0];
+  if (first?.commentBefore && nodes[0] && nodes[0] !== first) {
+    nodes[0].commentBefore = [first.commentBefore, nodes[0].commentBefore].filter(Boolean).join('\n');
+    first.commentBefore = undefined;
+  }
+  doc.contents.items = nodes;
+  const text = documentText(doc);
+  if (text === documentText(parseDocument(read.text, HEADER))) return { hash: read.hash, warnings: [], changed: false };
+  const out = writeConfigFile(configDir, HEADER, text, { hash, opts });
+  return { ...out, warnings: [...warnings, ...out.warnings] };
 }

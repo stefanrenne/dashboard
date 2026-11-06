@@ -172,3 +172,27 @@ test('widgets: edits keep comments, the secret behind its token, the form widget
   assert.throws(() => writeServices(dir, nan.items, nan.hash, { env: { DASHBOARD_VAR_KEY: 'from-env' } }, schemaFor), (err) => err.status === 400 && /every/.test(err.message));
   assert.deepEqual(widgetCatalog(new Map([['counter', { manifest: { id: 'counter', name: 'Counter', options: SCHEMA.counter } }]]))[0].options.key, { type: 'string', required: false, secret: true });
 });
+
+test('header widgets (widgets.yaml): read by their schema, edited, added, reordered, removed; comments kept', async () => {
+  const { readHeader, writeHeader } = await import('../src/settings-services.js');
+  const HEADER = { datetime: { format: { type: 'enum', values: ['short', 'long'] } }, counter: SCHEMA.counter };
+  const header = (type) => HEADER[type] ?? null;
+  const dir = tmpDir('dash-header-');
+  const text = '# the header\n- datetime:\n    format: short   # the clock\n- counter:\n    url: http://c.lan\n    key: hdr-key-123\n- search:\n';
+  fs.writeFileSync(path.join(dir, 'widgets.yaml'), text);
+  const read = readHeader(dir, header);
+  assert.deepEqual(read.widgets.map((w) => [w.id, w.type]), [['0', 'datetime'], ['1', 'counter'], ['2', 'search']]);
+  assert.match(read.widgets[1].options.key, /^__SECRET_/);
+  assert.equal(writeHeader(dir, read.widgets, read.hash, {}, header).changed, false);
+  const [clock, counter, search] = read.widgets;
+  clock.options.format = 'long';
+  writeHeader(dir, [search, clock, { id: null, type: 'counter', options: { url: 'http://d.lan', key: '' } }], read.hash, {}, header);
+  const out = fs.readFileSync(path.join(dir, 'widgets.yaml'), 'utf8');
+  assert.match(out, /^# the header\n- search:/);
+  assert.match(out, /format: long +# the clock/);
+  assert.doesNotMatch(out, /hdr-key-123/, 'the removed widget is gone');
+  const config = loadConfig(dir);
+  assert.deepEqual(config.errors, []);
+  assert.deepEqual(config.widgets.map((w) => [w.type, w.options]), [['search', {}], ['datetime', { format: 'long' }], ['counter', { url: 'http://d.lan' }]]);
+  assert.throws(() => writeHeader(dir, [], 'old', {}, header), (err) => err.status === 409);
+});

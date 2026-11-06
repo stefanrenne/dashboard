@@ -1,5 +1,7 @@
 # Header widgets
 
+The settings page edits this file under Header widgets, as a form or as text.
+
 `widgets.yaml` holds the widgets in the page's header, above the groups: the date and time,
 system resources, a search box, the weather, and so on. Each list item is one widget, with its
 type as the key and its options below it. Every type is listed under [Widgets](../widgets/README.md).

@@ -12,8 +12,6 @@ below replaces the text editor of its section as the main view (the text stays u
 and shows a part that comes from an `!include` read-only, with a link to its file (`at` in
 `GET /api/settings/files`).
 
-- [ ] **widgets.yaml editor (header widgets).** Add, remove and order header widgets, with the
-  same schema forms.
 - [ ] **bookmarks.yaml editor.** Groups and bookmarks: name, href, abbr, icon, description, order.
 - [ ] **docker.yaml editor.** Servers: name, socket or host/port, TLS files, `discover`, Swarm; a
   connection test (`checkDocker`); the socket-proxy advice.

@@ -438,3 +438,25 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.equal(sent.items[2].items[0].id, null);
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });
+
+test('settings page: header widgets as a form: changed, added, reordered, saved', async () => {
+  const catalog = [{ id: 'datetime', name: 'Date and time', options: { format: { type: 'enum', values: ['short', 'long'] } } }, { id: 'search', name: 'Search', options: { provider: { type: 'string' } } }];
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/header': { ok: true, hash: 'h1', widgets: [{ id: '0', type: 'datetime', options: { format: 'short' }, rest: [] }], catalog },
+    'POST /api/settings/header': (init) => ({ ok: true, hash: 'h2', widgets: JSON.parse(init.body).widgets.map((x, i) => ({ ...x, id: String(i), rest: [] })), catalog }),
+  }, () => {}, 'http://dash.lan/settings#header');
+  await tick();
+  const set = (id, value, event) => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  const format = doc.querySelector('[id$="-format"]');
+  assert.equal(format.value, 'short');
+  set(format.id, 'long', 'change');
+  set('h-add', 'search', 'change');
+  set(doc.activeElement.id.replace('-type', '-provider'), 'duckduckgo', 'input');
+  doc.querySelector('[aria-label="search omhoog"]').click();
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/header' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual(sent, { hash: 'h1', widgets: [{ id: null, type: 'search', options: { provider: 'duckduckgo' } }, { id: '0', type: 'datetime', options: { format: 'long' } }] });
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+});

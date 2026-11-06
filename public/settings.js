@@ -73,7 +73,7 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
-const state = { section: 'general', files: null, file: {}, chosen: {}, mode: {}, svc: null, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
+const state = { section: 'general', files: null, file: {}, chosen: {}, mode: {}, svc: null, hdr: null, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
 
 async function api(path, body, headers = {}) {
   const init = body === undefined && !Object.keys(headers).length ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) };
@@ -239,6 +239,8 @@ function render() {
   if (state.section === 'layout') return show(nav(), layoutSection());
   if (state.section === 'plugins') return show(nav(), pluginsSection());
   if (state.section === 'services' && state.mode['services.yaml'] !== 'text') return show(nav(), servicesSection());
+  if (state.section === 'header' && state.mode['widgets.yaml'] !== 'text') return show(nav(), headerSection());
+  if (state.section === 'header') return show(nav(), modeToggle('widgets.yaml'), fileSection(SECTIONS.find((x) => x[0] === 'header')));
   if (state.section === 'services') return show(nav(), modeToggle('services.yaml'), fileSection(SECTIONS.find((x) => x[0] === 'services')));
   if (!['general', 'security'].includes(state.section)) return show(nav(), fileSection(SECTIONS.find((x) => x[0] === state.section)));
   if (state.section === 'security') return show(nav(), securityPanel(), passwordSection(), passkeySection(), saveBar());
@@ -774,6 +776,56 @@ async function testWidget(w, file) {
   render();
 }
 
+// ---------------------------------------------------------------- widgets.yaml: the header widgets
+async function loadHeader() {
+  state.hdr = { loading: true };
+  const out = await api('/header').catch((err) => ({ ok: false, error: err.message }));
+  if (out.needsPassword) return askPassword();
+  state.hdr = out.ok ? { hash: out.hash, widgets: out.widgets, catalog: out.catalog ?? [] } : { error: out.error };
+  render();
+}
+
+function headerSection() {
+  const h = state.hdr;
+  if (!h || h.loading || h.error) {
+    if (!h) loadHeader();
+    return [modeToggle('widgets.yaml'), el('section', { class: 'panel' }, el('p', { class: h?.error ? 'error' : 'muted', text: h?.error ?? t('fileLoading') }))];
+  }
+  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
+  return [
+    modeToggle('widgets.yaml'),
+    el('section', { class: 'panel' },
+      el('h2', { text: t('navHeader') }),
+      widgetEditor(h.widgets, h.catalog, 'widgets.yaml', 'h'),
+      h.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...h.problems.map(message))) : null,
+      h.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...h.remarks.map(message))) : null),
+    el('div', { class: 'saved' },
+      el('span', { class: h.statusClass ?? 'muted', role: 'status', text: h.status ?? '' }),
+      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: saveHeader })),
+  ];
+}
+
+async function saveHeader() {
+  const h = state.hdr;
+  h.status = t('saving');
+  h.statusClass = 'muted';
+  h.problems = [];
+  render();
+  const res = await fetch('api/settings/header', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ hash: h.hash, widgets: h.widgets.map((w) => ({ id: w.id, type: w.type, options: w.options })) }) })
+    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
+  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+  if (out.needsPassword) return askPassword();
+  if (out.ok) {
+    state.hdr = { hash: out.hash, widgets: out.widgets, catalog: out.catalog ?? h.catalog, status: t('saved'), statusClass: 'ok', remarks: out.warnings ?? [] };
+    delete state.file['widgets.yaml'];
+  } else {
+    h.status = t('failed', { error: out.error });
+    h.statusClass = 'error';
+    h.problems = out.errors ?? [];
+  }
+  render();
+}
+
 // ---------------------------------------------------------------- sections and the config files
 // [id, text key, the config file it edits]; General, Security, Groups and Widgets are the forms above. The sections with a file
 // show it as text until their own form is there.
@@ -898,6 +950,7 @@ async function saveFile(name) {
     await loadFile(name, true);
     state.files = null; // an include added or removed changes the list
     if (state.section === 'services') state.svc = null;
+    if (state.section === 'header') state.hdr = null;
     if (state.section === 'advanced' || name === 'settings.yaml' || out.changed) {
       const fresh = await api('').catch(() => null);
       if (fresh?.ok) {
