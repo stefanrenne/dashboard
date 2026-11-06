@@ -148,7 +148,7 @@ test('the steps: basics, containers with a generated form, test, security lines,
   assert.equal(doc.getElementById('allowed-hosts').value, '', 'opened by an IP address: no name to fill in');
   assert.match(panel(), /Ook uit de environment van de container: env\.lan/);
   assert.equal(doc.getElementById('login-actions').checked, true, 'only some actions, unless chosen otherwise');
-  assert.match(doc.querySelector('label[for=login-page]').textContent, /Een loginpagina.*veiliger/, 'the login page is marked safer');
+  assert.match(doc.querySelector('label[for=login-page]').textContent, /Toegang tot het dashboard.*veiliger/, 'the login page is marked safer');
   assert.ok(doc.querySelector('label[for=login-page] strong') && doc.querySelector('label[for=login-page] .hint'), 'a title in bold, the explanation below it');
   doc.getElementById('login-page').click();
   const type = (id, value) => { doc.getElementById(id).value = value; doc.getElementById(id).dispatchEvent(new w.Event('input')); };

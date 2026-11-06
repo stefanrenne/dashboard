@@ -796,7 +796,7 @@ test('action password: a dialog that password managers fill, the header on the P
   press();
   await tick();
   assert.ok(dialog(), 'asked first');
-  assert.equal(dialog().querySelector('h2').textContent, 'Wachtwoord voor Router');
+  assert.equal(dialog().querySelector('h2').textContent, 'Authenticatie voor Router');
   assert.equal(dialog().querySelector('input[type=password]').getAttribute('autocomplete'), 'current-password');
   assert.equal(dialog().querySelector('input[autocomplete=username]').value, 'dashboard', 'a username for password managers');
   dialog().querySelector('.close').click();
@@ -838,6 +838,46 @@ test('action password: a dialog that password managers fill, the header on the P
   await tick();
   assert.equal(posts.at(-1).p, '/api/lock');
   w.close();
+});
+
+test('action dialog: over https with a passkey for this host, a passkey runs the action (its one-time token in the header)', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.settings.actionsProtected = true;
+  layout.groups[0].services[0].widgets[0].confirm = 'always';
+  const w = await page({ ...RESULTS, '/api/layout': layout });
+  Object.defineProperty(w, 'isSecureContext', { value: true, configurable: true });
+  w.PublicKeyCredential = function PublicKeyCredential() {};
+  const asked = [];
+  Object.defineProperty(w.navigator, 'credentials', { configurable: true, value: { get: async (o) => {
+    asked.push(o);
+    const buf = new Uint8Array([1, 2, 3]).buffer;
+    return { id: 'cred-1', response: { clientDataJSON: buf, authenticatorData: buf, signature: buf } };
+  } } });
+  const posts = [];
+  w.fetch = async (url, init = {}) => {
+    const p = new URL(url, 'http://localhost/').pathname;
+    if (init.method === 'POST') posts.push({ p, headers: init.headers, body: init.body });
+    const body = p === '/api/passkey' ? { available: true }
+      : p === '/api/passkey/options' ? { available: true, publicKey: { challenge: 'AAEC', rpId: 'dash.lan', allowCredentials: [{ type: 'public-key', id: 'AQID' }], userVerification: 'required' } }
+      : p === '/api/passkey/verify' ? { ok: true, token: 'one-time' }
+      : p.endsWith('/action') ? { ok: true, data: { status: 'ok' } } : RESULTS[p] ?? { ok: false };
+    return { json: async () => structuredClone(body) };
+  };
+  const box = w.document.querySelector('[data-service="svc-1"] .widget');
+  box.dispatchEvent(new w.CustomEvent('dash-widget-action', { bubbles: true, composed: true }));
+  await new Promise((r) => setTimeout(r, 20));
+  const dialog = w.document.querySelector('dialog.password-dialog');
+  const button = dialog.querySelector('.passkey');
+  assert.equal(button.hidden, false, 'the passkey button shows');
+  assert.equal(button.textContent, 'Passkey gebruiken');
+  assert.equal(dialog.querySelector('label').textContent, 'Of het admin wachtwoord');
+  button.click();
+  await new Promise((r) => setTimeout(r, 40));
+  assert.deepEqual([...new Uint8Array(asked[0].publicKey.challenge)], [0, 1, 2], 'the challenge as bytes');
+  assert.deepEqual(JSON.parse(posts.find((x) => x.p === '/api/passkey/verify').body), { id: 'cred-1', clientDataJSON: 'AQID', authenticatorData: 'AQID', signature: 'AQID' });
+  const action = posts.find((x) => x.p.endsWith('/action'));
+  assert.equal(action.headers['x-dashboard-passkey'], 'one-time');
+  assert.equal(action.headers['x-dashboard-password'], undefined);
 });
 
 test('the action dialog copies the output to the clipboard, and has no copy button without output', async () => {

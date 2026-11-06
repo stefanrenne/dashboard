@@ -1,10 +1,11 @@
 // The login page of settings.yaml `login` (src/login.js): the admin password opens the dashboard.
-// The form has a username, so password managers and the browser's keychain fill it in.
+// The form has a username, so password managers and the browser's keychain fill it in. Over
+// https, with a passkey made for this host in the settings, a passkey logs in too.
 'use strict';
 
 const I18N = {
-  en: { heading: 'Log in', label: 'Admin password', submit: 'Log in', wrong: 'Wrong password', wait: 'Too many tries; wait {seconds} s', broken: 'The admin password cannot be checked: it is not a scrypt hash. See the dashboard\'s log.' },
-  nl: { heading: 'Inloggen', label: 'Admin wachtwoord', submit: 'Inloggen', wrong: 'Onjuist wachtwoord', wait: 'Te veel pogingen; wacht {seconds} s', broken: 'Het admin wachtwoord kan niet worden gecontroleerd: het is geen scrypt-hash. Zie de log van het dashboard.' },
+  en: { heading: 'Log in', label: 'Admin password', submit: 'Log in', wrong: 'Wrong password', wait: 'Too many tries; wait {seconds} s', broken: 'The admin password cannot be checked: it is not a scrypt hash. See the dashboard\'s log.', passkey: 'Log in with a passkey', passkeyFailed: 'The passkey did not work: {error}' },
+  nl: { heading: 'Inloggen', label: 'Admin wachtwoord', submit: 'Inloggen', wrong: 'Onjuist wachtwoord', wait: 'Te veel pogingen; wacht {seconds} s', broken: 'Het admin wachtwoord kan niet worden gecontroleerd: het is geen scrypt-hash. Zie de log van het dashboard.', passkey: 'Inloggen met een passkey', passkeyFailed: 'De passkey werkte niet: {error}' },
   fr: { heading: 'Connexion', label: 'Mot de passe administrateur', submit: 'Se connecter', wrong: 'Mot de passe incorrect', wait: 'Trop d’essais ; attendez {seconds} s', broken: 'Le mot de passe administrateur ne peut pas être vérifié : ce n’est pas un hachage scrypt. Voir le journal du tableau de bord.' },
   de: { heading: 'Anmelden', label: 'Admin-Passwort', submit: 'Anmelden', wrong: 'Falsches Passwort', wait: 'Zu viele Versuche; warte {seconds} s', broken: 'Das Admin-Passwort kann nicht geprüft werden: Es ist kein scrypt-Hash. Siehe das Log des Dashboards.' },
   es: { heading: 'Iniciar sesión', label: 'Contraseña de administrador', submit: 'Entrar', wrong: 'Contraseña incorrecta', wait: 'Demasiados intentos; espera {seconds} s', broken: 'No se puede comprobar la contraseña de administrador: no es un hash scrypt. Consulta el registro del panel.' },
@@ -52,6 +53,37 @@ let lang = 'en';
 const t = (key, vars = {}) => String((I18N[lang] ?? {})[key] ?? I18N.en[key]).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 const $ = (id) => document.getElementById(id);
 
+// ---------------------------------------------------------------- passkeys (the same in index.html and settings.js)
+const fromB64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+const toB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const postJson = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify(body) }).then((r) => r.json());
+/** Whether a passkey can be used here: a browser with WebAuthn, https, and a passkey for this host. */
+async function passkeyAvailable() {
+  if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials) return false;
+  try {
+    return (await (await fetch('api/passkey')).json()).available === true;
+  } catch {
+    return false;
+  }
+}
+/** Asks the browser for a passkey: the server's one-time token, null when the viewer cancels; throws when it is refused. */
+async function passkeyToken() {
+  const options = await postJson('api/passkey/options', {});
+  if (!options.available) throw new Error('no passkey for this address');
+  const o = options.publicKey;
+  let cred;
+  try {
+    cred = await navigator.credentials.get({ publicKey: { ...o, challenge: fromB64u(o.challenge), allowCredentials: o.allowCredentials.map((c) => ({ ...c, id: fromB64u(c.id) })) } });
+  } catch (err) {
+    if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') return null;
+    throw err;
+  }
+  if (!cred) return null;
+  const out = await postJson('api/passkey/verify', { id: cred.id, clientDataJSON: toB64u(cred.response.clientDataJSON), authenticatorData: toB64u(cred.response.authenticatorData), signature: toB64u(cred.response.signature) });
+  if (!out.ok) throw Object.assign(new Error(out.error), { retryAfter: out.retryAfter });
+  return out.token;
+}
+
 function look(info) {
   lang = I18N[info.language] ? info.language : 'en';
   document.documentElement.lang = lang;
@@ -63,6 +95,7 @@ function look(info) {
   $('heading').textContent = t('heading');
   $('label').textContent = t('label');
   $('submit').textContent = t('submit');
+  $('passkey').textContent = t('passkey');
 }
 
 async function init() {
@@ -78,6 +111,25 @@ async function init() {
   }
   look(info);
   if (info.broken) $('error').textContent = t('broken');
+  $('passkey').hidden = !(await passkeyAvailable());
+  $('passkey').addEventListener('click', async () => {
+    $('passkey').disabled = true;
+    $('error').textContent = '';
+    try {
+      const token = await passkeyToken();
+      if (token) {
+        const out = await postJson('api/login', { passkeyToken: token });
+        if (out.ok) {
+          window.location.href = './';
+          return;
+        }
+        $('error').textContent = t('passkeyFailed', { error: out.error });
+      }
+    } catch (err) {
+      $('error').textContent = err.retryAfter ? t('wait', { seconds: err.retryAfter }) : t('passkeyFailed', { error: err.message });
+    }
+    $('passkey').disabled = false;
+  });
   $('login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const password = $('password').value;

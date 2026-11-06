@@ -59,3 +59,39 @@ test('the login page: a wrong password is said, the right one sends the header a
   const broken = await page({ login: true, loggedIn: false, broken: true, language: 'en' });
   assert.match(broken.w.document.getElementById('error').textContent, /not a scrypt hash/);
 });
+
+test('the login page: over https with a passkey for this host, a passkey logs in', async () => {
+  const dom = new JSDOM(HTML, {
+    runScripts: 'dangerously',
+    url: 'https://dash.lan/login',
+    beforeParse(window) {
+      Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
+      window.PublicKeyCredential = function PublicKeyCredential() {};
+      const buf = new Uint8Array([1]).buffer;
+      Object.defineProperty(window.navigator, 'credentials', { configurable: true, value: { get: async () => ({ id: 'cred-1', response: { clientDataJSON: buf, authenticatorData: buf, signature: buf } }) } });
+      window.calls = [];
+      window.fetch = async (url, init = {}) => {
+        window.calls.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
+        const answers = {
+          'api/login': init.method === 'POST' ? { ok: true } : { login: true, loggedIn: false, language: 'nl' },
+          'api/passkey': { available: true },
+          'api/passkey/options': { available: true, publicKey: { challenge: 'AAEC', rpId: 'dash.lan', allowCredentials: [] } },
+          'api/passkey/verify': { ok: true, token: 'one-time' },
+        };
+        return { json: async () => answers[String(url)] };
+      };
+    },
+  });
+  opened.add(dom.window);
+  dom.window.eval(SCRIPT);
+  await new Promise((r) => setTimeout(r, 20));
+  const button = dom.window.document.getElementById('passkey');
+  assert.equal(button.hidden, false);
+  assert.equal(button.textContent, 'Inloggen met een passkey');
+  button.click();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(dom.window.calls.at(-1), { url: 'api/login', body: { passkeyToken: 'one-time' } });
+  // over http the button stays hidden
+  const plain = await page({ login: true, loggedIn: false, language: 'nl' });
+  assert.equal(plain.w.document.getElementById('passkey').hidden, true);
+});

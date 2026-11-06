@@ -285,6 +285,22 @@ login: true              # or { remember: 30d }
   presses, scripts inside the container.
 - Without an admin password, `login: true` does nothing but say so in the messages.
 
+### Passkeys
+
+Next to the admin password, a passkey (your fingerprint, face or a PIN, on this device or your
+phone) works wherever the dashboard asks for authentication: the login page, the settings and the
+buttons. Add one on the [settings page](#settings-page), under Passkeys. The admin password keeps
+working, and a new password leaves the passkeys as they are.
+
+- **Over HTTPS, by a host name only.** Browsers offer passkeys in a secure context only, and a
+  passkey belongs to the host name it was added on: one made on `https://dash.example.com` works
+  there, not on `https://dash.lan` or an IP address. Behind a reverse proxy, the proxy passes
+  `X-Forwarded-Proto: https` and keeps the `Host` header (most do by default).
+- **Stored in `.passkeys.json`** in the config folder: the public keys only, readable by the
+  dashboard alone. Remove a passkey on the settings page; deleting the file removes them all.
+- The passkey has to verify you (user verification), and wrong tries are slowed down as for the
+  password.
+
 ### Widget worker
 
 Installed widgets run in a worker thread with a memory limit, so one that hangs cannot stop the

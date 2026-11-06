@@ -20,13 +20,14 @@ afterEach(() => {
   opened.clear();
 });
 
-async function page(answers) {
+async function page(answers, setup = () => {}) {
   const calls = [];
   const dom = new JSDOM(HTML, {
     runScripts: 'dangerously',
     url: 'http://dash.lan/settings',
     beforeParse(window) {
       window.scrollTo = () => {};
+      setup(window);
       window.fetch = async (url, init = {}) => {
         const p = new URL(url, 'http://dash.lan/').pathname;
         calls.push({ p, init, body: init.body ? JSON.parse(init.body) : undefined });
@@ -97,4 +98,58 @@ test('settings page: no admin password yet, setting one comes first', async () =
   assert.equal(doc.getElementById('pw-current'), null, 'no current password to ask');
   assert.ok(doc.getElementById('pw-next'));
   assert.equal(doc.getElementById('title'), null, 'nothing else before it');
+});
+
+test('settings page: passkeys over https (add, list, remove), a notice over http, and a passkey opens the settings', async () => {
+  const http = await page({ 'GET /api/settings': data({ passkeys: { secure: false, host: null, list: [] } }) });
+  assert.match(http.doc.getElementById('panel').textContent, /Passkeys werken als het dashboard via https wordt geopend/);
+  assert.equal(http.doc.querySelector('.item.passkey'), null);
+
+  const buf = (bytes) => new Uint8Array(bytes).buffer;
+  const created = [];
+  const webauthn = (w) => {
+    Object.defineProperty(w, 'isSecureContext', { value: true, configurable: true });
+    w.PublicKeyCredential = function PublicKeyCredential() {};
+    Object.defineProperty(w.navigator, 'credentials', { configurable: true, value: {
+      create: async (o) => { created.push(o); return { id: 'cred-1', response: { clientDataJSON: buf([1]), getAuthenticatorData: () => buf([2]), getPublicKey: () => buf([3]), getPublicKeyAlgorithm: () => -7 } }; },
+      get: async () => ({ id: 'cred-1', response: { clientDataJSON: buf([1]), authenticatorData: buf([2]), signature: buf([3]) } }),
+    } });
+  };
+  const list = [];
+  const pk = () => ({ secure: true, host: 'dash.lan', list: structuredClone(list) });
+  const { doc, calls } = await page({
+    'GET /api/settings': () => data({ passkeys: pk() }),
+    'POST /api/settings/passkeys/options': { ok: true, publicKey: { challenge: 'AAEC', rp: { id: 'dash.lan', name: 'Lab' }, user: { id: 'BAUG', name: 'admin', displayName: 'Lab (admin)' }, pubKeyCredParams: [], excludeCredentials: [{ type: 'public-key', id: 'BwgJ' }] } },
+    'POST /api/settings/passkeys': (init) => { list.push({ id: 'cred-1', name: JSON.parse(init.body).name, created: '2026-11-06T10:00:00Z', lastUsed: null }); return data({ passkeys: pk() }); },
+    'POST /api/settings/passkeys/remove': () => { list.length = 0; return data({ passkeys: pk() }); },
+  }, webauthn);
+  assert.match(doc.getElementById('panel').textContent, /Nog geen passkeys voor dash\.lan/);
+  doc.getElementById('passkey-name').value = 'MacBook';
+  doc.getElementById('passkey-name').dispatchEvent(new doc.defaultView.Event('input'));
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Passkey toevoegen').click();
+  await tick();
+  assert.deepEqual([...new Uint8Array(created[0].publicKey.user.id)], [4, 5, 6], 'the user id as bytes');
+  assert.deepEqual(calls.find((c) => c.p === '/api/settings/passkeys').body, { id: 'cred-1', clientDataJSON: 'AQ', authenticatorData: 'Ag', publicKey: 'Aw', alg: -7, name: 'MacBook' });
+  assert.match(doc.querySelector('.item.passkey').textContent, /MacBook/);
+  assert.match(doc.getElementById('panel').textContent, /De passkey is toegevoegd\./);
+  [...doc.querySelectorAll('.item.passkey button')][0].click();
+  await tick();
+  assert.equal(doc.querySelector('.item.passkey'), null);
+
+  // locked: the passkey button opens the settings with its one-time token
+  let unlocked = false;
+  const door = await page({
+    'GET /api/settings': () => (unlocked ? data() : { ok: false, needsPassword: true }),
+    'GET /api/passkey': { available: true },
+    'POST /api/passkey/options': { available: true, publicKey: { challenge: 'AAEC', rpId: 'dash.lan', allowCredentials: [] } },
+    'POST /api/passkey/verify': { ok: true, token: 'one-time' },
+    'POST /api/settings/unlock': (init) => { unlocked = init.headers['x-dashboard-passkey'] === 'one-time'; return { ok: unlocked }; },
+  }, webauthn);
+  const button = door.doc.getElementById('unlock-passkey');
+  assert.equal(button.hidden, false);
+  button.click();
+  await tick();
+  await tick();
+  assert.equal(unlocked, true);
+  assert.ok(door.doc.querySelector('.panel h2'), 'the settings show');
 });

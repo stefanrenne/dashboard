@@ -21,6 +21,7 @@ import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError, scrub } from './plugins/runtime.js';
 import { ActionGate, loadPassword, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
+import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
 import { isLocal } from './onboarding.js';
 import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
@@ -163,7 +164,8 @@ export async function createApp({
     log.error(`${err.message}: what asks for the admin password is refused until it is fixed`);
     envPassword = { broken: true };
   }
-  const gate = new ActionGate({ password: envPassword, log });
+  const passkeys = new Passkeys({ configDir, log });
+  const gate = new ActionGate({ password: envPassword, log, passkeys });
   const onboarding = new Onboarding({ configDir, log });
   const sessions = new SessionStore({ configDir, log });
   const passwordSecrets = envPassword?.value && !envPassword.hashed ? [envPassword.value] : [];
@@ -369,6 +371,7 @@ export async function createApp({
         }
         return send(res, 401, { ok: false, needsLogin: true, error: 'log in first' });
       }
+      if (p === '/api/passkey' || p.startsWith('/api/passkey/')) return await passkeyRoute(req, res, method, p);
       if (p === '/settings' || p === '/settings.js' || p === '/api/settings' || p.startsWith('/api/settings/')) return await settingsRoute(req, res, method, p, { loggedIn, login });
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
@@ -467,7 +470,9 @@ export async function createApp({
     // without an admin password, setting one comes first: nothing else is saved
     if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
     const headers = { ...SECURITY_HEADERS, ...allowed.headers };
-    const answer = () => ({ ok: true, ...readSettings(configDir), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn });
+    const rp = rpContext(req);
+    const answer = () => ({ ok: true, ...readSettings(configDir), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn,
+      passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] } });
     if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
     let body;
@@ -486,6 +491,31 @@ export async function createApp({
       }
       log.info(`settings: ${Object.keys(checked.values).join(', ')} saved from the settings page`);
       await reload();
+      return send(res, 200, answer(), 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/passkeys/options') {
+      const options = passkeys.registerOptions(req, state.config.settings.title);
+      if (!options) return send(res, 400, { ok: false, error: 'passkeys need the dashboard over https, by its host name' });
+      return send(res, 200, { ok: true, publicKey: options }, 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/passkeys') {
+      let out;
+      try {
+        out = passkeys.register(req, body);
+      } catch (err) {
+        return send(res, 409, { ok: false, error: `cannot write the passkeys (${err.code ?? err.message})` });
+      }
+      if (!out.ok) return send(res, 400, out);
+      log.info(`settings: a passkey added (${out.passkey.name}, for ${rp.rpId})`);
+      return send(res, 200, answer(), 'application/json', headers);
+    }
+    if (method === 'POST' && route === '/passkeys/remove') {
+      try {
+        if (!passkeys.remove(body?.id)) return send(res, 404, { ok: false, error: 'no such passkey' });
+      } catch (err) {
+        return send(res, 409, { ok: false, error: `cannot write the passkeys (${err.code ?? err.message})` });
+      }
+      log.info('settings: a passkey removed');
       return send(res, 200, answer(), 'application/json', headers);
     }
     if (method === 'POST' && route === '/password') {
@@ -519,6 +549,42 @@ export async function createApp({
   }
 
   /**
+   * Passkeys for whoever is not logged in yet (the login page, the password dialogs):
+   * `GET /api/passkey` (whether one can be used here), `POST /api/passkey/options` (a challenge)
+   * and `POST /api/passkey/verify` (the browser's answer; a one-time token that the login and
+   * the x-dashboard-passkey header take in place of the password).
+   */
+  async function passkeyRoute(req, res, method, p) {
+    const usable = Boolean(gate.password) && !gate.password.broken;
+    if (method === 'GET' && p === '/api/passkey') return send(res, 200, { available: usable && passkeys.available(req) });
+    if (method !== 'POST') return send(res, 404, { error: 'not found' });
+    if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
+    if (p === '/api/passkey/options') {
+      const options = usable ? passkeys.loginOptions(req) : null;
+      return send(res, 200, options ? { available: true, publicKey: options } : { available: false });
+    }
+    if (p !== '/api/passkey/verify') return send(res, 404, { error: 'not found' });
+    if (!usable) return send(res, 404, { ok: false, error: 'no admin password' });
+    let body;
+    try {
+      body = await readJson(req, 16 * 1024);
+    } catch (err) {
+      return send(res, err.status ?? 400, { ok: false, error: err.message });
+    }
+    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const retryAfter = gate.limiter.waiting(address);
+    if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong tries' });
+    const out = passkeys.verify(req, body);
+    if (!out.ok) {
+      const wait = gate.limiter.failed(address);
+      log.warn(`a passkey refused from ${address}: ${out.error}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
+      return send(res, 401, { ok: false, error: out.error });
+    }
+    gate.limiter.succeeded(address);
+    return send(res, 200, { ok: true, token: out.token });
+  }
+
+  /**
    * The login page and its API: the page and its script, `GET /api/login` (how the page looks,
    * never what is behind it), `POST /api/login` with { password } and `POST /api/logout`.
    */
@@ -548,7 +614,8 @@ export async function createApp({
     const address = String(req.socket?.remoteAddress ?? 'unknown');
     const retryAfter = gate.limiter.waiting(address);
     if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
-    if (!(await checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''))) {
+    const viaPasskey = typeof body?.passkeyToken === 'string' && passkeys.consume(body.passkeyToken);
+    if (!viaPasskey && !(await checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''))) {
       const wait = gate.limiter.failed(address);
       log.warn(`wrong admin password from ${address} at the login${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
       return send(res, 401, { ok: false, wrongPassword: true, error: 'wrong password' });

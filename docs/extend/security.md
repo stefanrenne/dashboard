@@ -28,7 +28,9 @@ choosing a Docker image. The dashboard limits the damage where it can:
   with `confirm: password` or `always` ask for it first (see
   [Admin password](../configuration/README.md#admin-password)); a correct one unlocks that
   browser for a while through an HttpOnly cookie the server keeps in memory, and guessing is slowed
-  down per address.
+  down per address. A passkey (see [Passkeys](../configuration/README.md#passkeys)) counts
+  as the password: over HTTPS only, bound to the host name it was made on, with user
+  verification, its challenge used once and a one-time token for the request that follows.
 - **The settings page writes settings.yaml.** It opens only with the admin password (or a
   login); a new admin password needs the current one, and only its hash is written. Without an
   admin password yet, it answers only the local network, and only to set one. Its endpoints read a

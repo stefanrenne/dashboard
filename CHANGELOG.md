@@ -20,6 +20,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   the admin password (a new one needs the current one). It keeps the file's comments and other
   keys. It opens with the admin password (a login counts); without one yet, the local network sets
   one first.
+- **Passkeys** next to the admin password, over HTTPS: add them on the settings page; they log in,
+  open the settings and confirm buttons. Bound to the host name they were made on; stored in
+  `.passkeys.json` (public keys only). The texts now say "authentication" where a passkey works too.
 - Durations take days too: `7d`.
 
 - **`allowedHosts` in settings.yaml**, next to `DASHBOARD_ALLOWED_HOSTS`: the host names the

@@ -10,6 +10,7 @@ import fs from 'node:fs';
 
 export const COOKIE = 'dash_unlock';
 export const PASSWORD_HEADER = 'x-dashboard-password';
+export const PASSKEY_HEADER = 'x-dashboard-passkey'; // a one-time token from a passkey check (src/passkeys.js)
 export const DEFAULT_REMEMBER_MS = 15 * 60 * 1000;
 export const FREE_FAILURES = 5; // then a wait, doubled each time
 export const FIRST_WAIT_MS = 30_000;
@@ -113,8 +114,9 @@ export class FailureLimiter {
 export const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
 
 export class ActionGate {
-  constructor({ password = null, rememberMs = DEFAULT_REMEMBER_MS, now = Date.now, log = console } = {}) {
+  constructor({ password = null, rememberMs = DEFAULT_REMEMBER_MS, now = Date.now, log = console, passkeys = null } = {}) {
     this.password = password;
+    this.passkeys = passkeys; // src/passkeys.js: its one-time tokens count as the password
     this.rememberMs = rememberMs;
     this.now = now;
     this.log = log;
@@ -156,6 +158,13 @@ export class ActionGate {
     const address = String(req.socket?.remoteAddress ?? 'unknown');
     const retryAfter = this.limiter.waiting(address);
     if (retryAfter) return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter, error: 'too many wrong passwords' } };
+    const passkeyToken = req.headers[PASSKEY_HEADER];
+    if (passkeyToken !== undefined) {
+      // a token from a passkey check that succeeded just before; single use
+      if (!this.passkeys?.consume(String(passkeyToken))) return { ok: false, status: 401, body: { ok: false, needsPassword: true, always: requirement === 'always', error: 'the passkey check expired; try again' } };
+      const cookie = requirement === 'password' ? this.#unlockCookie(req, base) : null;
+      return { ok: true, headers: cookie ? { 'set-cookie': cookie } : {} };
+    }
     const given = req.headers[PASSWORD_HEADER];
     if (given === undefined) return { ok: false, status: 401, body: { ok: false, needsPassword: true, always: requirement === 'always', error: 'password needed' } };
     if (!(await checkPassword(this.password, String(given)))) {

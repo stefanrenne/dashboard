@@ -89,3 +89,4 @@ Finished work, newest first.
 - 2026-11-02: A filter per widget: `filter:` on a service widget hides that widget (an update button only while there are updates); bound and checked like the service filter.
 - 2026-11-04: Security: a broken request path or target is a 400 instead of ending the process; server.js catches every failing request.
 - 2026-11-04: Security: host names are checked by default (DASHBOARD_ALLOWED_HOSTS; localhost and IP addresses always work), with a page that says what to set.
+- 2026-11-06: Passkeys (WebAuthn) next to the admin password over HTTPS: login page, settings and buttons; managed on the settings page.
