@@ -23,7 +23,10 @@ import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprin
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
-import { isLocal } from './onboarding.js';
+import { EDITABLE_FILES, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
+import { maskConfigText, unmaskConfigText } from './config/mask.js';
+import { isLocal, BODY_LIMIT } from './onboarding.js';
+import { parseConfigYaml } from './config/include.js';
 import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
 import { validateOptions } from './plugins/options.js';
 
@@ -468,6 +471,62 @@ export async function createApp({
    * browser stays unlocked as for a press); without one yet, only the local network, which must
    * set one first. A new admin password always needs the current one.
    */
+  /**
+   * The config files on the settings page: GET /files (the list), GET /files/<file> (its text,
+   * secrets as tokens), POST /files/<file> { text, hash } (save), GET /files/<file>/history/<id>
+   * (an earlier version, masked too). Access is checked by settingsRoute.
+   */
+  async function filesRoute(res, method, route, body, headers) {
+    const schemaFor = (type) => state.registry?.get(type)?.manifest?.options ?? null;
+    const known = () => [...(state.config?.secrets ?? [])];
+    const masked = (file, text) => maskConfigText(file, text, schemaFor, known());
+    const [, , file, sub, id] = route.split('/');
+    try {
+      if (method === 'GET' && !file) {
+        const files = EDITABLE_FILES.map((name) => {
+          const read = readConfigFile(configDir, name);
+          return { file: name, exists: read.exists, hash: read.hash, size: read.text.length };
+        });
+        return send(res, 200, { ok: true, files }, 'application/json', headers);
+      }
+      if (method === 'GET' && file && !sub) {
+        const read = readConfigFile(configDir, file);
+        const out = masked(file, read.text);
+        return send(res, 200, { ok: true, file, exists: read.exists, hash: read.hash, text: out.text, secrets: out.secrets, history: listHistory(configDir, file) }, 'application/json', headers);
+      }
+      if (method === 'GET' && file && sub === 'history' && id) {
+        return send(res, 200, { ok: true, file, id, text: masked(file, readHistory(configDir, file, decodeURIComponent(id))).text }, 'application/json', headers);
+      }
+      if (method === 'POST' && file && !sub) {
+        if (typeof body?.text !== 'string' || typeof body?.hash !== 'string') return send(res, 400, { ok: false, error: 'expected { text, hash }' });
+        const current = readConfigFile(configDir, file);
+        if (body.hash !== current.hash) throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409);
+        const { text, warnings: secretWarnings } = unmaskConfigText(file, body.text, current.text, schemaFor);
+        if (file === 'settings.yaml') {
+          const hashOf = (t) => {
+            try {
+              return parseConfigYaml(t)?.adminPassword ?? null;
+            } catch {
+              return undefined;
+            }
+          };
+          const after = hashOf(text);
+          if (after !== undefined && after !== hashOf(current.text)) throw new ConfigEditError('settings.yaml: the admin password is changed under Security, with the current one', 400);
+        }
+        const out = writeConfigFile(configDir, file, text, { hash: body.hash, opts: { env } });
+        if (out.changed) {
+          log.info(`settings: ${file} saved from the settings page`);
+          await reload();
+        }
+        return send(res, 200, { ok: true, file, hash: out.hash, changed: out.changed, warnings: [...secretWarnings, ...out.warnings] }, 'application/json', headers);
+      }
+    } catch (err) {
+      if (!(err instanceof ConfigEditError)) throw err;
+      return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors, warnings: err.warnings } : {}) }, 'application/json', headers);
+    }
+    return send(res, 404, { error: 'not found' });
+  }
+
   async function settingsRoute(req, res, method, p, { loggedIn, login }) {
     if (method === 'GET' && p === '/settings') return sendFile(res, path.join(publicDir, 'settings.html'));
     if (method === 'GET' && p === '/settings.js') return sendFile(res, path.join(publicDir, 'settings.js'));
@@ -490,7 +549,7 @@ export async function createApp({
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
     let body;
     try {
-      body = method === 'POST' ? await readJson(req, 64 * 1024) : null;
+      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') ? BODY_LIMIT : 64 * 1024) : null;
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
@@ -506,6 +565,7 @@ export async function createApp({
       await reload();
       return send(res, 200, answer(), 'application/json', headers);
     }
+    if (route === '/files' || route.startsWith('/files/')) return filesRoute(res, method, route, body, headers);
     if (method === 'POST' && route === '/passkeys/options') {
       const options = passkeys.registerOptions(req, state.config.settings.title);
       if (!options) return send(res, 400, { ok: false, error: 'passkeys need the dashboard over https, by its host name' });

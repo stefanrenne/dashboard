@@ -17,7 +17,7 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 |---|---|
 | `src/server.js` | Entry point: arguments, listen, signals. |
 | `src/app.js` | Application state (config → plugins → registry → discovery → layout), HTTP routes, SSE reload. |
-| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`), `edit.js` (the settings page's writes: allow-list, check, conflict, history). |
+| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`), `edit.js` (the settings page's writes: allow-list, check, conflict, history), `mask.js` (secrets in those files as `__SECRET_…__` tokens for the page). |
 | `src/plugins/` | `loader.js` (widget.yaml + server.js → registry), `options.js` (option schema, public/secret split), `runtime.js` (ctx, timeout, cache), `sandbox.js` + `worker.js` (installed widgets in a worker thread), `installer.js` (git/npm/path sources + lock file). |
 | `src/discovery/` | `docker.js` (labels, Swarm services), `kubernetes.js` (Ingress, IngressRoute and HTTPRoute annotations), `kubeconfig.js` (service account or kubeconfig connection), `labels.js`, `index.js` (polling + merge with YAML, weights). |
 | `src/layout.js` | Widget instances (server side) and the layout JSON (browser side). |
@@ -113,7 +113,7 @@ Usage limits are shared with the owner: keep a task's context small.
     `postAction`), page, groups, service filters, block highlighting, quicklaunch, tabs, then
     `render`/`load` and the event listeners at the end.
   - `src/app.js` (~770): `createApp` holds `rebuild`/`reload`, `handler` (the route list), and the
-    route groups `settingsRoute`, `loginRoute`, `onboardingRoute` (with `setupFiles`,
+    route groups `settingsRoute` (with `filesRoute` for the config files), `loginRoute`, `onboardingRoute` (with `setupFiles`,
     `testWidget`, `homepageDryRun`), `runAction`.
   - The other pages each have their own script: `setup.js` (wizard), `login.js`, `settings.js`;
     the server side of each is `src/onboarding.js`, `src/login.js`, `src/settings.js`;

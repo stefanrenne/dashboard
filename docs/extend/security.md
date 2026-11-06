@@ -79,6 +79,11 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - Options marked `secret: true`, undeclared options, and every value from `{{DASHBOARD_VAR_*}}` /
   `{{DASHBOARD_FILE_*}}` stay on the server. `/api/layout` contains public options only (tested).
 - Error messages from widgets and config messages have secret values replaced by `***`.
+- The settings page shows the config files with their secrets as tokens (`__SECRET_…__`): options
+  marked `secret: true`, `providers`, `adminPassword` and Proxmox secrets written in the file
+  itself. A save puts the values back on the server; `{{DASHBOARD_VAR_*}}` placeholders are shown
+  as written, never filled in. The admin password is not changed through a file, only with the
+  current one.
 - The page's Content-Security-Policy restricts `connect-src` to the dashboard itself, and scripts
   to files it serves: the page's own inline script carries a nonce that changes with every load,
   so an inline script or event handler that got into the page anyway does not run.

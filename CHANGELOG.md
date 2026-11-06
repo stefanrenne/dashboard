@@ -22,6 +22,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   `DASHBOARD_WIDGET_ISOLATION=off`.
 
 ### Added
+- The settings API reads and saves the config files (`/api/settings/files`), behind the admin
+  password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the
   config folder (the last ten per file).
 - `discoverable: false` for an option in widget.yaml: taken from the YAML config only.

@@ -103,3 +103,4 @@ Finished work, newest first.
 - 2026-11-06: A widget catalogue: docs/widgets/catalogue.md on the Pages site (no separate repo), with the rules for adding a package by pull request.
 - 2026-11-06: Versions in the docs before 1.0: kept as they are (the Migration section and the API Changes table keep naming versions, as CLAUDE.md rules 2 and 6 require).
 - 2026-11-06: Settings page foundation: `src/config/edit.js` writes any config file (allow-list, checked as loadConfig loads it, 409 on a concurrent edit, the last ten versions under `.history/`); settings.yaml goes through it; hard rule 5 revised.
+- 2026-11-06: Settings page secrets: `src/config/mask.js` sends secrets written in a file as `__SECRET_<id>__` tokens (secret options, providers, adminPassword, Proxmox secret) and puts them back on save; `/api/settings/files` (list, read, save, history); a warning for a literal secret; the admin password not changeable through a file.

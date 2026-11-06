@@ -1589,3 +1589,77 @@ test('a broken request target is a 400, and the dashboard keeps answering', asyn
     await t.close();
   }
 });
+
+test('settings page files: secrets as tokens, saves checked and put back, conflicts and history', async () => {
+  const password = hashPassword('Sesam-123', { N: 1024 });
+  const services = `# mine
+- Apps:
+    - Counter:
+        href: http://counter.lan
+        widget:
+          type: example-counter
+          url: http://counter.lan
+          key: literal-key-123   # secret
+`;
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${path.resolve('examples/widget-template')}\nadminPassword: "${password}"\nproviders:\n  weather: provider-key-456\n`,
+    'services.yaml': services,
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const get = (p) => fetch(`${t.base}/api/settings/files${p}`, { headers: auth });
+  const post = (p, body, headers = auth) => fetch(`${t.base}/api/settings/files${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body) });
+  try {
+    assert.equal((await fetch(`${t.base}/api/settings/files/services.yaml`, { headers: { 'x-forwarded-for': '203.0.113.7' } })).status, 401, 'the admin password first');
+    const list = await (await get('')).json();
+    assert.ok(list.files.some((f) => f.file === 'proxmox.yaml' && !f.exists));
+    assert.equal((await get('/custom.js')).status, 404);
+    assert.equal((await get('/..%2Fsettings.yaml')).status, 404);
+
+    const raw = await get('/services.yaml');
+    const body = await raw.text();
+    for (const secret of ['literal-key-123', 'provider-key-456', password]) assert.ok(!body.includes(secret), secret);
+    const read = JSON.parse(body);
+    assert.deepEqual(read.secrets, ['[0].Apps[0].Counter.widget.key']);
+    const settingsText = (await (await get('/settings.yaml')).json()).text;
+    assert.ok(!settingsText.includes('provider-key-456') && !settingsText.includes('scrypt:'));
+
+    // a save: the token gets its value back, comments stay, the dashboard follows
+    const saved = await (await post('/services.yaml', { text: read.text.replace('href: http://counter.lan', 'href: http://counter.lan\n        description: Counts'), hash: read.hash })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    const onDisk = fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8');
+    assert.match(onDisk, /key: "literal-key-123" {3}# secret/);
+    assert.match(onDisk, /^# mine$/m);
+    assert.equal(t.app.layout.groups[0].services[0].description, 'Counts');
+
+    // the old hash: 409; an unknown token or a broken file: 400 and nothing written
+    assert.equal((await post('/services.yaml', { text: read.text, hash: read.hash })).status, 409);
+    const fresh = await (await get('/services.yaml')).json();
+    assert.equal((await post('/services.yaml', { text: fresh.text.replace(/__SECRET_\w+__/, '__SECRET_0123456789__'), hash: fresh.hash })).status, 400);
+    const broken = await post('/services.yaml', { text: 'just: a map\n', hash: fresh.hash });
+    assert.equal(broken.status, 400);
+    assert.ok((await broken.json()).errors.length > 0);
+    assert.equal(fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8'), onDisk);
+
+    // a literal secret typed in: saved, with a warning to use a variable
+    const typed = await (await post('/services.yaml', { text: fresh.text.replace(/__SECRET_\w+__/, 'typed-key-789'), hash: fresh.hash })).json();
+    assert.deepEqual(typed.warnings.map((w) => w.path), ['[0].Apps[0].Counter.widget.key']);
+
+    // the admin password cannot be changed here
+    const s = await (await get('/settings.yaml')).json();
+    const changed = await post('/settings.yaml', { text: s.text.replace(/adminPassword: .*/, `adminPassword: "${hashPassword('Other-456', { N: 1024 })}"`), hash: s.hash });
+    assert.equal(changed.status, 400);
+    const removed = await post('/settings.yaml', { text: s.text.replace(/adminPassword: .*\n/, ''), hash: s.hash });
+    assert.equal(removed.status, 400, 'nor removed');
+
+    // earlier versions, masked as well
+    const history = (await (await get('/services.yaml')).json()).history;
+    assert.equal(history.length, 2);
+    const old = await (await get(`/services.yaml/history/${encodeURIComponent(history.at(-1).id)}`)).text();
+    assert.ok(!old.includes('literal-key-123'));
+    assert.equal(JSON.parse(old).text.replace(/__SECRET_\w+__/, 'X'), services.replace('literal-key-123', 'X'));
+    assert.equal((await get('/services.yaml/history/nope')).status, 404);
+    assert.equal((await post('/services.yaml', { text: 'x' }, { 'x-dashboard-password': 'Sesam-123', 'x-requested-with': '' })).status, 403);
+  } finally {
+    await t.close();
+  }
+});
