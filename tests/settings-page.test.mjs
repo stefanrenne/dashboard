@@ -493,3 +493,45 @@ test('settings page: bookmarks as a form: fields, move to another group, add, re
   ]);
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });
+
+test('settings page: Docker, Proxmox and Kubernetes as forms', async () => {
+  const docker = { ok: true, hash: 'd1', flat: false, entries: [{ id: 'nas', name: 'nas', fields: { socket: '', host: '192.168.1.20', port: '2375', protocol: '', caFile: '', certFile: '', keyFile: '', discover: false, swarm: false }, other: ['allowVariables'] }] };
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/servers/docker.yaml': docker,
+    'POST /api/settings/servers/docker.yaml': (init) => ({ ...docker, hash: 'd2', entries: JSON.parse(init.body).entries.map((e) => ({ ...e, id: e.name, other: [] })) }),
+    'POST /api/settings/docker-test': { name: 'nas', ok: true, version: '27.0', containers: 12 },
+    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, other: [] }] },
+    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', fields: { mode: 'disabled', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
+    'POST /api/settings/servers/kubernetes.yaml': (init) => ({ ok: true, hash: 'k2', fields: JSON.parse(init.body).fields, other: [] }),
+  }, () => {}, 'http://dash.lan/settings#docker');
+  await tick();
+  const panel = () => doc.getElementById('panel').textContent;
+  assert.match(panel(), /Ook in het bestand: allowVariables/);
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'De verbinding testen').click();
+  await tick();
+  assert.match(panel(), /Docker 27\.0, 12 containers/);
+  const set = (id, value, event = 'input') => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Een server toevoegen').click();
+  set(doc.activeElement.id, 'local');
+  set(doc.activeElement.id.replace('-name', '-socket'), '/var/run/docker.sock');
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/servers/docker.yaml' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual(sent.entries.map((e) => [e.id, e.name, e.fields.socket || e.fields.host, e.fields.discover]), [['nas', 'nas', '192.168.1.20', false], [null, 'local', '/var/run/docker.sock', true]]);
+  w.location.hash = '#proxmox';
+  await tick();
+  await tick();
+  const secret = doc.querySelector('input[id$="-secret"]');
+  assert.equal(secret.type, 'password');
+  assert.match(panel(), /Verborgen; typ om te vervangen/);
+  w.location.hash = '#kubernetes';
+  await tick();
+  await tick();
+  set('kube-mode', 'cluster', 'change');
+  set('kube-traefik', 'true', 'change');
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const kube = calls.filter((c) => c.p === '/api/settings/servers/kubernetes.yaml' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual([kube.hash, kube.fields.mode, kube.fields.traefik], ['k1', 'cluster', 'true']);
+});

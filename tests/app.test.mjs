@@ -1812,3 +1812,22 @@ test('settings page bookmarks: the tree saved, the page follows', async () => {
     await t.close();
   }
 });
+
+test('settings page server files: docker.yaml saved and the mounted socket tested; a missing server says so', async () => {
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n`, 'kubernetes.yaml': 'mode: disabled\n' });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const post = (p, body) => fetch(`${t.base}/api/settings${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) });
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/servers/docker.yaml`, { headers: auth })).json();
+    assert.deepEqual(read.entries, []);
+    const saved = await (await post('/servers/docker.yaml', { hash: read.hash, entries: [{ id: null, name: 'nas', fields: { host: 'nas.lan', port: '2376' } }] })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.match(fs.readFileSync(path.join(t.configDir, 'docker.yaml'), 'utf8'), /^nas:\n {2}host: nas\.lan\n {2}port: 2376\n$/);
+    assert.equal((await post('/docker-test', { name: 'other' })).status, 404);
+    const kube = await (await fetch(`${t.base}/api/settings/servers/kubernetes.yaml`, { headers: auth })).json();
+    assert.equal(kube.fields.mode, 'disabled');
+    assert.equal((await fetch(`${t.base}/api/settings/servers/custom.yaml`, { headers: auth })).status, 404);
+  } finally {
+    await t.close();
+  }
+});

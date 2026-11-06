@@ -1,5 +1,7 @@
 # Docker
 
+The settings page edits this file under Docker, as a form or as text.
+
 `docker.yaml` lists the Docker servers: for `container:` status labels on a service, and to
 [discover](#discovery) services from container labels.
 

@@ -1,5 +1,7 @@
 # Proxmox
 
+The settings page edits this file under Proxmox, as a form or as text.
+
 `proxmox.yaml` lists Proxmox nodes, for `proxmoxNode:` and `proxmoxVMID:` on a service (as in homepage): the
 VM's or container's state as a label in the card's corner, with CPU and memory on a click.
 

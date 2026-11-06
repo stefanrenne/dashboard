@@ -42,6 +42,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   with a test button that runs it as the dashboard would; secret options stay hidden.
 - **Header widgets as a form on the settings page**, with the same widget forms.
 - **Bookmarks as a form on the settings page**: groups and bookmarks, moved, added and removed.
+- **Docker, Kubernetes and Proxmox as forms on the settings page**, with a connection test for a
+  Docker server; the Proxmox token secret stays hidden.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

@@ -28,6 +28,7 @@ import { readPlugins, checkPlugins, writePlugins } from './settings-plugins.js';
 import { readServices, writeServices, widgetCatalog, readHeader, writeHeader } from './settings-services.js';
 import { secretsOf } from './config/mask.js';
 import { readBookmarks, writeBookmarks } from './settings-bookmarks.js';
+import { readServers, writeServers, SPECS as SERVER_FILES } from './settings-servers.js';
 import { substitute } from './config/vars.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
@@ -597,6 +598,30 @@ export async function createApp({
       const out = await testWidget(body?.type, filled.value);
       const secrets = [...[...known.values()].map((x) => String(x.value)), ...filled.secrets];
       return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), secrets) }, 'application/json', headers);
+    }
+    const serverFile = /^\/servers\/([a-z]+\.yaml)$/.exec(route)?.[1];
+    if (serverFile && SERVER_FILES[serverFile]) {
+      try {
+        if (method === 'POST') {
+          const out = writeServers(configDir, serverFile, body, body?.hash, { env });
+          if (out.changed) {
+            log.info(`settings: ${serverFile} saved from its form`);
+            await reload();
+          }
+          return send(res, 200, { ok: true, ...readServers(configDir, serverFile), warnings: out.warnings ?? [] }, 'application/json', headers);
+        }
+        return send(res, 200, { ok: true, ...readServers(configDir, serverFile) }, 'application/json', headers);
+      } catch (err) {
+        if (!(err instanceof ConfigEditError)) throw err;
+        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
+      }
+    }
+    if (method === 'POST' && route === '/docker-test') {
+      // a saved server, as the dashboard uses it (the mounted socket included)
+      const servers = (state.config?.docker ?? []).filter((x) => x.name === body?.name);
+      if (!servers.length) return send(res, 404, { ok: false, error: 'no such server in docker.yaml; save it first' }, 'application/json', headers);
+      const [result] = await checkDocker({ servers, get: dockerGet });
+      return send(res, 200, result, 'application/json', headers);
     }
     if (route === '/bookmarks') {
       try {

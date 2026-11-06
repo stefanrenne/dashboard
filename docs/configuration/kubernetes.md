@@ -1,5 +1,7 @@
 # Kubernetes
 
+The settings page edits this file under Kubernetes, as a form or as text.
+
 `kubernetes.yaml` connects the dashboard to a cluster: to [discover](#discovery) services from
 Ingress, IngressRoute and HTTPRoute annotations, for `app:` pod status labels on a service, and
 for the [Kubernetes](../widgets/collection/kubernetes.html) header widget.

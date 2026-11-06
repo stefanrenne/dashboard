@@ -183,8 +183,9 @@ found by discovery are listed (their labels are their source). "Edit as text" sh
 Header widgets is a form too: the widgets in the header, each with the form of its options, added,
 reordered and removed.
 Bookmarks is a form as well: groups and bookmarks (link, abbreviation, icon, description).
-The other sections (Docker, Kubernetes, Proxmox, and
-Advanced for `settings.yaml` itself) show their file as text, with its comments, and the files
+Docker, Kubernetes and Proxmox are forms of their servers (with a connection test for Docker),
+keeping keys they do not show, such as `allowVariables`; the Proxmox token secret stays hidden.
+Advanced shows `settings.yaml` itself as text, with its comments, and the files
 it includes. A save is checked first: a mistake is shown with its file and path and nothing is
 written. Secrets written in a file appear as `__SECRET_…__` and stay as they were; if the file
 was changed elsewhere in the meantime, the page says so instead of overwriting it. The previous
