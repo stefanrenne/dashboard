@@ -1612,7 +1612,7 @@ test('settings page files: secrets as tokens, saves checked and put back, confli
     assert.equal((await fetch(`${t.base}/api/settings/files/services.yaml`, { headers: { 'x-forwarded-for': '203.0.113.7' } })).status, 401, 'the admin password first');
     const list = await (await get('')).json();
     assert.ok(list.files.some((f) => f.file === 'proxmox.yaml' && !f.exists));
-    assert.equal((await get('/custom.js')).status, 404);
+    assert.equal((await get('/custom.html')).status, 404);
     assert.equal((await get('/..%2Fsettings.yaml')).status, 404);
 
     const raw = await get('/services.yaml');
