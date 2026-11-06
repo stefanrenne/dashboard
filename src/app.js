@@ -28,6 +28,8 @@ import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securit
 import { validateOptions } from './plugins/options.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
+// open /api/events streams, overall and per client address (behind a proxy: all of them)
+export const EVENT_STREAMS = { max: 500, perAddress: 50 };
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];
 export const MIN_PASSWORD = 8; // the setup wizard's admin password, at least
 import { safeJoin } from './util.js';
@@ -143,6 +145,7 @@ export async function createApp({
   defaultPlugins = defaultPluginsFor(VERSION),
   dockerSocket = DEFAULT_SOCKET,
   releasesUrl = RELEASES_URL,
+  eventStreams = EVENT_STREAMS,
 } = {}) {
   const sseClients = new Set();
   // installed widgets run in a worker thread (src/plugins/sandbox.js) unless DASHBOARD_WIDGET_ISOLATION=off
@@ -384,8 +387,15 @@ export async function createApp({
         return send(res, 200, await runtime.get(p.slice('/api/widgets/'.length), Object.fromEntries(url.searchParams)));
       }
       if (method === 'GET' && p === '/api/events') {
+        // each open stream holds a socket: a cap overall and per address (a proxy is one address)
+        const address = String(req.socket?.remoteAddress ?? 'unknown');
+        const fromHere = [...sseClients].filter((c) => c.address === address).length;
+        if (sseClients.size >= eventStreams.max || fromHere >= eventStreams.perAddress) {
+          return send(res, 503, { error: 'too many open event streams' }, 'application/json', { ...SECURITY_HEADERS, 'retry-after': '60' });
+        }
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
         res.write(': connected\n\n');
+        res.address = address;
         sseClients.add(res);
         req.on('close', () => sseClients.delete(res));
         return;

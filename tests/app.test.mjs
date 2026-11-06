@@ -586,6 +586,31 @@ test('reload picks up edited YAML and tells browsers through /api/events', async
   }
 });
 
+test('/api/events: open streams are capped per address; a closed one frees its place', async () => {
+  const app = await createApp({ configDir: tmpDir('hd-app-'), log: silentLog, defaultPlugins: [], dockerSocket: null, releasesUrl: null, eventStreams: { max: 10, perAddress: 2 } });
+  const server = http.createServer(app.handler);
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const open = () => new Promise((resolve) => http.get(`http://127.0.0.1:${server.address().port}/api/events`, resolve));
+  try {
+    const a = await open();
+    const b = await open();
+    const c = await open();
+    assert.deepEqual([a.statusCode, b.statusCode, c.statusCode], [200, 200, 503]);
+    assert.equal(c.headers['retry-after'], '60');
+    c.resume();
+    a.destroy();
+    await new Promise((r) => setTimeout(r, 50));
+    const d = await open();
+    assert.equal(d.statusCode, 200);
+    b.destroy();
+    d.destroy();
+  } finally {
+    app.close();
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
+});
+
 test('watchConfig with pollMs: compares size and time, YAML only, plugins/ left out', async () => {
   const dir = tmpDir('hd-poll-');
   fs.writeFileSync(path.join(dir, 'services.yaml'), 'a: 1\n');

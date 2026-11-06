@@ -96,3 +96,4 @@ Finished work, newest first.
 - 2026-11-06: Security: the widget worker runs without the `DASHBOARD_VAR_*` / `DASHBOARD_FILE_*` variables in its environment (the config folder stays readable; documented).
 - 2026-11-06: Security: at most 30 fresh param sets a minute per widget instance; the weather widgets round and check coordinates and keep at most 50 locations.
 - 2026-11-06: Docs: `:ro` on the Docker socket is said not to limit the API wherever the socket is mounted (the Access paragraph says why; a socket proxy does).
+- 2026-11-06: Security: at most 500 event streams (50 per address); headersTimeout, requestTimeout and maxConnections set in src/server.js.

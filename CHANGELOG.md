@@ -27,6 +27,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - A widget instance runs at most 30 new sets of params a minute (a weather widget's coordinates
   from the page); more get an error until the minute is over, so a visitor cannot make unlimited
   calls on an API key.
+- At most 500 open event streams (`/api/events`), 50 per address; more get a 503. The server
+  sets its header and request timeouts explicitly (20 s and 30 s).
 
 ## [0.23.0] - 2026-11-06
 

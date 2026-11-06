@@ -29,6 +29,11 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ error: 'internal error' }));
   });
 });
+// explicit limits for slow clients: the whole request (headers and a body of at most 1 MB) in
+// 30 s, its headers in 20 s; an open event stream is a response and not affected
+server.headersTimeout = 20_000;
+server.requestTimeout = 30_000;
+server.maxConnections = 2000;
 server.listen(Number(values.port), values.host, () => {
   log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
   // a first install: where the wizard is, and the code it asks from outside the local network

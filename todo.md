@@ -8,9 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Low: unlimited event streams.** `/api/events` keeps every connection open with no cap
-  per client; many open connections exhaust sockets and memory. Fix: a limit (overall and per
-  address), and `server.headersTimeout`/`requestTimeout` set explicitly in `src/server.js`.
 - [ ] **Low: symlinks are followed when serving files.** `safeJoin` checks the path, not its
   real path: a symlink in a widget package's `assets/` or in `config/icons/` serves whatever it
   points to (the config folder, keys). Widget code is trusted anyway, but a widget package is
