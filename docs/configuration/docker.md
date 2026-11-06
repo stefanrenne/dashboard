@@ -27,7 +27,7 @@ remote:
 
 | Key | Default | What |
 |---|---|---|
-| `socket` | | Path of a Docker socket inside the container. Mount it: `/var/run/docker.sock:/var/run/docker.sock:ro` |
+| `socket` | | Path of a Docker socket inside the container. Mount it: `/var/run/docker.sock:/var/run/docker.sock:ro`. `:ro` does not make the Docker API read-only (see **Access** below); a socket proxy does |
 | `host` | | Host name or IP of a Docker API or socket proxy (instead of `socket`) |
 | `port` | `2375` | Port of that API |
 | `protocol` | `http` | `http` or `https` (`https` when `tls` is set) |
@@ -63,7 +63,7 @@ services:
     image: ghcr.io/stefanrenne/dashboard:latest
     volumes:
       - ./config:/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # :ro protects the file, not the API: see Access below
 ```
 
 When `docker.yaml` lists no servers, a socket mounted at `/var/run/docker.sock` is used as the

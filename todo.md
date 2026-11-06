@@ -8,10 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Low: `docker.sock:ro` protects nothing.** A read-only bind mount of the socket still
-  allows every API call (start, stop, exec), so the dashboard (and any widget or button in it)
-  has full control of Docker. The docs recommend a docker-socket-proxy; say plainly that `:ro`
-  does not help, in the Docker page and the README's compose example.
 - [ ] **Low: unlimited event streams.** `/api/events` keeps every connection open with no cap
   per client; many open connections exhaust sockets and memory. Fix: a limit (overall and per
   address), and `server.headersTimeout`/`requestTimeout` set explicitly in `src/server.js`.

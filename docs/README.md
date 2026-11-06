@@ -80,7 +80,7 @@ services:
       - "3000:3000"
     volumes:
       - ./config:/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: Docker status and discovery
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: Docker status and discovery; :ro does not limit the API, see Docker
     environment:
       DASHBOARD_VAR_RADARR_KEY: your-api-key
     restart: unless-stopped
