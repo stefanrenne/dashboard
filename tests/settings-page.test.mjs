@@ -460,3 +460,36 @@ test('settings page: header widgets as a form: changed, added, reordered, saved'
   assert.deepEqual(sent, { hash: 'h1', widgets: [{ id: null, type: 'search', options: { provider: 'duckduckgo' } }, { id: '0', type: 'datetime', options: { format: 'long' } }] });
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });
+
+test('settings page: bookmarks as a form: fields, move to another group, add, remove', async () => {
+  const fields = (extra) => ({ href: '', abbr: '', icon: '', description: '', ...extra });
+  const items = [
+    { kind: 'group', id: '0', name: 'Developer', items: [{ kind: 'bookmark', id: '0/0', name: 'GitHub', fields: fields({ href: 'https://github.com', abbr: 'GH' }), other: [] }] },
+    { kind: 'group', id: '1', name: 'Docs', items: [] },
+    { kind: 'group', id: '2', name: 'Shared', include: 'shared.yaml', items: [] },
+  ];
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/bookmarks': { ok: true, hash: 'h1', items },
+    'POST /api/settings/bookmarks': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items }),
+  }, () => {}, 'http://dash.lan/settings#bookmarks');
+  await tick();
+  assert.match(doc.getElementById('panel').textContent, /De bladwijzers van deze groep staan in shared\.yaml/);
+  const set = (id, value, event = 'input') => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  const id = doc.querySelector('.card input[id$="-name"]').id.replace('-name', '');
+  set(`${id}-description`, 'The code');
+  set(`${id}-move`, '1', 'change');
+  const dev = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input').value === 'Developer');
+  [...dev.querySelectorAll('button')].find((b) => b.textContent === 'Een bladwijzer toevoegen').click();
+  set(doc.activeElement.id, 'Hub');
+  set(doc.activeElement.id.replace('-name', '-href'), 'https://hub.docker.com');
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/bookmarks' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual(sent.items.map((g) => [g.name, g.items.map((b) => [b.id, b.name, b.fields.href, b.fields.description])]), [
+    ['Developer', [[null, 'Hub', 'https://hub.docker.com', '']]],
+    ['Docs', [['0/0', 'GitHub', 'https://github.com', 'The code']]],
+    ['Shared', []],
+  ]);
+  assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+});

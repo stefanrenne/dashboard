@@ -41,6 +41,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - A service's widgets on the settings page: a form per widget from its `options:` in widget.yaml,
   with a test button that runs it as the dashboard would; secret options stay hidden.
 - **Header widgets as a form on the settings page**, with the same widget forms.
+- **Bookmarks as a form on the settings page**: groups and bookmarks, moved, added and removed.
 - The settings API reads and saves the config files (`/api/settings/files`), behind the admin
   password: secrets as tokens, every save checked first, refused when the file changed since.
 - The settings page keeps the previous version of a file it saves, under `.history/` in the

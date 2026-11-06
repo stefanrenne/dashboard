@@ -1798,3 +1798,17 @@ test('settings page header widgets: read with the catalog, saved, the header fol
     await t.close();
   }
 });
+
+test('settings page bookmarks: the tree saved, the page follows', async () => {
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n`, 'bookmarks.yaml': '- Dev:\n    - GitHub:\n        - href: https://github.com\n' });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  try {
+    const read = await (await fetch(`${t.base}/api/settings/bookmarks`, { headers: auth })).json();
+    read.items[0].items.push({ kind: 'bookmark', id: null, name: 'Hub', fields: { href: 'https://hub.docker.com' } });
+    const saved = await (await fetch(`${t.base}/api/settings/bookmarks`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify({ hash: read.hash, items: read.items }) })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.deepEqual(t.app.layout.bookmarks[0].bookmarks.map((b) => b.name), ['GitHub', 'Hub']);
+  } finally {
+    await t.close();
+  }
+});

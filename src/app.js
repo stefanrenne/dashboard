@@ -27,6 +27,7 @@ import { readLayout, checkLayout, writeLayout } from './settings-layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './settings-plugins.js';
 import { readServices, writeServices, widgetCatalog, readHeader, writeHeader } from './settings-services.js';
 import { secretsOf } from './config/mask.js';
+import { readBookmarks, writeBookmarks } from './settings-bookmarks.js';
 import { substitute } from './config/vars.js';
 import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
@@ -565,7 +566,7 @@ export async function createApp({
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
     let body;
     try {
-      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || route === '/services' ? BODY_LIMIT : 64 * 1024) : null;
+      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || ['/services', '/bookmarks', '/header'].includes(route) ? BODY_LIMIT : 64 * 1024) : null;
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
@@ -596,6 +597,22 @@ export async function createApp({
       const out = await testWidget(body?.type, filled.value);
       const secrets = [...[...known.values()].map((x) => String(x.value)), ...filled.secrets];
       return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), secrets) }, 'application/json', headers);
+    }
+    if (route === '/bookmarks') {
+      try {
+        if (method === 'POST') {
+          const out = writeBookmarks(configDir, body?.items, body?.hash, { env });
+          if (out.changed) {
+            log.info('settings: bookmarks.yaml saved from the bookmarks form');
+            await reload();
+          }
+          return send(res, 200, { ok: true, ...readBookmarks(configDir), warnings: out.warnings ?? [] }, 'application/json', headers);
+        }
+        return send(res, 200, { ok: true, ...readBookmarks(configDir) }, 'application/json', headers);
+      } catch (err) {
+        if (!(err instanceof ConfigEditError)) throw err;
+        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
+      }
     }
     if (route === '/header') {
       try {
