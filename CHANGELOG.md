@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-06
+
 ### Changed (breaking)
 - **Docker labels and Kubernetes annotations no longer fill in variables by themselves.** A label
   with `{{DASHBOARD_VAR_*}}` / `{{HOMEPAGE_VAR_*}}` (or `_FILE_`) leaves its service out, with a
