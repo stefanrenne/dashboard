@@ -1,7 +1,9 @@
 // Writes the user's config files, for the settings page only (hard rule 5: never on its own,
 // only on an admin's explicit save). Every write
-//   - is for a file on the allow-list (EDITABLE_FILES), on its resolved path inside the folder;
-//   - is checked first, the way loadConfig loads it: a save that adds errors is refused;
+//   - is for a config file (EDITABLE_FILES) or a file one of them includes, on its resolved
+//     path inside the folder (never plugins/ or .history/);
+//   - is checked first, the way loadConfig loads it (an included file as part of the config
+//     file it ends up in): a save that adds errors is refused;
 //   - is refused with 409 when the file changed since the page read it (`hash`);
 //   - keeps the previous version under .history/ (the newest HISTORY_KEEP per file);
 //   - replaces the file atomically (a temporary file, then a rename).
@@ -13,6 +15,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { CONFIG_FILES, checkConfigFile } from './load.js';
+import { listIncludes } from './include.js';
+import { PLUGINS_DIR } from '../plugins/installer.js';
 import { scrub } from '../plugins/runtime.js';
 
 export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
@@ -30,12 +34,28 @@ export class ConfigEditError extends Error {
 
 export const hashText = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
 
+/**
+ * The files the settings page edits: the config files, then every file they `!include`
+ * ({ file, root, from, at } as listIncludes gives them).
+ */
+export function editableFiles(configDir) {
+  const included = listIncludes(configDir, EDITABLE_FILES).filter((e) => !EDITABLE_FILES.includes(e.file));
+  return [...EDITABLE_FILES.map((file) => ({ file, root: file, from: null, at: '' })), ...included];
+}
+
+/** The config file `file` ends up in, and where: { file, root, from, at }; null when not editable. */
+export function editableFile(configDir, file) {
+  return editableFiles(configDir).find((e) => e.file === file) ?? null;
+}
+
 /** The full path of an editable file; throws for anything else. */
 export function configPath(configDir, file) {
-  if (!EDITABLE_FILES.includes(file)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
   const root = path.resolve(configDir);
-  const full = path.resolve(root, file);
-  if (path.dirname(full) !== root) throw new ConfigEditError(`${file}: outside the config folder`, 404);
+  const full = path.resolve(root, String(file));
+  const rel = path.relative(root, full).split(path.sep).join('/');
+  const inside = rel !== '' && !rel.startsWith('../') && !path.isAbsolute(rel) && rel === file;
+  if (!inside || rel.startsWith(`${PLUGINS_DIR}/`) || rel.startsWith(`${HISTORY_DIR}/`)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
+  if (!EDITABLE_FILES.includes(file) && !editableFile(configDir, file)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
   return full;
 }
 
@@ -71,22 +91,29 @@ const key = (m) => `${m.file}\u0000${m.path}\u0000${m.message}`;
  */
 export function checkConfigText(configDir, file, text, opts = {}) {
   configPath(configDir, file);
-  const name = file.replace(/\.yaml$/, '');
-  const before = checkConfigFile(configDir, name, readConfigFile(configDir, file).text, opts);
-  const after = checkConfigFile(configDir, name, text, opts);
+  // an included file is checked as part of the config file it ends up in
+  const { root } = editableFile(configDir, file);
+  const name = root.replace(/\.yaml$/, '');
+  const rootText = readConfigFile(configDir, root).text;
+  const before = checkConfigFile(configDir, name, rootText, opts);
+  const after = root === file ? checkConfigFile(configDir, name, text, opts) : checkConfigFile(configDir, name, rootText, { ...opts, overrides: { [file]: text } });
   const secrets = [...before.secrets, ...after.secrets];
   const clean = (list) => list.map((m) => ({ file: m.file, path: m.path, message: scrub(m.message, secrets) }));
   const known = new Set(before.errors.map(key));
   return { errors: clean(after.errors.filter((m) => !known.has(key(m)))), warnings: clean(after.warnings) };
 }
 
+// .history/ mirrors the folders: .history/services/media.yaml.<time> for services/media.yaml
+const historyDir = (configDir, file) => path.join(path.resolve(configDir), HISTORY_DIR, path.dirname(file));
+
 function keepHistory(configDir, file, text) {
-  const dir = path.join(path.resolve(configDir), HISTORY_DIR);
+  const dir = historyDir(configDir, file);
   fs.mkdirSync(dir, { recursive: true });
   // the name ends in the time, not in .yaml: the config watcher and loadConfig ignore it
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  let name = `${file}.${stamp}`;
-  for (let n = 1; fs.existsSync(path.join(dir, name)); n++) name = `${file}.${stamp}-${n}`;
+  const base = path.basename(file);
+  let name = `${base}.${stamp}`;
+  for (let n = 1; fs.existsSync(path.join(dir, name)); n++) name = `${base}.${stamp}-${n}`;
   fs.writeFileSync(path.join(dir, name), text);
   for (const old of listHistory(configDir, file).slice(HISTORY_KEEP)) fs.rmSync(path.join(dir, old.id), { force: true });
 }
@@ -94,15 +121,16 @@ function keepHistory(configDir, file, text) {
 /** The kept versions of `file`, newest first: [{ id, size, time }]. */
 export function listHistory(configDir, file) {
   configPath(configDir, file);
-  const dir = path.join(path.resolve(configDir), HISTORY_DIR);
+  const dir = historyDir(configDir, file);
   let names;
   try {
     names = fs.readdirSync(dir);
   } catch {
     return [];
   }
+  const base = path.basename(file);
   return names
-    .filter((n) => n.startsWith(`${file}.`) && !n.endsWith('.tmp'))
+    .filter((n) => n.startsWith(`${base}.`) && /\.\d{4}-\d\d-\d\dT[\d-]+Z(-\d+)?$/.test(n.slice(base.length)))
     .map((id) => {
       const stat = fs.statSync(path.join(dir, id));
       return { id, size: stat.size, time: stat.mtime.toISOString() };
@@ -113,7 +141,7 @@ export function listHistory(configDir, file) {
 /** The text of a kept version of `file`. */
 export function readHistory(configDir, file, id) {
   if (!listHistory(configDir, file).some((v) => v.id === id)) throw new ConfigEditError(`${file}: no such earlier version`, 404);
-  return fs.readFileSync(path.join(path.resolve(configDir), HISTORY_DIR, id), 'utf8');
+  return fs.readFileSync(path.join(historyDir(configDir, file), id), 'utf8');
 }
 
 /**

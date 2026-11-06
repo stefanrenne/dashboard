@@ -138,6 +138,10 @@ The rules:
   (`services.yaml › [1].Media: !include services/media.yaml: file not found`); that spot stays
   empty and the rest works. A mistake *inside* the included services is shown with the path
   in the file that includes it.
+- **On the settings page** an included file is a file of its own, edited and saved there; the
+  `!include` in the main file stays as it is. A save is checked as part of the main file, and
+  secrets in it are hidden by the main file's rules (a file included under `providers:` is secret
+  as a whole).
 
 Files are only read where an `!include` names them: a `media.yaml` next to `services.yaml` does
 nothing by itself. `!include` is this dashboard's own; homepage does not read it.

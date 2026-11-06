@@ -1663,3 +1663,30 @@ test('settings page files: secrets as tokens, saves checked and put back, confli
     await t.close();
   }
 });
+
+test('settings page files: included files are listed, masked by the rules of their config file, and saved in place', async () => {
+  const password = hashPassword('Sesam-123', { N: 1024 });
+  const t = await startApp({
+    'settings.yaml': `adminPassword: "${password}"\nproviders: !include private/providers.yaml\n`,
+    'private/providers.yaml': 'weather: provider-key-456\n',
+    'services.yaml': '- Media: !include media.yaml\n',
+    'media.yaml': '- Plex:\n    href: http://plex.lan\n',
+  });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const get = (p) => fetch(`${t.base}/api/settings/files${p}`, { headers: auth });
+  const post = (p, body) => fetch(`${t.base}/api/settings/files${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) });
+  try {
+    const { files } = await (await get('')).json();
+    assert.deepEqual(files.filter((f) => f.from).map((f) => [f.file, f.root, f.at]), [['private/providers.yaml', 'settings.yaml', 'providers'], ['media.yaml', 'services.yaml', '[0].Media']]);
+    const providers = await (await get(`/${encodeURIComponent('private/providers.yaml')}`)).json();
+    assert.match(providers.text, /^weather: __SECRET_[0-9a-f]{10}__$/m);
+    const media = await (await get('/media.yaml')).json();
+    const saved = await (await post('/media.yaml', { text: `${media.text}- Jellyfin:\n    href: http://jf.lan\n`, hash: media.hash })).json();
+    assert.equal(saved.ok, true, JSON.stringify(saved));
+    assert.deepEqual(t.app.layout.groups[0].services.map((s) => s.name), ['Plex', 'Jellyfin']);
+    assert.equal(fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8'), '- Media: !include media.yaml\n', 'the include stays');
+    assert.equal((await get(`/${encodeURIComponent('../settings.yaml')}`)).status, 404);
+  } finally {
+    await t.close();
+  }
+});

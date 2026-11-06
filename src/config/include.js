@@ -38,7 +38,7 @@ const join = (p, key) => (typeof key === 'number' ? `${p}[${key}]` : p ? `${p}.$
  * Replaces the includes in `value`, parsed from `file` (relative to `configDir`).
  * `errors` collects { file, path, message }. Returns the resolved value.
  */
-export function resolveIncludes(value, { configDir, file, errors, stack = [file] }) {
+export function resolveIncludes(value, { configDir, file, errors, stack = [file], overrides = {} }) {
   const load = (inc, at) => {
     const fail = (message) => {
       errors.push({ file, path: at, message: `!include ${inc.file}: ${message}` });
@@ -53,9 +53,9 @@ export function resolveIncludes(value, { configDir, file, errors, stack = [file]
     const name = path.relative(path.resolve(configDir), full).split(path.sep).join('/');
     if (stack.includes(name)) return fail(`includes itself (${[...stack, name].join(' → ')})`);
     if (stack.length > MAX_DEPTH) return fail(`more than ${MAX_DEPTH} includes deep`);
-    let text;
+    let text = overrides[name];
     try {
-      text = fs.readFileSync(full, 'utf8');
+      text ??= fs.readFileSync(full, 'utf8');
     } catch (err) {
       return fail(err.code === 'ENOENT' ? 'file not found' : `cannot read: ${err.code || err.message}`);
     }
@@ -67,7 +67,7 @@ export function resolveIncludes(value, { configDir, file, errors, stack = [file]
       errors.push({ file: name, path: line ? `line ${line}` : '', message: err.message.split('\n')[0] });
       return fail('the file has a YAML error');
     }
-    return resolveIncludes(parsed, { configDir, file: name, errors, stack: [...stack, name] });
+    return resolveIncludes(parsed, { configDir, file: name, errors, stack: [...stack, name], overrides });
   };
 
   const walk = (node, at) => {
@@ -89,4 +89,47 @@ export function resolveIncludes(value, { configDir, file, errors, stack = [file]
   };
 
   return walk(value, '');
+}
+
+/** The file an include marker names, relative to the config folder; null when it is not allowed. */
+function includedName(configDir, from, inc) {
+  if (!inc.file || path.isAbsolute(inc.file) || !/\.ya?ml$/i.test(inc.file)) return null;
+  const full = safeJoin(configDir, path.join(path.dirname(from), inc.file));
+  return full ? path.relative(path.resolve(configDir), full).split(path.sep).join('/') : null;
+}
+
+/**
+ * Every file the config files include, directly or not: [{ file, root, from, at }], where `root`
+ * is the config file it ends up in, `from` the file with the include and `at` the path to the
+ * include in the root's terms ('' for a whole file). Files that do not exist are left out.
+ * `roots` are the config files, such as ['services.yaml', ...].
+ */
+export function listIncludes(configDir, roots) {
+  const out = [];
+  const visit = (root, from, value, at, stack) => {
+    if (value instanceof Include) {
+      const name = includedName(configDir, from, value);
+      if (!name || stack.includes(name) || stack.length > MAX_DEPTH) return;
+      let parsed;
+      try {
+        parsed = parseConfigYaml(fs.readFileSync(path.join(configDir, name), 'utf8'));
+      } catch {
+        if (fs.existsSync(path.join(configDir, name))) out.push({ file: name, root, from, at });
+        return;
+      }
+      if (!out.some((e) => e.file === name)) out.push({ file: name, root, from, at });
+      visit(root, name, parsed, at, [...stack, name]);
+    } else if (Array.isArray(value)) value.forEach((item, i) => visit(root, from, item, join(at, i), stack));
+    else if (isPlainObject(value)) for (const [k, v] of Object.entries(value)) visit(root, from, v, join(at, k), stack);
+  };
+  for (const root of roots) {
+    let parsed;
+    try {
+      parsed = parseConfigYaml(fs.readFileSync(path.join(configDir, root), 'utf8'));
+    } catch {
+      continue;
+    }
+    visit(root, root, parsed, '', [root]);
+  }
+  return out;
 }

@@ -25,8 +25,15 @@ const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(
 const keyOf = (pair) => (YAML.isScalar(pair.key) ? String(pair.key.value) : null);
 const join = (p, k) => (typeof k === 'number' ? `${p}[${k}]` : p ? `${p}.${k}` : String(k));
 
-/** Every scalar to hide in `doc` of `file`: [{ node, path }]. `schemaFor(type)` gives a widget's options. */
-function secretScalars(doc, file, schemaFor) {
+/** `where`: a config file's name, or { file, root, at } for a file it includes (editableFiles). */
+const whereOf = (where) => (typeof where === 'string' ? { file: where, root: where, at: '' } : where);
+
+/**
+ * Every scalar to hide in `doc`: [{ node, path }]. `schemaFor(type)` gives a widget's options. An
+ * included file follows the rules of the config file it ends up in, at the place it is included.
+ */
+function secretScalars(doc, where, schemaFor) {
+  const { root: file, at } = whereOf(where);
   const found = [];
   const all = (node, p) => {
     if (YAML.isScalar(node)) {
@@ -44,18 +51,25 @@ function secretScalars(doc, file, schemaFor) {
     }
   };
   const root = doc.contents;
-  if (file === 'settings.yaml' && YAML.isMap(root)) {
-    for (const pair of root.items) if (['adminPassword', 'providers'].includes(keyOf(pair))) all(pair.value, keyOf(pair));
-  } else if (file === 'proxmox.yaml' && YAML.isMap(root)) {
+  const last = at.split(/[.[\]]/).filter(Boolean).at(-1) ?? '';
+  if (file === 'settings.yaml') {
+    if (/^(adminPassword|providers)(\.|\[|$)/.test(at)) all(root, '');
+    else if (at === '' && YAML.isMap(root)) for (const pair of root.items) if (['adminPassword', 'providers'].includes(keyOf(pair))) all(pair.value, keyOf(pair));
+  } else if (file === 'proxmox.yaml') {
     const node = (map, p) => YAML.isMap(map) && map.items.forEach((pair) => keyOf(pair) === 'secret' && all(pair.value, join(p, 'secret')));
-    if (root.has('url')) node(root, '');
-    else root.items.forEach((pair) => node(pair.value, keyOf(pair)));
-  } else if (file === 'widgets.yaml' && YAML.isSeq(root)) {
-    root.items.forEach((item, i) => YAML.isMap(item) && item.items.forEach((pair) => widgetOptions(pair.value, keyOf(pair), join(join('', i), keyOf(pair)))));
+    if (last === 'secret') all(root, '');
+    else if (at !== '' || (YAML.isMap(root) && root.has('url'))) node(root, '');
+    else if (YAML.isMap(root)) root.items.forEach((pair) => node(pair.value, keyOf(pair)));
+  } else if (file === 'widgets.yaml') {
+    const item = (map, p) => YAML.isMap(map) && map.items.forEach((pair) => widgetOptions(pair.value, keyOf(pair), join(p, keyOf(pair))));
+    const options = /^\[\d+\]\.([^.[]+)$/.exec(at);
+    if (options) widgetOptions(root, options[1], '');
+    else if (YAML.isSeq(root)) root.items.forEach((it, i) => item(it, join('', i)));
+    else item(root, '');
   } else if (file === 'services.yaml') {
     const widget = (node, p) => YAML.isMap(node) && widgetOptions(node, String(node.get('type') ?? ''), p);
     const walk = (node, p) => {
-      if (YAML.isSeq(node)) node.items.forEach((item, i) => walk(item, join(p, i)));
+      if (YAML.isSeq(node)) node.items.forEach((it, i) => walk(it, join(p, i)));
       else if (YAML.isMap(node)) {
         for (const pair of node.items) {
           const k = keyOf(pair);
@@ -65,7 +79,9 @@ function secretScalars(doc, file, schemaFor) {
         }
       }
     };
-    walk(root, '');
+    if (last === 'widget' || /\.widgets\[\d+\]$/.test(at)) widget(root, '');
+    else if (last === 'widgets' && YAML.isSeq(root)) root.items.forEach((w, i) => widget(w, join('', i)));
+    else walk(root, '');
   }
   return found;
 }
@@ -119,7 +135,7 @@ const render = (value) => (typeof value === 'number' ? String(value) : JSON.stri
 export function unmaskConfigText(file, newText, currentText, schemaFor = () => null) {
   const known = secretsOf(file, currentText, schemaFor);
   const unknown = [...newText.matchAll(TOKEN)].map((m) => m[0]).find((t) => !known.has(t));
-  if (unknown) throw new ConfigEditError(`${file}: ${unknown} is not a hidden value of this file; type the secret again`, 400);
+  if (unknown) throw new ConfigEditError(`${whereOf(file).file}: ${unknown} is not a hidden value of this file; type the secret again`, 400);
   let text = newText;
   const doc = parse(newText, file);
   if (doc && HAS_TOKEN.test(newText)) {
@@ -139,6 +155,6 @@ export function unmaskConfigText(file, newText, currentText, schemaFor = () => n
   const before = new Set([...known.values()].map((s) => String(s.value)));
   const warnings = [...secretsOf(file, text, schemaFor).values()]
     .filter((s) => !before.has(String(s.value)))
-    .map((s) => ({ file, path: s.path, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' }));
+    .map((s) => ({ file: whereOf(file).file, path: s.path, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' }));
   return { text, warnings };
 }

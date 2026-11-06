@@ -23,7 +23,7 @@ import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprin
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings.js';
-import { EDITABLE_FILES, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
+import { editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
 import { parseConfigYaml } from './config/include.js';
@@ -479,29 +479,34 @@ export async function createApp({
   async function filesRoute(res, method, route, body, headers) {
     const schemaFor = (type) => state.registry?.get(type)?.manifest?.options ?? null;
     const known = () => [...(state.config?.secrets ?? [])];
-    const masked = (file, text) => maskConfigText(file, text, schemaFor, known());
-    const [, , file, sub, id] = route.split('/');
+    // the path is decoded already: an included file's name has slashes (/files/groups/media.yaml)
+    const [, file = '', sub, id] = /^\/files(?:\/(.+?))?(?:\/(history)\/([^/]+))?$/.exec(route) ?? [];
     try {
+      // an included file is masked by the rules of the config file it ends up in
+      const where = file ? editableFile(configDir, file) ?? file : null;
+      const masked = (text) => maskConfigText(where, text, schemaFor, known());
+      if (file) configPath(configDir, file);
       if (method === 'GET' && !file) {
-        const files = EDITABLE_FILES.map((name) => {
-          const read = readConfigFile(configDir, name);
-          return { file: name, exists: read.exists, hash: read.hash, size: read.text.length };
+        const files = editableFiles(configDir).map((e) => {
+          const read = readConfigFile(configDir, e.file);
+          return { file: e.file, root: e.root, from: e.from, at: e.at, exists: read.exists, hash: read.hash, size: read.text.length };
         });
         return send(res, 200, { ok: true, files }, 'application/json', headers);
       }
       if (method === 'GET' && file && !sub) {
         const read = readConfigFile(configDir, file);
-        const out = masked(file, read.text);
+        const out = masked(read.text);
         return send(res, 200, { ok: true, file, exists: read.exists, hash: read.hash, text: out.text, secrets: out.secrets, history: listHistory(configDir, file) }, 'application/json', headers);
       }
       if (method === 'GET' && file && sub === 'history' && id) {
-        return send(res, 200, { ok: true, file, id, text: masked(file, readHistory(configDir, file, decodeURIComponent(id))).text }, 'application/json', headers);
+        return send(res, 200, { ok: true, file, id, text: masked(readHistory(configDir, file, id)).text }, 'application/json', headers);
       }
       if (method === 'POST' && file && !sub) {
         if (typeof body?.text !== 'string' || typeof body?.hash !== 'string') return send(res, 400, { ok: false, error: 'expected { text, hash }' });
         const current = readConfigFile(configDir, file);
         if (body.hash !== current.hash) throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409);
-        const { text, warnings: secretWarnings } = unmaskConfigText(file, body.text, current.text, schemaFor);
+        if (where.root === 'settings.yaml' && /^adminPassword(\.|\[|$)/.test(where.at)) throw new ConfigEditError(`${file}: the admin password is changed under Security, with the current one`, 400);
+        const { text, warnings: secretWarnings } = unmaskConfigText(where, body.text, current.text, schemaFor);
         if (file === 'settings.yaml') {
           const hashOf = (t) => {
             try {

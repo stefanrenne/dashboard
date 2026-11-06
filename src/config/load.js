@@ -125,7 +125,7 @@ function parseFile(dir, file, text, opts, out) {
     return undefined;
   }
   // includes first, so variables and secrets in included files are handled the same way
-  parsed = resolveIncludes(parsed, { configDir: dir, file, errors: out.errors });
+  parsed = resolveIncludes(parsed, { configDir: dir, file, errors: out.errors, overrides: opts.overrides });
   const sub = substitute(parsed, opts);
   for (const s of sub.secrets) out.secrets.add(s);
   for (const w of sub.warnings) out.warnings.push({ file, path: '', message: w });

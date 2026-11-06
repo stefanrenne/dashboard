@@ -6,11 +6,10 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 ## Settings page: every config file
 
 Goal: everything in the YAML files (and `custom.css`/`custom.js`) can be managed from `/settings`,
-not only the `FIELDS` of settings.yaml. Roughly in this order; 1–3 come before any editor.
+not only the `FIELDS` of settings.yaml. Roughly in this order. Done so far: the writer, secrets
+as tokens, `!include` (see completed.md); every form editor shows a part that comes from an
+`!include` read-only, with a link to its file (`at` in `GET /api/settings/files`).
 
-- [ ] **`!include` on the page.** A group or list that comes from `!include` is edited in its own
-  file (the writer follows the include, with `include.js`'s path checks) or shown read-only with
-  its file name; decide, document, test. A save never inlines an include.
 - [ ] **Settings page navigation.** Sections in `/settings`: General, Security (both as now),
   Services, Header widgets, Bookmarks, Docker, Kubernetes, Proxmox, Widgets (plugins), Layout,
   Advanced (raw files, CSS/JS). The section in the URL (`/settings#services`). Texts in en + nl.

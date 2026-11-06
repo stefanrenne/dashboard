@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   EDITABLE_FILES, HISTORY_DIR, HISTORY_KEEP, readConfigFile, parseDocument, documentText,
-  checkConfigText, writeConfigFile, listHistory, readHistory, configPath,
+  checkConfigText, writeConfigFile, listHistory, readHistory, configPath, editableFiles,
 } from '../src/config/edit.js';
 import { loadConfig } from '../src/config/load.js';
 import { isConfigChange } from '../src/config/watch.js';
@@ -31,7 +31,9 @@ test('configPath: only the config files on the allow-list, in the folder itself'
   const dir = setup();
   assert.ok(EDITABLE_FILES.includes('services.yaml') && EDITABLE_FILES.includes('proxmox.yaml'));
   assert.equal(configPath(dir, 'services.yaml'), path.join(path.resolve(dir), 'services.yaml'));
-  for (const bad of ['media.yaml', '../services.yaml', 'plugins/plugins.lock.yaml', 'custom.js', '/etc/passwd']) {
+  assert.equal(configPath(dir, 'media.yaml'), path.join(path.resolve(dir), 'media.yaml'), 'included: editable');
+  fs.writeFileSync(path.join(dir, 'other.yaml'), '[]');
+  for (const bad of ['other.yaml', './services.yaml', '../services.yaml', '.history/services.yaml', 'plugins/plugins.lock.yaml', 'custom.js', '/etc/passwd']) {
     assert.throws(() => configPath(dir, bad), (err) => err.status === 404, bad);
   }
 });
@@ -117,4 +119,30 @@ test('checkConfigText: warnings returned, values from variables scrubbed', () =>
   assert.deepEqual(out.errors, []);
   assert.ok(out.warnings.some((w) => w.path === 'theme'));
   assert.ok(out.warnings.every((w) => !w.message.includes('sekrit-theme')), JSON.stringify(out.warnings));
+});
+
+test('included files: listed with the config file they end up in, checked as part of it', () => {
+  const dir = setup();
+  fs.mkdirSync(path.join(dir, 'groups'));
+  fs.writeFileSync(path.join(dir, 'media.yaml'), '- Plex:\n    href: http://plex.lan\n- !include groups/more.yaml\n');
+  fs.writeFileSync(path.join(dir, 'groups', 'more.yaml'), '- Jellyfin:\n    href: http://jf.lan\n');
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), 'providers: !include secret/providers.yaml\nlayout: !include ../outside.yaml\n');
+  fs.mkdirSync(path.join(dir, 'secret'));
+  fs.writeFileSync(path.join(dir, 'secret', 'providers.yaml'), 'weather: abc123\n');
+  const included = editableFiles(dir).filter((e) => e.from);
+  assert.deepEqual(included.map(({ file, root, from, at }) => [file, root, from, at]), [
+    ['secret/providers.yaml', 'settings.yaml', 'settings.yaml', 'providers'],
+    ['media.yaml', 'services.yaml', 'services.yaml', '[0].Media'],
+    ['groups/more.yaml', 'services.yaml', 'media.yaml', '[0].Media[1]'],
+  ]);
+  // a service that is not a map: an error of services.yaml's check, the file untouched
+  assert.throws(() => writeConfigFile(dir, 'groups/more.yaml', '- Jellyfin: 42\n'), (err) => err.status === 400 && err.errors.some((e) => e.file === 'services.yaml'));
+  assert.throws(() => writeConfigFile(dir, 'groups/more.yaml', '- [\n'), (err) => err.status === 400 && err.errors.some((e) => e.file === 'groups/more.yaml'));
+  writeConfigFile(dir, 'groups/more.yaml', '- Emby:\n    href: http://emby.lan\n');
+  assert.deepEqual(loadConfig(dir).services[0].services.map((s) => s.name), ['Plex', 'Emby']);
+  const [version] = listHistory(dir, 'groups/more.yaml');
+  assert.match(readHistory(dir, 'groups/more.yaml', version.id), /Jellyfin/);
+  assert.ok(fs.existsSync(path.join(dir, HISTORY_DIR, 'groups', version.id)));
+  assert.deepEqual(listHistory(dir, 'media.yaml'), [], 'not the history of another file');
+  assert.equal(readConfigFile(dir, 'services.yaml').text, SERVICES, 'the include stays an include');
 });
