@@ -47,8 +47,6 @@ services:
       - "3000:3000"
     volumes:
       - ./config:/config
-    environment:
-      DASHBOARD_ALLOWED_HOSTS: dash.lan   # the names you open it by; localhost and IP addresses always work
     restart: unless-stopped
     healthcheck:                 # the image has the same one built in; here to tune it
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
@@ -58,8 +56,8 @@ services:
       start_period: 20s
 ```
 Open `http://localhost:3000` (or the machine's IP address), then edit the YAML files in `config`:
-the page follows. To open it by a name (`dash.lan`, behind a reverse proxy), add that name to
-[`DASHBOARD_ALLOWED_HOSTS`](https://getdashboard.dev/configuration/#allowed-hosts).
+the page follows. To open it by a name (`dash.lan`, behind a reverse proxy), add that name under
+[Allowed hosts](https://getdashboard.dev/configuration/#allowed-hosts) on the settings page.
 
 ## Documentation
 

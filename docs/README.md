@@ -82,13 +82,12 @@ services:
       - ./config:/config
       - /var/run/docker.sock:/var/run/docker.sock:ro   # optional: Docker status and discovery
     environment:
-      DASHBOARD_ALLOWED_HOSTS: dash.lan      # the names you open it by; localhost and IP addresses always work
       DASHBOARD_VAR_RADARR_KEY: your-api-key
     restart: unless-stopped
 ```
 
-To open the dashboard by a name, add it to
-[`DASHBOARD_ALLOWED_HOSTS`](configuration/README.md#allowed-hosts). For Docker discovery through
+To open the dashboard by a name, add it under
+[Allowed hosts](configuration/README.md#allowed-hosts) on the settings page. For Docker discovery through
 a read-only socket proxy, see [Docker](configuration/docker.md#discovery).
 
 </details>

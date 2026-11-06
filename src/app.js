@@ -80,16 +80,13 @@ export function securityHeaders(frames = []) {
 const SECURITY_HEADERS = securityHeaders();
 
 /**
- * DASHBOARD_ALLOWED_HOSTS (or homepage's HOMEPAGE_ALLOWED_HOSTS): the host names the dashboard
- * answers, comma-separated, against DNS rebinding. An entry without a port allows every port.
- * Loopback names and IP addresses are always answered: a rebinding page always sends a host
- * name of its own. Unset: only those ([]); `*`: every host (null).
+ * settings.yaml `allowedHosts`: the host names the dashboard answers, against DNS rebinding. An
+ * entry without a port allows every port. Loopback names and IP addresses are always answered: a
+ * rebinding page always sends a host name of its own. None: only those ([]); `*`: every host (null).
  */
-export function allowedHosts(env = process.env) {
-  const raw = env.DASHBOARD_ALLOWED_HOSTS ?? env.HOMEPAGE_ALLOWED_HOSTS;
-  if (raw === undefined || raw.trim() === '') return [];
-  const list = raw.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
-  return list.includes('*') ? null : list;
+export function allowedHosts(list) {
+  const own = (list ?? []).map((h) => String(h).trim().toLowerCase()).filter(Boolean);
+  return own.includes('*') ? null : own;
 }
 
 const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
@@ -119,9 +116,9 @@ code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.7
 <h1>Host not allowed</h1>
 <p>This dashboard was opened as <code>${name}</code>, which is not one of its allowed hosts. It answers only
 <code>localhost</code>, IP addresses and the names you allow, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
-<p>Add the name to <code>settings.yaml</code> in the config folder (the page follows once it is saved):</p>
+<p>Add it under Allowed hosts on the settings page (open the dashboard by its IP address to get there), or to <code>settings.yaml</code> in the config folder (the page follows once it is saved):</p>
 <pre>allowedHosts: ${all}</pre>
-<p>or to the container's environment as <code>DASHBOARD_ALLOWED_HOSTS</code> (comma-separated). <code>*</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
+<p><code>"*"</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
 </body></html>`;
 }
 
@@ -169,13 +166,11 @@ export async function createApp({
   const onboarding = new Onboarding({ configDir, log });
   const sessions = new SessionStore({ configDir, log });
   const passwordSecrets = envPassword?.value && !envPassword.hashed ? [envPassword.value] : [];
-  // the allowed hosts: DASHBOARD_ALLOWED_HOSTS and settings.yaml allowedHosts together; `*` in either allows every host
-  const envHosts = allowedHosts(env);
-  const hostsNow = () => {
-    const own = state.config?.settings.allowedHosts ?? [];
-    if (envHosts === null || own.includes('*')) return null;
-    return [...new Set([...envHosts, ...own])];
-  };
+  // the allowed hosts: settings.yaml allowedHosts (the settings page writes it); `*` allows every host
+  const hostsNow = () => allowedHosts(state.config?.settings.allowedHosts);
+  if (env.DASHBOARD_ALLOWED_HOSTS !== undefined || env.HOMEPAGE_ALLOWED_HOSTS !== undefined) {
+    log.warn('DASHBOARD_ALLOWED_HOSTS (and HOMEPAGE_ALLOWED_HOSTS) are no longer read: put the host names under Allowed hosts on the settings page, or in allowedHosts in settings.yaml');
+  }
 
   function rebuild() {
     gate.password = envPassword ?? state.config.settings.adminPassword ?? null;
@@ -212,7 +207,7 @@ export async function createApp({
     const hosts = hostsNow();
     if (hosts?.length === 0 && !state.hostsNoted) {
       state.hostsNoted = true;
-      log.info('no allowed hosts set: answering localhost and IP addresses only; add the host names you open the dashboard by to allowedHosts in settings.yaml (or DASHBOARD_ALLOWED_HOSTS)');
+      log.info('no allowed hosts set: answering localhost and IP addresses only; add the host names you open the dashboard by under Allowed hosts on the settings page (allowedHosts in settings.yaml)');
     }
     broadcast('reload');
   }
@@ -326,7 +321,7 @@ export async function createApp({
   async function handler(req, res) {
     const hosts = hostsNow();
     if (!hostAllowed(req.headers.host, hosts)) {
-      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts or DASHBOARD_ALLOWED_HOSTS)`);
+      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts)`);
       // a browser gets a page that says what to set; the API a short text
       if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
       return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to allowedHosts in settings.yaml`, 'text/plain; charset=utf-8');
@@ -471,7 +466,7 @@ export async function createApp({
     if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
     const headers = { ...SECURITY_HEADERS, ...allowed.headers };
     const rp = rpContext(req);
-    const answer = () => ({ ok: true, ...readSettings(configDir), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn,
+    const answer = () => ({ ok: true, ...readSettings(configDir), envPassword: Boolean(envPassword), noPassword: !gate.password, loggedIn,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] } });
     if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
     if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
@@ -659,7 +654,7 @@ export async function createApp({
     }
     if (method === 'GET' && route === 'status') {
       // what the environment sets already: those win over what the wizard writes
-      return send(res, 200, { host: hostName(req.headers.host), envHosts: envHosts === null ? '*' : envHosts, envPassword: Boolean(envPassword) });
+      return send(res, 200, { host: hostName(req.headers.host), envPassword: Boolean(envPassword) });
     }
     if (method === 'POST' && route === 'test') return send(res, 200, await testWidget(body?.type, body?.options));
     if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files));

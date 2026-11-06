@@ -32,8 +32,8 @@ the page, most severe first. "Verified" means reproduced against the code as it 
   per server in `docker.yaml`, or per name: `allowVariables: [GRAFANA]`); same fix as above for
   which options a label may set.
 - [ ] **Low (with `*` only): DNS rebinding past the CSRF check.** Host names are checked by
-  default now (only `localhost`, IP addresses and `DASHBOARD_ALLOWED_HOSTS`), which stops it. With
-  `DASHBOARD_ALLOWED_HOSTS=*` a rebound page is same-origin again and may send
+  default now (only `localhost`, IP addresses and `allowedHosts`), which stops it. With
+  `allowedHosts: "*"` a rebound page is same-origin again and may send
   `X-Requested-With: dashboard`. Fix: the POST endpoints also check that `Origin` matches `Host`.
 - [ ] **Medium: no authentication for reading.** Presses can ask for the action password now
   (`DASHBOARD_ACTION_PASSWORD`), but every viewer still reads everything, and buttons without

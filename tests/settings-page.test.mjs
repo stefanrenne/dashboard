@@ -42,7 +42,7 @@ async function page(answers, setup = () => {}) {
   return { w: dom.window, doc: dom.window.document, calls };
 }
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, envHosts: [], envPassword: false, noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, envPassword: false, noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });
@@ -71,7 +71,20 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
   // the form, in settings.yaml's language
   assert.equal(doc.getElementById('heading').textContent, 'Instellingen');
   assert.equal(doc.getElementById('title').value, 'Lab');
-  assert.equal(doc.getElementById('allowedHosts').value, 'dash.lan');
+  assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan']);
+  assert.doesNotMatch(doc.body.textContent, /environment/);
+  // a host name added with the button (what people paste, cleaned up) and with Enter; one removed
+  doc.getElementById('new-host').value = 'https://Dash.Example.com/home';
+  doc.getElementById('new-host').dispatchEvent(new w.Event('input'));
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Toevoegen').click();
+  doc.getElementById('new-host').value = 'dash.lan';
+  doc.getElementById('new-host').dispatchEvent(new w.Event('input'));
+  doc.getElementById('new-host').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+  doc.getElementById('new-host').value = 'other.lan';
+  doc.getElementById('new-host').dispatchEvent(new w.Event('input'));
+  doc.getElementById('new-host').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+  assert.deepEqual([...doc.querySelectorAll('.hosts code')].map((c) => c.textContent), ['dash.lan', 'dash.example.com', 'other.lan'], 'no duplicates');
+  doc.querySelector('[aria-label="other.lan verwijderen"]').click();
   assert.equal(doc.getElementById('login-actions').checked, true);
   assert.match(doc.body.textContent, /Ook in settings\.yaml, blijven zoals ze zijn \(pas ze aan in het bestand\): layout, plugins/);
   doc.getElementById('title').value = 'Thuis';
@@ -82,7 +95,7 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
   [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Opslaan').click();
   await tick();
   const sent = calls.filter((c) => c.p === '/api/settings' && c.init.method === 'POST').at(-1).body.values;
-  assert.deepEqual([sent.title, sent.login, sent.allowedHosts], ['Thuis', true, ['dash.lan']]);
+  assert.deepEqual([sent.title, sent.login, sent.allowedHosts], ['Thuis', true, ['dash.lan', 'dash.example.com']]);
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
   // the admin password: the current one first
   doc.getElementById('pw-current').value = 'nope';

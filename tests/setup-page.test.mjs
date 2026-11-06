@@ -41,7 +41,7 @@ async function page({ allowed = true, answers = {} } = {}) {
           : p === 'widgets' ? { widgets: WIDGETS }
             : p === 'containers' ? { containers: CONTAINERS, problems: [] }
               : p === 'docker' ? (init) => ({ socketMounted: true, errors: [], servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 32 }, ...JSON.parse(init.body).docker.map((d) => ({ name: d.name ?? 'nas', target: `http://${d.address}`, ok: false, error: 'connect ECONNREFUSED', permission: false }))] })
-                : p === 'status' ? { host: '192.168.1.10', envHosts: ['env.lan'], envPassword: false }
+                : p === 'status' ? { host: '192.168.1.10', envPassword: false }
                 : answers[p] ?? { ok: true };
         return { json: async () => structuredClone(typeof body === 'function' ? body(init) : body) };
       };
@@ -146,7 +146,6 @@ test('the steps: basics, containers with a generated form, test, security lines,
   const panel = () => doc.getElementById('panel').textContent;
   assert.ok(!/Docker/.test(panel()), 'no Docker section here any more');
   assert.equal(doc.getElementById('allowed-hosts').value, '', 'opened by an IP address: no name to fill in');
-  assert.match(panel(), /Ook uit de environment van de container: env\.lan/);
   assert.equal(doc.getElementById('login-actions').checked, true, 'only some actions, unless chosen otherwise');
   assert.match(doc.querySelector('label[for=login-page]').textContent, /Toegang tot het dashboard.*veiliger/, 'the login page is marked safer');
   assert.ok(doc.querySelector('label[for=login-page] strong') && doc.querySelector('label[for=login-page] .hint'), 'a title in bold, the explanation below it');

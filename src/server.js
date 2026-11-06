@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Entry point: `node src/server.js [--config <dir>] [--port <n>] [--host <addr>]`.
 // Environment: DASHBOARD_CONFIG_DIR, PORT, HOST, LOG_TARGETS (both, stdout or file; see src/log.js),
-// DASHBOARD_ALLOWED_HOSTS, DASHBOARD_WATCH_POLL, DASHBOARD_WIDGET_ISOLATION and DASHBOARD_WIDGET_MEMORY_MB (see src/app.js).
+// DASHBOARD_WATCH_POLL, DASHBOARD_WIDGET_ISOLATION and DASHBOARD_WIDGET_MEMORY_MB (see src/app.js).
 
 import http from 'node:http';
 import path from 'node:path';

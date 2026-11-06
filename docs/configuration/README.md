@@ -149,7 +149,6 @@ Settings of the container rather than of the page.
 | Variable | What |
 |---|---|
 | `DASHBOARD_VAR_*`, `DASHBOARD_FILE_*` | Values for `{{DASHBOARD_VAR_*}}` and `{{DASHBOARD_FILE_*}}` (see [Variables](#variables)) |
-| `DASHBOARD_ALLOWED_HOSTS` | More host names you open the dashboard by, next to `allowedHosts` in settings.yaml (see [Allowed hosts](#allowed-hosts)) |
 | `DASHBOARD_WIDGET_MEMORY_MB`, `DASHBOARD_WIDGET_ISOLATION` | The widget worker (see [Widget worker](#widget-worker)) |
 | `DASHBOARD_ALLOW_ROOT_SCRIPTS` | Button scripts as root (see [Scripts as root](#scripts-as-root)) |
 | `DASHBOARD_ADMIN_PASSWORD`, `DASHBOARD_ADMIN_PASSWORD_FILE` | The admin password, in place of `adminPassword` in settings.yaml (see [Admin password](#admin-password)) |
@@ -176,8 +175,9 @@ few switches (the versions in the footer, the update check, search engines). It 
 ### Allowed hosts
 
 `allowedHosts` in [settings.yaml](settings.md) lists the host names you open the dashboard by.
-`DASHBOARD_ALLOWED_HOSTS` (or homepage's `HOMEPAGE_ALLOWED_HOSTS`) on the container adds more,
-comma-separated; both count. The setup wizard writes the first list.
+The setup wizard writes it, and the [settings page](#settings-page) adds and removes names (open
+the dashboard by its IP address to get there). There is no environment variable for it
+(`DASHBOARD_ALLOWED_HOSTS` is no longer read).
 
 ```yaml
 # settings.yaml
@@ -185,9 +185,9 @@ allowedHosts: [dash.lan, dash.example.com]   # every name you open it by
 ```
 
 - **Always answered**: `localhost`, `127.0.0.1`, `[::1]` (the image's health check uses them)
-  and any IP address (`http://192.168.1.10:3000`), with or without a list.
+  and any IP address (`http://192.168.1.10:3000`), with or without the list.
 - **A host name** (`dash.lan`, the name your reverse proxy passes on) is only answered when it is
-  in a list. Otherwise the browser shows a page that says which line to add, with the name it was
+  in the list. Otherwise the browser shows a page that says which line to add, with the name it was
   opened by. An API call gets a 403. A change of `settings.yaml` counts at once.
 - **Ports**: an entry without a port allows every port (`dash.lan`); with one, only that port
   (`dash.example.com:8443`).

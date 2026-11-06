@@ -5,6 +5,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed (breaking)
+- **`DASHBOARD_ALLOWED_HOSTS` (and `HOMEPAGE_ALLOWED_HOSTS`) are no longer read.** Put the names
+  under Allowed hosts on the settings page (open it by the IP address to get there), or in
+  `allowedHosts` in settings.yaml; the log says so while the variable is still set.
 - **The action password is the admin password.** `DASHBOARD_ACTION_PASSWORD` and
   `DASHBOARD_ACTION_PASSWORD_FILE` (0.22.0) are now `DASHBOARD_ADMIN_PASSWORD` and
   `DASHBOARD_ADMIN_PASSWORD_FILE`; rename them on the container. It can also be in settings.yaml
@@ -25,8 +28,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   `.passkeys.json` (public keys only). The texts now say "authentication" where a passkey works too.
 - Durations take days too: `7d`.
 
-- **`allowedHosts` in settings.yaml**, next to `DASHBOARD_ALLOWED_HOSTS`: the host names the
-  dashboard answers. A change counts at once; the page for a refused host names the line to add.
+- **`allowedHosts` in settings.yaml**: the host names the dashboard answers; the settings page
+  adds and removes them. A change counts at once; the page for a refused host names the line to add.
 - The setup wizard's security step sets all three: the admin password (required; only its hash is
   written), the login page or only some presses, and the allowed hosts. Its Docker part is gone
   (the Docker step covers it).

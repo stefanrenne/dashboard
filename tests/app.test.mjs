@@ -378,11 +378,11 @@ test('the iframe widget: its origin, and only that, in frame-src', async () => {
   }
 });
 
-test('DASHBOARD_ALLOWED_HOSTS: listed host names, loopback and IP addresses get an answer; unset, no other name', async () => {
+test('allowedHosts: listed host names, loopback and IP addresses get an answer; unset, no other name; the variable is gone', async () => {
   const { allowedHosts, hostAllowed, hostName } = await import('../src/app.js');
-  assert.deepEqual(allowedHosts({}), [], 'unset: only loopback and IP addresses');
-  assert.equal(allowedHosts({ DASHBOARD_ALLOWED_HOSTS: 'a.lan, *' }), null, '* allows every host');
-  assert.deepEqual(allowedHosts({ HOMEPAGE_ALLOWED_HOSTS: 'Dash.lan:3000' }), ['dash.lan:3000'], 'homepage\'s name works too');
+  assert.deepEqual(allowedHosts(undefined), [], 'unset: only loopback and IP addresses');
+  assert.equal(allowedHosts(['a.lan', '*']), null, '* allows every host');
+  assert.deepEqual(allowedHosts([' Dash.lan:3000 ']), ['dash.lan:3000']);
   assert.deepEqual(['dash.lan:3000', '192.168.1.10', '[fd00::1]:3000', 'x'].map(hostName), ['dash.lan', '192.168.1.10', '[fd00::1]', 'x']);
   const list = ['dash.lan', 'dash.example.com:8443'];
   assert.deepEqual(['dash.lan:3000', 'DASH.lan', 'dash.example.com:8443', 'dash.example.com:443', 'evil.example', '127.0.0.1:3000', '[::1]:3000', '192.168.1.10:3000', '[fd00::1]:3000', undefined].map((h) => hostAllowed(h, list)),
@@ -397,7 +397,7 @@ test('DASHBOARD_ALLOWED_HOSTS: listed host names, loopback and IP addresses get 
     req.on('error', reject);
     req.end();
   });
-  const listed = await startApp({}, { DASHBOARD_ALLOWED_HOSTS: 'dash.lan' });
+  const listed = await startApp({ 'settings.yaml': 'allowedHosts: [dash.lan]\n' });
   try {
     assert.deepEqual([(await request(listed, 'dash.lan:3000')).status, (await request(listed, 'rebind.example.com')).status, (await request(listed, 'localhost:3000')).status], [200, 403, 200]);
   } finally {
@@ -417,10 +417,10 @@ test('DASHBOARD_ALLOWED_HOSTS: listed host names, loopback and IP addresses get 
   } finally {
     await unset.close();
   }
-  // settings.yaml allowedHosts, next to the variable; the page follows a change of the file
+  // DASHBOARD_ALLOWED_HOSTS is not read any more; the page follows a change of the file
   const own = await startApp({ 'settings.yaml': 'allowedHosts: [dash.lan]\n' }, { DASHBOARD_ALLOWED_HOSTS: 'env.lan' });
   try {
-    assert.deepEqual([(await request(own, 'dash.lan')).status, (await request(own, 'env.lan')).status, (await request(own, 'other.lan')).status], [200, 200, 403]);
+    assert.deepEqual([(await request(own, 'dash.lan')).status, (await request(own, 'env.lan')).status, (await request(own, 'other.lan')).status], [200, 403, 403]);
     fs.writeFileSync(path.join(own.configDir, 'settings.yaml'), 'allowedHosts: "*"\n');
     await own.app.reload();
     assert.equal((await request(own, 'other.lan')).status, 200, '* allows every host');
@@ -1170,7 +1170,7 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
     assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
     const docker = await (await post('docker', { docker: [{ address: '127.0.0.1:1' }, { address: 'not valid!' }] })).json();
     assert.deepEqual([docker.servers.length, docker.servers[0].ok, docker.errors.length], [1, false, 1], 'an added server is checked, a bad address said');
-    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1', envHosts: [], envPassword: false });
+    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1', envPassword: false });
     assert.match((await (await post('test', { type: 'nope', options: {} })).json()).error, /unknown widget/);
     assert.match((await (await post('test', { type: 'radarr', options: {} })).json()).error, /url/, 'the options are checked first');
     const dry = await (await post('homepage', { files: { 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        widget: { type: plex, url: http://plex.lan, key: "{{HOMEPAGE_VAR_PLEX}}" }\n    - Odd:\n        widget: { type: oddity }\n' } })).json();

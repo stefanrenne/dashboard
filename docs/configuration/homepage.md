@@ -21,7 +21,7 @@ swapping the image.
        - /var/run/docker.sock:/var/run/docker.sock:ro
      environment:
        HOMEPAGE_VAR_RADARR_KEY: 0123456789abcdef     # keeps working, as do HOMEPAGE_FILE_*
-       HOMEPAGE_ALLOWED_HOSTS: dash.lan              # keeps working too
+-      HOMEPAGE_ALLOWED_HOSTS: dash.lan              # not read: add the name on the settings page
 ```
 
 On its first start the dashboard installs its widgets, the
@@ -53,9 +53,9 @@ also homepage's own spellings such as `customapi`, `overseerr`, `jellyseerr`, `u
   one: selectors written for homepage's markup do not match. Rewrite them against the dashboard's
   theme properties (`--dash-card`, `--dash-text`, ...) and classes (see
   [Custom CSS & JS](custom-css-js.md)).
-- **Allowed hosts** are checked as in homepage: a host name you open the dashboard by must be in
-  `HOMEPAGE_ALLOWED_HOSTS` (or `DASHBOARD_ALLOWED_HOSTS`). Unlike homepage, IP addresses always
-  work without it (see [Allowed hosts](README.md#allowed-hosts)).
+- **Allowed hosts** are checked as in homepage, but they live in settings.yaml (`allowedHosts`,
+  or the settings page) instead of `HOMEPAGE_ALLOWED_HOSTS`, which is not read. Unlike homepage,
+  IP addresses always work (see [Allowed hosts](README.md#allowed-hosts)).
 - **Widgets are packages.** They come from the widgets collection, which updates itself to its
   newest release; `plugins:` in `settings.yaml` pins a release or adds widgets of others (see
   [Settings](settings.md)).
