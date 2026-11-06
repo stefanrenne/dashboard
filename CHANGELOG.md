@@ -47,6 +47,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   collection from its `develop` branch. `latest` and the version tags stay on releases, which are
   tagged on `main` only.
 
+### Changed
+- The footer in three parts: the appearance on the left; hidden cards, the version and refresh in
+  the middle (a row of its own on a phone); lock or log out and settings on the right.
+
 ### Removed
 - The colour picker in the footer: the settings page sets the colour, in settings.yaml. A colour
   picked there in a browser before no longer counts.
