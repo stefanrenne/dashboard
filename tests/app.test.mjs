@@ -518,6 +518,24 @@ test('static files: index, client.js, assets, icons, and no path traversal', asy
   }
 });
 
+test('static files: a symlink that points out of assets/ or icons/ is not followed', async () => {
+  const dir = tmpDir('hd-link-');
+  writeWidget(path.join(dir, 'linky'), { id: 'linky', name: 'L', version: '1.0.0', apiVersion: 2 }, { 'client.js': '', 'server.js': 'export default { async fetch() { return {}; } }', 'assets/ok.txt': 'ok' });
+  fs.symlinkSync(path.join(dir, 'linky', 'server.js'), path.join(dir, 'linky', 'assets', 'code.txt'));
+  fs.symlinkSync(path.join(dir, 'linky', 'assets', 'ok.txt'), path.join(dir, 'linky', 'assets', 'alias.txt'));
+  const t = await startApp({ 'settings.yaml': `plugins:\n  - path: ${path.join(dir, 'linky')}\n`, 'icons/my.svg': '<svg/>' });
+  fs.symlinkSync(path.join(t.configDir, 'settings.yaml'), path.join(t.configDir, 'icons', 'settings.svg'));
+  try {
+    assert.equal((await t.get('/widgets/linky/assets/ok.txt')).status, 200);
+    assert.equal((await t.get('/widgets/linky/assets/alias.txt')).status, 200, 'a link inside assets/ works');
+    assert.equal((await t.get('/widgets/linky/assets/code.txt')).status, 404);
+    assert.equal((await t.get('/icons/my.svg')).status, 200);
+    assert.equal((await t.get('/icons/settings.svg')).status, 404);
+  } finally {
+    await t.close();
+  }
+});
+
 test('hidden-iframe services run through /api/run with the configured URL only', async () => {
   let hits = 0;
   const hook = await serve((req, res) => {

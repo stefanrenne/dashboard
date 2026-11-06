@@ -1,6 +1,7 @@
 // Small helpers shared by the server modules.
 
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const UNITS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
@@ -25,6 +26,19 @@ export function safeJoin(root, rel) {
   const base = path.resolve(root);
   if (resolved !== base && !resolved.startsWith(base + path.sep)) return null;
   return resolved;
+}
+
+/**
+ * Whether `file`, with every symlink resolved, is still inside `root` (itself resolved): a symlink
+ * in a widget's assets/ or in icons/ must not serve what it points to elsewhere.
+ */
+export async function realInside(root, file) {
+  try {
+    const [base, real] = await Promise.all([fs.promises.realpath(root), fs.promises.realpath(file)]);
+    return real === base || real.startsWith(base + path.sep);
+  } catch {
+    return false;
+  }
 }
 
 export function isPlainObject(value) {

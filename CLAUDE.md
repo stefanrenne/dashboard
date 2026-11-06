@@ -156,6 +156,8 @@ Usage limits are shared with the owner: keep a task's context small.
 
 See `docs/extend/contributing/decisions.md` for the background. In short:
 - A path check must happen on the **resolved** path: `assets/../server.js` starts with `assets/`.
+  Files that are served also get their **real** path checked (`realInside`): a symlink in
+  `assets/` or `icons/` could point anywhere.
 - The dashboard runs as `node` (uid 1000); `/var/run/docker.sock` is usually `root:root 660`.
   Root scripts (a button's `user: root`) go through sudo and `docker/dashboard-root`, and only with
   `DASHBOARD_ALLOW_ROOT_SCRIPTS=true`; the server itself never runs as root.

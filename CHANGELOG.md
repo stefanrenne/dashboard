@@ -29,6 +29,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   calls on an API key.
 - At most 500 open event streams (`/api/events`), 50 per address; more get a 503. The server
   sets its header and request timeouts explicitly (20 s and 30 s).
+- A symlink in a widget's `assets/` or in the config's `icons/` that points outside that folder
+  is no longer served.
 
 ## [0.23.0] - 2026-11-06
 

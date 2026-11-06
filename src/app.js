@@ -32,7 +32,7 @@ export const ACTION_TIMEOUT_MS = 30_000;
 export const EVENT_STREAMS = { max: 500, perAddress: 50 };
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];
 export const MIN_PASSWORD = 8; // the setup wizard's admin password, at least
-import { safeJoin } from './util.js';
+import { safeJoin, realInside } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -308,7 +308,9 @@ export async function createApp({
     res.end(data);
   }
 
-  function sendFile(res, file, { cache = 'no-cache' } = {}) {
+  /** Sends a file; with `root`, only when its real path (symlinks resolved) is inside root. */
+  async function sendFile(res, file, { cache = 'no-cache', root = null } = {}) {
+    if (root && !(await realInside(root, file))) return send(res, 404, { error: 'not found' });
     fs.readFile(file, (err, data) => {
       if (err) return send(res, 404, { error: 'not found' });
       res.writeHead(200, {
@@ -440,13 +442,14 @@ export async function createApp({
         const full = widget ? safeJoin(widget.dir, rest.join('/')) : null;
         const allowed =
           full && (full === path.join(widget.dir, 'client.js') || full.startsWith(path.join(widget.dir, 'assets') + path.sep));
-        return allowed ? sendFile(res, full, { cache: 'public, max-age=3600' }) : send(res, 404, { error: 'not found' });
+        return allowed ? sendFile(res, full, { cache: 'public, max-age=3600', root: full.startsWith(path.join(widget.dir, 'assets') + path.sep) ? path.join(widget.dir, 'assets') : widget.dir }) : send(res, 404, { error: 'not found' });
       }
       // homepage's custom.css / custom.js from the config folder (the user's own, so 'self' in the CSP)
       if (method === 'GET' && CUSTOM_FILES.includes(p.slice(1))) return sendFile(res, path.join(configDir, p.slice(1)));
       if (method === 'GET' && p.startsWith('/icons/')) {
-        const full = safeJoin(path.join(configDir, 'icons'), p.slice('/icons/'.length));
-        return full ? sendFile(res, full, { cache: 'public, max-age=86400' }) : send(res, 404, { error: 'not found' });
+        const icons = path.join(configDir, 'icons');
+        const full = safeJoin(icons, p.slice('/icons/'.length));
+        return full ? sendFile(res, full, { cache: 'public, max-age=86400', root: icons }) : send(res, 404, { error: 'not found' });
       }
       return send(res, 404, { error: 'not found' });
     } catch (err) {

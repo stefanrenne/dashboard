@@ -8,10 +8,6 @@ The widgets collection keeps its own list: `../dashboard-widgets/todo.md`.
 Findings of a review of the server, discovery, the widget runtime, the installer, the image and
 the page, most severe first. "Verified" means reproduced against the code as it is.
 
-- [ ] **Low: symlinks are followed when serving files.** `safeJoin` checks the path, not its
-  real path: a symlink in a widget package's `assets/` or in `config/icons/` serves whatever it
-  points to (the config folder, keys). Widget code is trusted anyway, but a widget package is
-  data too. Fix: `fs.realpath` and compare again, or refuse symlinks there.
 - [ ] **Low: inline scripts and widget clients run with the page's rights.** The CSP allows
   `'unsafe-inline'` scripts, and every widget's `client.js` runs in the page itself: it can call
   the POST endpoints with the header, read `/api/layout`, and change other cards. By design, but
