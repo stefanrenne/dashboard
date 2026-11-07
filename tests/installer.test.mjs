@@ -408,7 +408,6 @@ test('packageInfo: a label, and links to a public GitHub release or commit or an
   const npm = packageInfo({ source: 'npm:hd-widget-y@2.0.1' }, parseSource({ source: 'npm:hd-widget-y@2.0.1' }), { version: '2.0.1' });
   assert.deepEqual(npm, { name: 'hd-widget-y', version: '2.0.1', url: 'https://www.npmjs.com/package/hd-widget-y/v/2.0.1' });
   assert.equal(withDefaultPlugins([{ source: 'git+https://github.com/a/widgets#v1.0.0' }], [{ source: 'git+https://github.com/a/widgets#latest', label: 'widgets' }])[0].label, 'widgets', 'your own entry for the collection keeps its name');
-  assert.equal(DEFAULT_PLUGINS[0].label, 'widgets');
 });
 
 test('keepUnused: old folders stay until removeUnused, so calls with an old path still work', async () => {

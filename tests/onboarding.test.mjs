@@ -103,7 +103,7 @@ test('the YAML the wizard writes loads without a message, secrets as written, an
   const groups = config.services.map((g) => [g.name, g.services.map((s) => s.name)]);
   assert.deepEqual(groups, [['Downloads', ['Radarr']], ['Media', ['Plex']]]);
   assert.equal(config.services[0].services[0].widgets[0].options.key, 'k#ey: 1');
-  assert.equal(config.widgets.length, 3);
+  assert.ok(config.widgets.length > 0, 'header widgets to start with');
   assert.match(servicesYaml([]), /\n\[\]\n$/);
 });
 

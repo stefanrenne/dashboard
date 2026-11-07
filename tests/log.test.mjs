@@ -56,7 +56,7 @@ test('a log folder that cannot be made falls back to stdout with a warning', () 
   const log = createLogger({ out, now: at });
   log.setLogPath(parent);
   assert.match(lines[0], /WARN log folder .*logs: (EEXIST|ENOTDIR)/);
-  assert.equal(log.file, null);
   log.info('still here');
   assert.equal(lines.at(-1), '2026-10-24T12:00:00.000Z INFO still here');
+  assert.equal(fs.readFileSync(path.join(parent, 'logs'), 'utf8'), 'a file in the way', 'nothing written to it');
 });

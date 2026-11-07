@@ -9,7 +9,7 @@ import { validateOptions } from './options.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 // the most an action may take; a widget keeps its own, shorter limit (the button's `timeout`)
-export const ACTION_TIMEOUT_MS = 60 * 60 * 1000;
+const ACTION_TIMEOUT_MS = 60 * 60 * 1000;
 const ACTION_OUTPUT_MAX = 64 * 1024;
 // After an action, the other instances on its card answer fresh for a while (the page asks right
 // away, after 5 and after 30 seconds): their results are kept this short meanwhile.

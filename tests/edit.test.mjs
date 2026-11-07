@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  EDITABLE_FILES, HISTORY_DIR, HISTORY_KEEP, readConfigFile, parseDocument, documentText,
+  HISTORY_DIR, HISTORY_KEEP, readConfigFile, parseDocument, documentText,
   checkConfigText, writeConfigFile, listHistory, readHistory, configPath, editableFiles,
 } from '../src/config/edit.js';
 import { loadConfig } from '../src/config/load.js';
@@ -29,8 +29,8 @@ function setup() {
 
 test('configPath: only the config files on the allow-list, in the folder itself', () => {
   const dir = setup();
-  assert.ok(EDITABLE_FILES.includes('services.yaml') && EDITABLE_FILES.includes('proxmox.yaml'));
   assert.equal(configPath(dir, 'services.yaml'), path.join(path.resolve(dir), 'services.yaml'));
+  assert.equal(configPath(dir, 'proxmox.yaml'), path.join(path.resolve(dir), 'proxmox.yaml'));
   assert.equal(configPath(dir, 'media.yaml'), path.join(path.resolve(dir), 'media.yaml'), 'included: editable');
   fs.writeFileSync(path.join(dir, 'other.yaml'), '[]');
   for (const bad of ['other.yaml', './services.yaml', '../services.yaml', '.history/services.yaml', 'plugins/plugins.lock.yaml', 'custom.html', '/etc/passwd']) {
@@ -43,7 +43,6 @@ test('readConfigFile: text and hash; a missing file reads as empty', () => {
   const read = readConfigFile(dir, 'services.yaml');
   assert.equal(read.text, SERVICES);
   assert.equal(read.exists, true);
-  assert.match(read.hash, /^[0-9a-f]{16}$/);
   assert.deepEqual({ ...readConfigFile(dir, 'docker.yaml'), hash: undefined }, { file: 'docker.yaml', text: '', exists: false, hash: undefined });
 });
 

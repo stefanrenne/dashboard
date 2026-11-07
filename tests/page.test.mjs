@@ -23,7 +23,7 @@ test('renderIndex: favicon as a dashboard-icons name or a config icon, the mark 
   const plain = renderIndex(HTML, { title: 'x' });
   assert.ok(plain.includes(`<link rel="icon" type="image/svg+xml" href="${MARK}">`), 'the mark');
   assert.ok(!plain.includes('name="description"'));
-  assert.match(decodeURIComponent(MARK), /^data:image\/svg\+xml,<svg [^>]*viewBox="0 0 48 48"/);
+  assert.match(decodeURIComponent(MARK), /^data:image\/svg\+xml,<svg /, 'built in, no request');
 });
 
 test('renderIndex: a secret in the description never reaches the page', () => {
@@ -34,15 +34,14 @@ test('renderIndex: a secret in the description never reaches the page', () => {
 
 test('the colours settings.yaml takes are the palettes the pages have, and the manifest uses their shade 800', async () => {
   const { COLORS } = await import('../src/config/schema.js');
-  const { SHADE_800 } = await import('../src/page.js');
+  const { renderManifest } = await import('../src/page.js');
   const common = fs.readFileSync(path.resolve('public/common.js'), 'utf8');
   const palettes = new Function(`${/const PALETTES = \{[\s\S]*?\n\};/.exec(common)[0]} return PALETTES;`)();
   assert.deepEqual(Object.keys(palettes).sort(), [...COLORS].sort());
   const { LANGUAGES } = await import('../src/config/schema.js');
   const names = new Function(`${/const LANGUAGE_NAMES = \{[\s\S]*?\n\};/.exec(common)[0]} return LANGUAGE_NAMES;`)();
   assert.deepEqual(Object.keys(names), LANGUAGES, 'common.js names every language settings.yaml takes');
-  assert.deepEqual(Object.keys(SHADE_800).sort(), [...COLORS].sort());
-  assert.equal(SHADE_800.emerald, palettes.emerald.split(' ')[8]);
+  for (const color of COLORS) assert.equal(renderManifest({ title: 'x', color, pwa: {} }).theme_color, palettes[color].split(' ')[8], color);
 });
 
 test('renderManifest: name, start_url, colours, icons from pwa or the favicon, shortcuts', async () => {

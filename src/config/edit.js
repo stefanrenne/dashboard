@@ -20,7 +20,7 @@ import { CONFIG_FILES, CUSTOM_FILES, PLUGINS_DIR } from './schema.js';
 import { listIncludes } from './include.js';
 import { scrub, writeAtomic } from '../util.js';
 
-export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
+const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
 export const HISTORY_DIR = '.history';
 export const HISTORY_KEEP = 10;
 

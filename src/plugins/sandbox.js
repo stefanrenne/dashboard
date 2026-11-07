@@ -29,7 +29,6 @@ export class WidgetSandbox {
     this.memoryMb = memoryMb;
     this.graceMs = graceMs;
     this.file = file;
-    this.restarts = 0;
   }
 
   #spawn() {
@@ -100,7 +99,6 @@ export class WidgetSandbox {
   restart(reason = 'restarted') {
     const worker = this.#worker;
     if (!worker) return;
-    this.restarts++;
     for (const id of [...this.#calls.keys()]) {
       const call = this.#calls.get(id);
       this.#settle(id);

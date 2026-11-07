@@ -12,7 +12,7 @@ import { scrub, escapeHtml } from './util.js';
 // Shade 800 of each colour palette, as the dark theme shows it: the manifest's theme and
 // background colour. The palettes are written once, in the pages' public/common.js.
 const COMMON_JS = fs.readFileSync(new URL('../public/common.js', import.meta.url), 'utf8');
-export const SHADE_800 = Object.fromEntries([.../const PALETTES = \{([\s\S]*?)\n\};/.exec(COMMON_JS)[1].matchAll(/(\w+): '([^']+)'/g)].map(([, name, shades]) => [name, shades.split(' ')[8]]));
+const SHADE_800 = Object.fromEntries([.../const PALETTES = \{([\s\S]*?)\n\};/.exec(COMMON_JS)[1].matchAll(/(\w+): '([^']+)'/g)].map(([, name, shades]) => [name, shades.split(' ')[8]]));
 
 
 

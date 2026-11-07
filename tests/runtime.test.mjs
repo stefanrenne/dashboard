@@ -368,5 +368,7 @@ test('runtime.action in the process: ctx.configDir, the result reduced to status
   const slow = new WidgetRuntime({ registry: new Map([['act2', { ...widget, server: { action: () => new Promise(() => {}) } }]]), log: silentLog, actionTimeoutMs: 30 });
   slow.setInstances(new Map([['i', { type: 'act2', options: {}, secretValues: [], refreshMs: 1000 }]]));
   assert.match((await slow.action('i')).error, /timed out after 30 ms/);
-  assert.equal(slow.running.size, 0, 'a timed-out action frees the instance');
+  const next = await slow.action('i');
+  assert.equal(next.busy, undefined, 'a timed-out action frees the instance');
+  assert.match(next.error, /timed out after 30 ms/);
 });

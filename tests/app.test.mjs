@@ -12,13 +12,13 @@ import { hashPassword } from '../src/actionauth.js';
 
 const SECRET = 'super-secret-api-key-123';
 
-async function startApp(files, env = {}) {
+async function startApp(files, env = {}, options = {}) {
   const configDir = tmpDir('hd-app-');
   for (const [name, text] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(configDir, name)), { recursive: true });
     fs.writeFileSync(path.join(configDir, name), text);
   }
-  const app = await createApp({ configDir, env, log: silentLog, defaultPlugins: [], dockerSocket: null, builtinDir: COLLECTION_WIDGETS, releasesUrl: null });
+  const app = await createApp({ configDir, env, log: silentLog, defaultPlugins: [], dockerSocket: null, builtinDir: COLLECTION_WIDGETS, releasesUrl: null, ...options });
   const server = http.createServer(app.handler);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -338,22 +338,18 @@ test('secrets from discovered labels stay out of the layout', async () => {
 });
 
 test('discovered labels cannot run commands, frame pages, borrow keys or use variables they are not allowed', async () => {
-  const configDir = tmpDir('hd-app-');
-  const plugin = writeWidget(path.join(configDir, 'src', 'runner'), {
+  // the widget shows the options it was given, so what reached it is read through /api/widgets
+  const plugin = writeWidget(path.join(tmpDir('hd-runner-'), 'runner'), {
     id: 'runner', name: 'Runner', version: '1.0.0', apiVersion: 2, frames: ['src'],
     options: { text: { type: 'string' }, command: { type: 'string', secret: true, discoverable: false }, src: { type: 'url' }, url: { type: 'url' }, key: { type: 'string', secret: true } },
-  }, { 'server.js': 'export default { async fetch(ctx) { return { blocks: [{ label: "k", value: ctx.options.key ?? null }] } } }' });
-  fs.writeFileSync(path.join(configDir, 'settings.yaml'), `plugins:\n  - path: ${plugin}\nproviders:\n  mine: ${SECRET}\n`);
-  fs.writeFileSync(path.join(configDir, 'services.yaml'), `- G:\n    - Real:\n        widget: { type: runner, url: http://real.lan/, key: ${SECRET} }\n`);
-  fs.writeFileSync(path.join(configDir, 'docker.yaml'), 'local:\n  socket: /tmp/x.sock\n  allowVariables: [DASHBOARD_VAR_OK]\n');
+  }, { 'server.js': 'export default { async fetch(ctx) { const { key, command, src, url } = ctx.options; return { blocks: [{ label: "o", value: JSON.stringify({ key, command, src, url }) }] } } }' });
   const label = (name, def) => ({ group: 'L', name, weight: 0, def });
-  const app = await createApp({
-    configDir,
-    env: { DASHBOARD_VAR_OK: 'fine-value', DASHBOARD_VAR_PASSWORD: SECRET },
-    log: silentLog,
-    defaultPlugins: [],
-    dockerSocket: null,
-    releasesUrl: null,
+  const t = await startApp({
+    'settings.yaml': `plugins:\n  - path: ${plugin}\nproviders:\n  mine: ${SECRET}\n`,
+    'services.yaml': `- G:\n    - Real:\n        widget: { type: runner, url: http://real.lan/, key: ${SECRET} }\n`,
+    'docker.yaml': 'local:\n  socket: /tmp/x.sock\n  allowVariables: [DASHBOARD_VAR_OK]\n',
+  }, { DASHBOARD_VAR_OK: 'fine-value', DASHBOARD_VAR_PASSWORD: SECRET }, {
+    builtinDir: null,
     discovery: {
       docker: async () => [
         label('Cmd', { widget: { type: 'runner', text: 'x', command: 'id > /tmp/pwned' } }),
@@ -367,9 +363,10 @@ test('discovered labels cannot run commands, frame pages, borrow keys or use var
     },
   });
   try {
-    const services = app.layout.groups.find((g) => g.name === 'L').services;
+    const layout = await t.json('/api/layout');
+    const services = layout.groups.find((g) => g.name === 'L').services;
     assert.deepEqual(services.map((s) => s.name).sort(), ['Allowed', 'Borrow', 'Cmd', 'Frame', 'Hook', 'Provider']);
-    const msgs = [...app.layout.messages.errors, ...app.layout.messages.warnings].map((m) => m.message).join('\n');
+    const msgs = [...layout.messages.errors, ...layout.messages.warnings].map((m) => m.message).join('\n');
     assert.match(msgs, /runner: command is not taken from a discovered service/);
     assert.match(msgs, /runner: src is not taken from a discovered service/);
     assert.match(msgs, /service_group\/service_name: not taken from a discovered service/);
@@ -377,16 +374,21 @@ test('discovered labels cannot run commands, frame pages, borrow keys or use var
     assert.match(msgs, /target: hidden-iframe is not taken from a discovered service/);
     assert.match(msgs, /"Steal" is left out: its labels use \{\{DASHBOARD_VAR_PASSWORD\}\}/);
     assert.equal(services.find((s) => s.name === 'Hook').target, '_blank');
-    const options = (name) => app.runtime.instances.get(services.find((s) => s.name === name).widgets[0].instanceId).options;
-    assert.equal(options('Cmd').command, undefined);
-    assert.equal(options('Frame').src, undefined);
+    const options = async (name) => {
+      const result = await t.json(`/api/widgets/${services.find((s) => s.name === name).widgets[0].instanceId}`);
+      assert.equal(result.ok, true, result.error);
+      return JSON.parse(result.data.blocks[0].value);
+    };
+    assert.equal((await options('Cmd')).command, undefined);
+    assert.equal((await options('Frame')).src, undefined);
     // nothing of the configured key or the provider reaches a discovered widget; its own url does
-    assert.equal(options('Borrow').key, undefined);
-    assert.equal(options('Provider').key, undefined);
-    assert.equal(options('Provider').url, 'https://evil.example/');
-    assert.equal(options('Allowed').key, 'fine-value');
+    assert.equal((await options('Borrow')).key, undefined);
+    const provider = await options('Provider');
+    assert.equal(provider.key, undefined);
+    assert.equal(provider.url, 'https://evil.example/');
+    assert.equal((await options('Allowed')).key, 'fine-value');
   } finally {
-    app.close();
+    await t.close();
   }
 });
 
@@ -685,6 +687,7 @@ test('checkPluginUpdates installs a newer #latest and reloads; without news noth
   git('tag', 'v1.0.0');
   const configDir = tmpDir('hd-app-');
   fs.writeFileSync(path.join(configDir, 'settings.yaml'), 'hideVersion: false\ndisableUpdateCheck: true\n');
+  fs.writeFileSync(path.join(configDir, 'services.yaml'), '- G:\n    - C: { widget: { type: example-counter, url: "http://c.lan/" } }\n');
   const app = await createApp({ configDir, log: silentLog, defaultPlugins: [{ source: `git+file://${repo}#latest` }], dockerSocket: null, releasesUrl: null });
   try {
     assert.deepEqual(app.layout.plugins, [{ name: 'widget', version: 'v1.0.0', url: null }]);
@@ -694,7 +697,7 @@ test('checkPluginUpdates installs a newer #latest and reloads; without news noth
     git('tag', 'v9.0.0');
     assert.equal((await app.checkPluginUpdates()).length, 1);
     assert.deepEqual(app.layout.plugins, [{ name: 'widget', version: 'v9.0.0', url: null }]);
-    assert.equal(app.runtime.registry.get('example-counter').manifest.version, '9.0.0');
+    assert.equal(app.layout.widgetTypes['example-counter'].version, '9.0.0', 'the new code is loaded, not only the lock file');
   } finally {
     app.close();
   }
@@ -745,9 +748,10 @@ test('a widget of your own wins over the same id in the default plugins, without
   const local = path.join(configDir, 'local-counter');
   fs.cpSync(path.resolve('examples/widget-template'), local, { recursive: true });
   fs.writeFileSync(path.join(configDir, 'settings.yaml'), 'plugins:\n  - path: ./local-counter\n');
+  fs.writeFileSync(path.join(configDir, 'services.yaml'), '- G:\n    - C: { widget: { type: example-counter, url: "http://c.lan/" } }\n');
   const app = await createApp({ configDir, log: silentLog, defaultPlugins: [{ source: `git+file://${repo}#latest` }], dockerSocket: null, releasesUrl: null });
   assert.deepEqual(app.layout.messages.errors, []);
-  assert.equal(app.runtime.registry.get('example-counter').source, './local-counter');
+  assert.equal(app.layout.widgetTypes['example-counter'].source, './local-counter');
   app.close();
 });
 

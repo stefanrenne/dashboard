@@ -55,7 +55,7 @@ test('sandbox: the worker\'s environment leaves out the config\'s variables', as
 
 test('sandbox: a widget stuck in a loop is stopped; the dashboard keeps answering, the next call works', async () => {
   const flag = `${tmpDir()}/fixed`;
-  const { sandbox, get } = await setup('loop', `
+  const { sandbox, logs, get } = await setup('loop', `
     import fs from 'node:fs';
     export default { async fetch(ctx) { let n = 0; if (!fs.existsSync(ctx.options.url)) for (;;) n++; return { blocks: [{ label: 'ok', value: 1 }] }; } };`, { options: { url: flag }, timeoutMs: 400 });
   try {
@@ -67,7 +67,7 @@ test('sandbox: a widget stuck in a loop is stopped; the dashboard keeps answerin
     assert.match(stuck.error, /timed out after 400 ms/);
     assert.ok(ticks >= 10, 'the event loop kept running');
     await new Promise((r) => setTimeout(r, 300));
-    assert.equal(sandbox.restarts, 1, 'the worker was restarted');
+    assert.equal(logs.filter((l) => /did not stop after its timeout; restarting the worker/.test(l)).length, 1, 'the worker was restarted');
     (await import('node:fs')).writeFileSync(flag, '');
     const again = await get();
     assert.deepEqual([again.ok, again.data?.blocks[0].value], [true, 1], 'a fresh worker answers');

@@ -10,22 +10,24 @@ const run = (text, widgets, results) => {
 };
 const shelly = [{ type: 'shelly', attributes: { update: { type: 'boolean' }, version: { type: 'string' } } }];
 
-test('parseFilter: the user\'s example and the three path forms', () => {
-  assert.deepEqual(parseFilter('widget.update == false'), { op: '==', a: { ref: { widget: { merged: true }, attr: 'update' } }, b: { lit: false } });
-  assert.deepEqual(filterRefs(parseFilter('widgets[1].count > 2 || widgets.custom-api.ok')), [
-    { widget: { index: 1 }, attr: 'count' },
-    { widget: { type: 'custom-api' }, attr: 'ok' },
-  ]);
+test('the three path forms: widget.<attr>, widgets[<n>].<attr> and widgets.<type>.<attr>', () => {
+  const three = [{ type: 'shelly', attributes: { update: { type: 'boolean' } } }, { type: 'other', attributes: { count: { type: 'number' } } }, { type: 'custom-api', attributes: { ok: { type: 'boolean' } } }];
+  assert.equal(run('widget.update == false', three, [{ update: false }]), true);
+  assert.equal(run('widget.update == false', three, [{ update: true }]), false);
+  const text = 'widgets[1].count > 2 || widgets.custom-api.ok';
+  assert.deepEqual(filterRefs(bindFilter(parseFilter(text), three).tree), [{ indexes: [1], attr: 'count' }, { indexes: [2], attr: 'ok' }]);
+  assert.equal(run(text, three, [{}, { count: 3 }, { ok: false }]), true);
+  assert.equal(run(text, three, [{}, { count: 1 }, { ok: true }]), true);
+  assert.equal(run(text, three, [{ count: 9, ok: true }, { count: 1 }, { ok: false }]), false, 'only the named widgets are read');
 });
 
-test('parseFilter: && binds tighter than ||, ! tighter than both, parentheses win', () => {
-  assert.deepEqual(parseFilter('true || false && false'), { op: '||', a: { lit: true }, b: { op: '&&', a: { lit: false }, b: { lit: false } } });
-  assert.deepEqual(parseFilter('!(true || false)'), { op: '!', a: { op: '||', a: { lit: true }, b: { lit: false } } });
-  assert.deepEqual(parseFilter("widget.version != 'v1' && widget.n >= -1.5"), {
-    op: '&&',
-    a: { op: '!=', a: { ref: { widget: { merged: true }, attr: 'version' } }, b: { lit: 'v1' } },
-    b: { op: '>=', a: { ref: { widget: { merged: true }, attr: 'n' } }, b: { lit: -1.5 } },
-  });
+test('&& binds tighter than ||, ! tighter than both, parentheses win', () => {
+  assert.equal(run('true || false && false', [], []), true, 'not (true || false) && false');
+  assert.equal(run('!true || true', [], []), true, 'not !(true || true)');
+  assert.equal(run('!(true || false)', [], []), false);
+  assert.equal(run('(true || false) && false', [], []), false);
+  const v = (version, n) => run("widget.version != 'v1' && widget.n >= -1.5", shelly, [{ version, n }]);
+  assert.deepEqual([v('v2', -1.5), v('v1', 0), v('v2', -2)], [true, false, false]);
 });
 
 test('parseFilter: mistakes give a message that says where', () => {
@@ -62,7 +64,6 @@ test('bindFilter: an attribute no widget declares is a warning, and every widget
 
 test('container.<attr>: the service\'s container: status check, after its widgets', () => {
   const docker = [{ kind: 'container', type: 'docker', attributes: { status: { type: 'string' }, attention: { type: 'boolean' } } }];
-  assert.deepEqual(parseFilter('container.attention'), { ref: { status: 'container', attr: 'attention' } });
   const bound = bindFilter(parseFilter('container.attention'), shelly, [{ kind: 'ping', type: 'ping', attributes: {} }, ...docker]);
   assert.deepEqual([bound.tree, bound.errors, bound.warnings], [{ ref: { indexes: [2], attr: 'attention' } }, [], []], 'widgets first, then the checks');
   assert.deepEqual(filterRefs(bindFilter(parseFilter('widget.attention'), shelly, docker).tree), [{ indexes: [0], attr: 'attention' }], 'widget.<attr> leaves the checks out');
@@ -85,7 +86,6 @@ test('container.<attr>: the service\'s container: status check, after its widget
 test('ping.<attr> and siteMonitor.<attr>: the service\'s ping: and siteMonitor: checks', () => {
   const status = { status: { type: 'string' }, latency: { type: 'number' } };
   const checks = [{ kind: 'siteMonitor', type: 'http-status', attributes: { ...status, code: { type: 'number' } } }, { kind: 'ping', type: 'ping', attributes: status }];
-  assert.deepEqual(parseFilter("ping.status == 'down'"), { op: '==', a: { ref: { status: 'ping', attr: 'status' } }, b: { lit: 'down' } });
   const bound = bindFilter(parseFilter("ping.status == 'down' || siteMonitor.code >= 500"), shelly, checks);
   assert.deepEqual([filterRefs(bound.tree), bound.errors], [[{ indexes: [2], attr: 'status' }, { indexes: [1], attr: 'code' }], []]);
   assert.deepEqual(bindFilter(parseFilter("ping.status == 'down'"), shelly, [checks[0]]).errors, ['the service has no ping: to read "status" from']);

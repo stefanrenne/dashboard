@@ -108,7 +108,7 @@ test('Passkeys: register and sign in (P-256 and Ed25519); every wrong answer is 
 
   // through a restart; removed for good
   const again = new Passkeys({ configDir: dir, now: () => clock, log: silentLog });
-  assert.equal(again.userId, store.userId);
+  assert.equal(again.registerOptions(req()).user.id, store.registerOptions(req()).user.id, 'the same user handle');
   assert.equal(again.verify(req(), key.get(again.loginOptions(req()))).ok, true);
   assert.equal(again.remove(again.forHost('dash.lan')[0].id), true);
   assert.deepEqual(again.forHost('dash.lan').map((p) => p.name), ['Phone']);

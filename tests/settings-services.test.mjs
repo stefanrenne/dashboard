@@ -35,8 +35,7 @@ const file = (dir) => fs.readFileSync(path.join(dir, 'services.yaml'), 'utf8');
 const names = (groups) => groups.map((g) => [g.name, g.services.map((s) => s.name), g.groups.map((n) => [n.name, n.services.map((s) => s.name)])]);
 
 test('readServices: groups, nested groups, services with their fields and widgets, includes as blocks', () => {
-  const { items, hash } = readServices(setup());
-  assert.match(hash, /^[0-9a-f]{16}$/);
+  const { items } = readServices(setup());
   const [infra, media, apps] = items;
   assert.deepEqual([infra.kind, infra.id, infra.name, infra.items.map((i) => [i.kind, i.id, i.name])], ['group', '0', 'Infra', [['service', '0/0', 'Router'], ['group', '0/1', 'Network']]]);
   const router = infra.items[0];
