@@ -10,7 +10,16 @@
 import fs from 'node:fs';
 import { isPlainObject } from '../util.js';
 
+// DASHBOARD_VAR_X, HOMEPAGE_FILE_Y, ...: the environment variables the config may name
+export const VARIABLE_NAME = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Z0-9_]+$/;
+const VARIABLE_PREFIX = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/;
 const PLACEHOLDER = /\{\{\s*((?:DASHBOARD|HOMEPAGE)_(?:VAR|FILE)_[A-Z0-9_]+)\s*\}\}/g;
+
+/** Whether `text` has a {{DASHBOARD_VAR_*}} (or _FILE_, HOMEPAGE_) placeholder: no secret itself. */
+export const hasPlaceholder = (text) => typeof text === 'string' && text.search(PLACEHOLDER) !== -1;
+
+/** Whether an environment variable is one the config may name (its value can be a secret). */
+export const isConfigVariable = (name) => VARIABLE_PREFIX.test(name);
 // `{{SOME_NAME}}`: looks like a variable but is not one the dashboard fills in, so it would reach
 // the service as written (a wrong key or password). Templates such as Home Assistant's
 // `{{ states.x }}` are lowercase and left alone.
@@ -34,7 +43,7 @@ export function substitute(value, { env = process.env, readFile = (p) => fs.read
 
   const replaceString = (str) => {
     for (const [whole, name] of str.matchAll(LOOKALIKE)) {
-      if (/^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/.test(name)) continue;
+      if (isConfigVariable(name)) continue;
       // the old HD_VAR_/HD_FILE_ (or no prefix at all): say what to write instead
       const [, kind = 'VAR', rest] = /^(?:HD_|DASHBOARD_)?(?:(VAR|FILE)_)?(.*)$/.exec(name);
       const hint = `DASHBOARD_${kind}_${rest}`;

@@ -9,18 +9,16 @@
 import YAML from 'yaml';
 import { readConfigFile, parseDocument, documentText, writeConfigFile, ConfigEditError } from './config/edit.js';
 import { tokenFor } from './config/mask.js';
+import { SERVICE_FIELDS as SCHEMA_FIELDS } from './config/schema.js';
+import { hasPlaceholder } from './config/vars.js';
 
 const FILE = 'services.yaml';
-// the fields the page edits: [key, type]
-export const SERVICE_FIELDS = [
-  ['href', 'string'], ['icon', 'string'], ['description', 'string'],
-  ['siteMonitor', 'string'], ['ping', 'string'], ['container', 'string'], ['server', 'string'],
-  ['target', 'enum'], ['statusStyle', 'enum'], ['showStats', 'tristate'], ['weight', 'number'], ['filter', 'string'], ['confirm', 'enum'],
-  ['proxmoxNode', 'string'], ['proxmoxVMID', 'number'], ['proxmoxType', 'enum'],
-  ['app', 'string'], ['namespace', 'string'], ['podSelector', 'string'], ['external', 'boolean'],
-];
-const ENUMS = { target: ['', '_blank', '_self', '_top', 'hidden-iframe'], statusStyle: ['', 'dot', 'basic'], confirm: ['', 'password', 'always', 'none'], proxmoxType: ['', 'qemu', 'lxc'] };
-const KNOWN = new Set([...SERVICE_FIELDS.map(([k]) => k), 'widget', 'widgets']);
+// the fields the page edits, as the form has them: a list ('' leaves it out), a switch left to the
+// page's setting (tristate), a checkbox, a number or text
+const FORM_TYPES = { boolean: 'tristate', flag: 'boolean', number: 'number', text: 'string', filter: 'string' };
+const FIELDS = Object.entries(SCHEMA_FIELDS).map(([key, kind]) => [key, Array.isArray(kind) ? 'enum' : FORM_TYPES[kind]]);
+const ENUMS = Object.fromEntries(Object.entries(SCHEMA_FIELDS).filter(([, kind]) => Array.isArray(kind)).map(([key, kind]) => [key, ['', ...kind]]));
+const KNOWN = new Set([...FIELDS.map(([k]) => k), 'widget', 'widgets']);
 
 const isInclude = (node) => YAML.isScalar(node) && node.tag === '!include';
 const single = (node) => (YAML.isMap(node) && node.items.length === 1 ? node.items[0] : null);
@@ -38,7 +36,7 @@ function walk(doc, schemaFor = () => null) {
   const fieldsOf = (map) => {
     const o = YAML.isMap(map) ? map.toJSON() : {};
     const out = {};
-    for (const [key, type] of SERVICE_FIELDS) {
+    for (const [key, type] of FIELDS) {
       const v = o[key];
       if (type === 'tristate') out[key] = typeof v === 'boolean' ? String(v) : '';
       else if (type === 'boolean') out[key] = v === true || v === 'true';
@@ -135,7 +133,7 @@ export function writeServices(configDir, items, hash, opts = {}, schemaFor = () 
     pair.key = YAML.isScalar(pair.key) ? Object.assign(pair.key, { value: name }) : doc.createNode(name);
   };
   const setFields = (map, fields, at) => {
-    for (const [key, type] of SERVICE_FIELDS) {
+    for (const [key, type] of FIELDS) {
       if (!fields || !(key in fields)) continue;
       const v = fields[key];
       const current = map.get(key);
@@ -211,7 +209,6 @@ export function writeServices(configDir, items, hash, opts = {}, schemaFor = () 
 
 // ---------------------------------------------------------------- widgets (a service's widget: / widgets:, and widgets.yaml)
 const EDITABLE_TYPES = new Set(['string', 'url', 'icon', 'enum', 'number', 'boolean']);
-const PLACEHOLDER = /\{\{\s*(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Za-z0-9_]+\s*\}\}/;
 
 /** Every installed widget with its options, for the forms: [{ id, name, description, options }]. */
 export function widgetCatalog(registry) {
@@ -243,7 +240,7 @@ export function widgetForm(map, schemaFor, typeOf = null) {
     if (!EDITABLE_TYPES.has(def.type)) continue;
     const v = o[k];
     if (v === undefined || v === null) options[k] = '';
-    else if (def.secret && !(typeof v === 'string' && PLACEHOLDER.test(v))) options[k] = tokenFor(v);
+    else if (def.secret && !(typeof v === 'string' && hasPlaceholder(v))) options[k] = tokenFor(v);
     else options[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
   }
   const rest = Object.keys(o).filter((k) => k !== 'type' && !(k in options));
@@ -271,8 +268,8 @@ export function applyWidget(doc, map, w, schemaFor, at, { file = FILE, typeKey =
     let value;
     if (text === '') value = undefined;
     else if (def.type === 'number') {
-      if (!Number.isFinite(Number(text)) && !PLACEHOLDER.test(text)) throw new ConfigEditError(`${at}.${k}: a number`, 400);
-      value = PLACEHOLDER.test(text) ? text : Number(text);
+      if (!Number.isFinite(Number(text)) && !hasPlaceholder(text)) throw new ConfigEditError(`${at}.${k}: a number`, 400);
+      value = hasPlaceholder(text) ? text : Number(text);
     } else if (def.type === 'boolean') {
       if (!['true', 'false'].includes(text)) throw new ConfigEditError(`${at}.${k}: true or false`, 400);
       value = text === 'true';
@@ -283,7 +280,7 @@ export function applyWidget(doc, map, w, schemaFor, at, { file = FILE, typeKey =
       if (map.has(k)) map.delete(k);
     } else if (current === undefined || current === null || String(current) !== String(value)) {
       map.set(k, value);
-      if (def.secret && !PLACEHOLDER.test(String(value))) warnings.push({ file, path: `${at}.${k}`, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' });
+      if (def.secret && !hasPlaceholder(String(value))) warnings.push({ file, path: `${at}.${k}`, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' });
     }
   }
   return warnings;

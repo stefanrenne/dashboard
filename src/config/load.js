@@ -7,52 +7,70 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { substitute } from './vars.js';
+import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
+import {
+  CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES,
+  BOOKMARK_STYLES, STATUS_STYLES, TARGETS, CONFIRM_VALUES, PROXMOX_TYPES, KUBERNETES_MODES, SEARCH_PROVIDERS,
+  BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS,
+} from './schema.js';
 
-export const CONFIG_FILES = ['settings', 'services', 'widgets', 'bookmarks', 'docker', 'kubernetes', 'proxmox'];
+export { CONFIG_FILES };
 
-export const DEFAULT_SETTINGS = {
-  title: 'Homelab',
-  language: 'en',
-  theme: 'auto', // auto | dark | light
-  color: 'slate',
-  target: '_blank',
+const DEFAULT_SETTINGS = {
+  title: DEFAULTS.title,
+  language: DEFAULTS.language,
+  theme: DEFAULTS.theme,
+  color: DEFAULTS.color,
+  target: DEFAULTS.target,
   showTitle: true,
-  headerStyle: 'boxed', // boxed | clean
+  headerStyle: DEFAULTS.headerStyle,
   layout: {},
   plugins: [],
-  pluginUpdateInterval: '1h',
-  discovery: { interval: '30s' },
+  pluginUpdateInterval: DEFAULTS.pluginUpdateInterval,
+  discovery: { interval: DEFAULTS.discoveryInterval },
 };
 
-const SERVICE_KEYS = new Set([
-  'href', 'icon', 'description', 'siteMonitor', 'ping', 'container', 'server', 'widget', 'widgets', 'target', 'statusStyle', 'showStats', 'weight', 'filter', 'confirm',
-  'proxmoxNode', 'proxmoxVMID', 'proxmoxType', 'app', 'namespace', 'podSelector', 'external',
-]);
-export const STATUS_STYLES = ['dot', 'basic'];
+// settings.yaml keys that take one value of a list (DEFAULTS has the fallback, when there is one)
+const SETTING_CHOICES = [
+  ['language', LANGUAGES], ['theme', THEMES], ['color', COLORS], ['headerStyle', HEADER_STYLES], ['target', TARGETS],
+  ['cardStyle', CARD_STYLES], ['blockStyle', BLOCK_STYLES], ['font', FONTS], ['iconStyle', ICON_STYLES],
+  ['bookmarksStyle', BOOKMARK_STYLES], ['statusStyle', STATUS_STYLES],
+];
 
-const MIN_PLUGIN_UPDATE_MS = 60_000;
+/**
+ * A duration setting in ms. `fallback` and `min` are written as durations (15m, 7d), `fallback` from
+ * DEFAULTS; `off` lets false and 0 turn it off (0 ms).
+ */
+function durationSetting(value, { file, at, fallback, off = false, min = null }, ctx) {
+  const fallbackMs = parseDuration(fallback);
+  if (off && (value === false || value === 0 || value === '0')) return 0;
+  let ms;
+  try {
+    ms = parseDuration(value, fallbackMs);
+  } catch (err) {
+    ctx.warn(file, at, `${err.message}; using ${fallback}`);
+    return fallbackMs;
+  }
+  if (min && ms < parseDuration(min)) {
+    ctx.warn(file, at, `at least ${min}; using that`);
+    return parseDuration(min);
+  }
+  return ms;
+}
 
-/** pluginUpdateInterval: how often #latest and branch plugins are checked; false or 0 turns it off. */
 /** settings.yaml `actions: { remember }`: how long a correct admin password unlocks a browser; 0 asks every time. */
 function actionRememberMs(actions, file, ctx) {
-  const fallback = 15 * 60 * 1000;
-  if (actions === undefined) return fallback;
+  const fallback = DEFAULTS.actionsRemember;
+  if (actions === undefined) return parseDuration(fallback);
   if (!isPlainObject(actions)) {
-    ctx.warn(file, 'actions', 'expected a map such as { remember: 15m }, ignored');
-    return fallback;
+    ctx.warn(file, 'actions', `expected a map such as { remember: ${fallback} }, ignored`);
+    return parseDuration(fallback);
   }
   for (const key of Object.keys(actions)) if (key !== 'remember') ctx.warn(file, `actions.${key}`, 'unknown key, ignored');
-  if (actions.remember === 0 || actions.remember === '0' || actions.remember === false) return 0;
-  try {
-    return parseDuration(actions.remember, fallback);
-  } catch (err) {
-    ctx.warn(file, 'actions.remember', `${err.message}; remembering 15 minutes`);
-    return fallback;
-  }
+  return durationSetting(actions.remember, { file, at: 'actions.remember', fallback, off: true }, ctx);
 }
 
 /** settings.yaml `allowedHosts`: a list or comma-separated names, or `*`; null when not set. */
@@ -72,7 +90,7 @@ function allowedHostsSetting(value, file, ctx) {
  */
 function adminPasswordSetting(value, file, ctx) {
   if (value === undefined || value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^scrypt:\d+:\d+:\d+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/.test(value.trim())) {
+  if (typeof value !== 'string' || !SCRYPT_HASH.test(value.trim())) {
     ctx.error(file, 'adminPassword', 'expected the scrypt hash of the password (node src/hash-password.mjs), not the password itself; what asks for it stays locked');
     return { broken: true };
   }
@@ -81,7 +99,7 @@ function adminPasswordSetting(value, file, ctx) {
 
 /** settings.yaml `login`: true, false, or { remember: 7d }: a login page with the admin password. */
 function loginSetting(value, file, ctx) {
-  const off = { required: false, rememberMs: 7 * 86_400_000 };
+  const off = { required: false, rememberMs: parseDuration(DEFAULTS.loginRemember) };
   if (value === undefined || value === false || value === null) return off;
   if (value === true) return { ...off, required: true };
   if (!isPlainObject(value)) {
@@ -89,29 +107,7 @@ function loginSetting(value, file, ctx) {
     return off;
   }
   for (const key of Object.keys(value)) if (key !== 'remember') ctx.warn(file, `login.${key}`, 'unknown key, ignored');
-  try {
-    const ms = parseDuration(value.remember, off.rememberMs);
-    return { required: true, rememberMs: Math.max(60_000, ms) };
-  } catch (err) {
-    ctx.warn(file, 'login.remember', `${err.message}; remembering 7 days`);
-    return { ...off, required: true };
-  }
-}
-
-function pluginUpdateMs(value, file, ctx) {
-  if (value === false || value === 0 || value === '0') return 0;
-  let ms;
-  try {
-    ms = parseDuration(value, 3_600_000);
-  } catch (err) {
-    ctx.warn(file, 'pluginUpdateInterval', `${err.message}; checking every hour`);
-    return 3_600_000;
-  }
-  if (ms < MIN_PLUGIN_UPDATE_MS) {
-    ctx.warn(file, 'pluginUpdateInterval', 'at least 1m; checking every minute');
-    return MIN_PLUGIN_UPDATE_MS;
-  }
-  return ms;
+  return { required: true, rememberMs: durationSetting(value.remember, { file, at: 'login.remember', fallback: DEFAULTS.loginRemember, min: '1m' }, ctx) };
 }
 
 /** One file's text → its value with includes and variables resolved; undefined when it does not parse. */
@@ -210,22 +206,16 @@ export function normalizeSettings(raw, ctx) {
   }
   const settings = { ...DEFAULT_SETTINGS, ...raw };
   settings.discovery = { ...DEFAULT_SETTINGS.discovery, ...(isPlainObject(raw.discovery) ? raw.discovery : {}) };
-  if (!['auto', 'dark', 'light'].includes(settings.theme)) {
-    ctx.warn(file, 'theme', `unknown theme "${settings.theme}", using auto`);
-    settings.theme = 'auto';
-  }
-  if (!['boxed', 'clean', 'underlined', 'boxedWidgets'].includes(settings.headerStyle)) {
-    ctx.warn(file, 'headerStyle', `unknown headerStyle "${settings.headerStyle}" (boxed, clean, underlined, boxedWidgets), using boxed`);
-    settings.headerStyle = 'boxed';
-  }
-  for (const [key, values] of [['cardStyle', ['hairline']], ['blockStyle', ['refined']], ['font', ['plex', 'plexData']]]) {
-    if (settings[key] !== undefined && !values.includes(settings[key])) {
-      ctx.warn(file, key, `expected ${values.join(' or ')} (or leave it out), ignored`);
-      delete settings[key];
-    }
+  if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
+  // a value from its list; an unknown one falls back to the default, or is left out without one
+  for (const [key, values] of SETTING_CHOICES) {
+    if (settings[key] === undefined || values.includes(settings[key])) continue;
+    const fallback = DEFAULTS[key];
+    ctx.warn(file, key, `unknown ${key} "${settings[key]}" (${values.join(', ')}); ${fallback ? `using ${fallback}` : 'ignored'}`);
+    if (fallback) settings[key] = fallback;
+    else delete settings[key];
   }
   settings.showTitle = settings.showTitle !== false;
-  if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
   for (const key of ['description', 'favicon', 'startUrl', 'instanceName', 'base', 'logpath']) {
     if (settings[key] === undefined || settings[key] === null) delete settings[key];
     else if (typeof settings[key] !== 'string') {
@@ -238,7 +228,7 @@ export function normalizeSettings(raw, ctx) {
     delete settings.base;
   } else if (settings.base && !settings.base.endsWith('/')) settings.base += '/';
   settings.pwa = normalizePwa(settings.pwa, file, ctx);
-  settings.pluginUpdateMs = pluginUpdateMs(settings.pluginUpdateInterval, file, ctx);
+  settings.pluginUpdateMs = durationSetting(settings.pluginUpdateInterval, { file, at: 'pluginUpdateInterval', fallback: DEFAULTS.pluginUpdateInterval, off: true, min: '1m' }, ctx);
   settings.actionRememberMs = actionRememberMs(settings.actions, file, ctx);
   delete settings.actions;
   settings.allowedHosts = allowedHostsSetting(settings.allowedHosts, file, ctx);
@@ -253,36 +243,24 @@ export function normalizeSettings(raw, ctx) {
   for (const key of ['maxGroupColumns', 'maxBookmarkGroupColumns']) {
     if (settings[key] === undefined) continue;
     const n = Number(settings[key]);
-    if (!Number.isInteger(n) || n < 1 || n > 8) {
-      ctx.warn(file, key, 'expected a whole number up to 8, ignored');
+    if (!Number.isInteger(n) || n < 1 || n > MAX_GROUP_COLUMNS) {
+      ctx.warn(file, key, `expected a whole number up to ${MAX_GROUP_COLUMNS}, ignored`);
       delete settings[key];
     } else settings[key] = n;
   }
   if (settings.blockHighlights !== undefined) {
     const levels = isPlainObject(settings.blockHighlights) && isPlainObject(settings.blockHighlights.levels) ? settings.blockHighlights.levels : null;
-    if (!levels) ctx.warn(file, 'blockHighlights', 'expected levels: { good, warn, danger }, ignored');
+    if (!levels) ctx.warn(file, 'blockHighlights', `expected levels: { ${HIGHLIGHT_LEVELS.join(', ')} }, ignored`);
     settings.blockHighlights = { levels: {} };
     for (const [level, classes] of Object.entries(levels ?? {})) {
-      if (['good', 'warn', 'danger'].includes(level) && typeof classes === 'string') settings.blockHighlights.levels[level] = classes;
-      else ctx.warn(file, `blockHighlights.levels.${level}`, 'expected good, warn or danger with Tailwind classes, ignored');
+      if (HIGHLIGHT_LEVELS.includes(level) && typeof classes === 'string') settings.blockHighlights.levels[level] = classes;
+      else ctx.warn(file, `blockHighlights.levels.${level}`, `expected ${HIGHLIGHT_LEVELS.join(', ')} with Tailwind classes, ignored`);
     }
   }
   settings.quicklaunch = normalizeQuicklaunch(settings.quicklaunch, file, ctx);
   if (settings.providers !== undefined && !isPlainObject(settings.providers)) {
     ctx.warn(file, 'providers', 'expected a map of provider name to a key or a map of options, ignored');
     delete settings.providers;
-  }
-  if (settings.statusStyle !== undefined && !STATUS_STYLES.includes(settings.statusStyle)) {
-    ctx.warn(file, 'statusStyle', 'expected dot or basic (or leave it out), ignored');
-    delete settings.statusStyle;
-  }
-  if (settings.iconStyle !== undefined && !['gradient', 'theme'].includes(settings.iconStyle)) {
-    ctx.warn(file, 'iconStyle', 'expected gradient or theme, using gradient');
-    delete settings.iconStyle;
-  }
-  if (settings.bookmarksStyle !== undefined && settings.bookmarksStyle !== 'icons') {
-    ctx.warn(file, 'bookmarksStyle', 'expected "icons" (or leave it out), ignored');
-    delete settings.bookmarksStyle;
   }
   settings.background = normalizeBackground(settings.background, file, ctx);
   settings.cardBlur = blurPx(settings.cardBlur, file, 'cardBlur', ctx);
@@ -316,9 +294,6 @@ export function normalizeSettings(raw, ctx) {
   return settings;
 }
 
-export const SEARCH_PROVIDERS = ['google', 'duckduckgo', 'bing', 'baidu', 'brave', 'startpage', 'custom'];
-const BUTTON_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-
 /** homepage's `quicklaunch:` (the launcher that opens when typing on the page). */
 function normalizeQuicklaunch(raw, file, ctx) {
   if (raw === undefined || raw === null) return {};
@@ -337,7 +312,7 @@ function normalizeQuicklaunch(raw, file, ctx) {
     else ctx.warn(file, 'quicklaunch.provider', `expected ${SEARCH_PROVIDERS.join(', ')}, ignored`);
   }
   for (const key of ['url', 'suggestionUrl']) if (typeof raw[key] === 'string') out[key] = raw[key];
-  if (['_blank', '_self', '_top'].includes(raw.target)) out.target = raw.target;
+  if (TARGETS.includes(raw.target)) out.target = raw.target;
   if (raw.mobileButtonPosition !== undefined) {
     if (BUTTON_POSITIONS.includes(raw.mobileButtonPosition)) out.mobileButtonPosition = raw.mobileButtonPosition;
     else ctx.warn(file, 'quicklaunch.mobileButtonPosition', `expected ${BUTTON_POSITIONS.join(', ')}, ignored`);
@@ -348,9 +323,6 @@ function normalizeQuicklaunch(raw, file, ctx) {
   }
   return out;
 }
-
-// homepage's blur sizes (Tailwind's scale) in pixels; '' is Tailwind's plain `blur`.
-export const BLUR_PX = { none: 0, xs: 4, sm: 8, '': 8, md: 12, lg: 16, xl: 24, '2xl': 40, '3xl': 64 };
 
 function blurPx(value, file, p, ctx) {
   if (value === undefined || value === null) return null;
@@ -433,43 +405,33 @@ export function normalizeService(name, def, file, p, ctx) {
     return null;
   }
   for (const key of Object.keys(def)) {
-    if (!SERVICE_KEYS.has(key)) ctx.warn(file, `${p}.${key}`, 'unknown key, ignored');
+    if (!(key in SERVICE_FIELDS) && key !== 'widget' && key !== 'widgets') ctx.warn(file, `${p}.${key}`, 'unknown key, ignored');
   }
   const service = { name: String(name) };
-  if (def.confirm !== undefined) {
-    if (['password', 'always', 'none'].includes(def.confirm)) service.confirm = def.confirm;
-    else ctx.warn(file, `${p}.confirm`, 'expected password, always or none, ignored');
+  for (const [key, kind] of Object.entries(SERVICE_FIELDS)) {
+    const v = def[key];
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(kind)) {
+      if (kind.includes(v)) service[key] = v;
+      else ctx.warn(file, `${p}.${key}`, `expected ${kind.join(', ')}, ignored`);
+    } else if (kind === 'boolean') {
+      if (typeof v === 'boolean') service[key] = v;
+      else ctx.warn(file, `${p}.${key}`, 'expected true or false, ignored');
+    } else if (kind === 'flag') {
+      if (v === true || v === 'true') service[key] = true;
+    } else if (kind === 'number') {
+      if (Number.isFinite(Number(v))) service[key] = Number(v);
+      else ctx.warn(file, `${p}.${key}`, 'expected a number, ignored');
+    } else if (kind === 'filter') {
+      // hides the card while true; parsed here, bound to the service's widgets in layout.js
+      try {
+        if (typeof v !== 'string') throw new Error('expected an expression, such as widget.update == false');
+        service.filter = parseFilter(v);
+      } catch (err) {
+        ctx.error(file, `${p}.filter`, `${err.message}; the service is shown unfiltered`);
+      }
+    } else service[key] = String(v);
   }
-  if (def.showStats !== undefined) {
-    if (typeof def.showStats === 'boolean') service.showStats = def.showStats;
-    else ctx.warn(file, `${p}.showStats`, 'expected true or false, ignored');
-  }
-  if (def.statusStyle !== undefined) {
-    if (STATUS_STYLES.includes(def.statusStyle)) service.statusStyle = def.statusStyle;
-    else ctx.warn(file, `${p}.statusStyle`, 'expected dot or basic, ignored');
-  }
-  // filter: hides the card while true; parsed here, bound to the service's widgets in layout.js
-  if (def.filter !== undefined && def.filter !== null) {
-    try {
-      service.filter = parseFilter(typeof def.filter === 'string' ? def.filter : undefined);
-    } catch (err) {
-      ctx.error(file, `${p}.filter`, `${err.message}; the service is shown unfiltered`);
-    }
-  }
-  if (def.weight !== undefined && def.weight !== null) {
-    const weight = Number(def.weight);
-    if (Number.isFinite(weight)) service.weight = weight;
-    else ctx.warn(file, `${p}.weight`, 'expected a number, ignored');
-  }
-  if (def.proxmoxType !== undefined && !['qemu', 'lxc'].includes(def.proxmoxType)) {
-    ctx.warn(file, `${p}.proxmoxType`, 'expected qemu or lxc, ignored');
-  }
-  for (const key of ['href', 'icon', 'description', 'siteMonitor', 'ping', 'container', 'server', 'target', 'proxmoxNode', 'proxmoxVMID', 'app', 'namespace', 'podSelector']) {
-    if (def[key] !== undefined && def[key] !== null) service[key] = String(def[key]);
-  }
-  if (['qemu', 'lxc'].includes(def.proxmoxType)) service.proxmoxType = def.proxmoxType;
-  // homepage's external: true: a Kubernetes app without a pod status label
-  if (def.external === true || def.external === 'true') service.external = true;
   const widgets = [];
   if (def.widget !== undefined) widgets.push([def.widget, `${p}.widget`]);
   if (def.widgets !== undefined) {
@@ -535,7 +497,7 @@ function allowVariables(raw, file, p, ctx) {
   const names = [];
   for (const item of Array.isArray(raw) ? raw : [raw]) {
     const name = String(item).trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
-    if (/^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Z0-9_]+$/.test(name)) names.push(name);
+    if (VARIABLE_NAME.test(name)) names.push(name);
     else ctx.warn(file, p, `"${item}" is not a variable name such as DASHBOARD_VAR_GRAFANA_PASSWORD, ignored`);
   }
   return names.length ? { allowVariables: names } : {};
@@ -623,7 +585,7 @@ export function normalizeKubernetes(raw, ctx, configDir = '.') {
   const file = 'kubernetes.yaml';
   if (raw === undefined || raw === null) return { mode: 'disabled' };
   // default: a kubeconfig, as in homepage ($KUBECONFIG, ~/.kube/config, or `kubeconfig:`)
-  if (!isPlainObject(raw) || !['disabled', 'cluster', 'default'].includes(raw.mode ?? 'disabled')) {
+  if (!isPlainObject(raw) || !KUBERNETES_MODES.includes(raw.mode ?? 'disabled')) {
     ctx.error(file, 'mode', 'expected "mode: cluster" (in the cluster), "mode: default" (a kubeconfig) or "mode: disabled"');
     return { mode: 'disabled' };
   }

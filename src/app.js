@@ -36,14 +36,13 @@ import { checkConfigText, parseDocument, documentText, editableFiles, editableFi
 import { maskConfigText, unmaskConfigText } from './config/mask.js';
 import { isLocal, BODY_LIMIT } from './onboarding.js';
 import { parseConfigYaml } from './config/include.js';
-import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML, LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES } from './onboarding.js';
+import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML } from './onboarding.js';
+import { LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES, CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
 import { validateOptions } from './plugins/options.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
 export const EVENT_STREAMS = { max: 500, perAddress: 50 };
-export const CUSTOM_FILES = ['custom.css', 'custom.js'];
-export const MIN_PASSWORD = 8; // the setup wizard's admin password, at least
 import { safeJoin, realInside } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

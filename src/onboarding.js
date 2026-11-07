@@ -9,15 +9,11 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { FailureLimiter, cookieValue, secureRequest } from './actionauth.js';
+import { LANGUAGES, COLORS } from './config/schema.js';
 
 export const MARKER = '.onboarding';
 export const COOKIE = 'dash_setup';
 export const BODY_LIMIT = 1024 * 1024;
-export const LANGUAGES = ['en', 'nl', 'fr', 'de', 'es', 'ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant'];
-export const THEMES = ['auto', 'dark', 'light'];
-export const COLORS = ['slate', 'gray', 'zinc', 'neutral', 'stone', 'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
-// homepage's files the wizard can take over as they are
-export const HOMEPAGE_FILES = ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'];
 const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
 
 /** A code such as K7QM-3XWD, for the log. */

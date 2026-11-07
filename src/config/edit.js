@@ -1,6 +1,6 @@
 // Writes the user's config files, for the settings page only (hard rule 5: never on its own,
 // only on an admin's explicit save). Every write
-//   - is for a config file (EDITABLE_FILES), custom.css / custom.js (TEXT_FILES, as text) or a
+//   - is for a config file (EDITABLE_FILES), custom.css / custom.js (CUSTOM_FILES, as text) or a
 //     file a config file includes, on its resolved
 //     path inside the folder (never plugins/ or .history/);
 //   - is checked first, the way loadConfig loads it (an included file as part of the config
@@ -15,14 +15,13 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { CONFIG_FILES, checkConfigFile } from './load.js';
+import { checkConfigFile } from './load.js';
+import { CONFIG_FILES, CUSTOM_FILES } from './schema.js';
 import { listIncludes } from './include.js';
 import { PLUGINS_DIR } from '../plugins/installer.js';
 import { scrub } from '../plugins/runtime.js';
 
 export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
-// the page's own CSS and JavaScript (homepage's), edited as plain text: no YAML check
-export const TEXT_FILES = ['custom.css', 'custom.js'];
 export const HISTORY_DIR = '.history';
 export const HISTORY_KEEP = 10;
 
@@ -43,7 +42,7 @@ export const hashText = (text) => crypto.createHash('sha256').update(text).diges
  */
 export function editableFiles(configDir) {
   const included = listIncludes(configDir, EDITABLE_FILES).filter((e) => !EDITABLE_FILES.includes(e.file));
-  return [...EDITABLE_FILES.map((file) => ({ file, root: file, from: null, at: '' })), ...TEXT_FILES.map((file) => ({ file, root: file, from: null, at: '' })), ...included];
+  return [...EDITABLE_FILES.map((file) => ({ file, root: file, from: null, at: '' })), ...CUSTOM_FILES.map((file) => ({ file, root: file, from: null, at: '' })), ...included];
 }
 
 /** The config file `file` ends up in, and where: { file, root, from, at }; null when not editable. */
@@ -58,7 +57,7 @@ export function configPath(configDir, file) {
   const rel = path.relative(root, full).split(path.sep).join('/');
   const inside = rel !== '' && !rel.startsWith('../') && !path.isAbsolute(rel) && rel === file;
   if (!inside || rel.startsWith(`${PLUGINS_DIR}/`) || rel.startsWith(`${HISTORY_DIR}/`)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
-  if (!EDITABLE_FILES.includes(file) && !TEXT_FILES.includes(file) && !editableFile(configDir, file)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
+  if (!EDITABLE_FILES.includes(file) && !CUSTOM_FILES.includes(file) && !editableFile(configDir, file)) throw new ConfigEditError(`${file}: not a file the settings page edits`, 404);
   return full;
 }
 
@@ -94,7 +93,7 @@ const key = (m) => `${m.file}\u0000${m.path}\u0000${m.message}`;
  */
 export function checkConfigText(configDir, file, text, opts = {}) {
   configPath(configDir, file);
-  if (TEXT_FILES.includes(file)) return { errors: [], warnings: [] };
+  if (CUSTOM_FILES.includes(file)) return { errors: [], warnings: [] };
   // an included file is checked as part of the config file it ends up in
   const { root } = editableFile(configDir, file);
   const name = root.replace(/\.yaml$/, '');

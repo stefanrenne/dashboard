@@ -364,5 +364,5 @@ test('pluginUpdateInterval: every hour by default, a duration, false to turn off
   assert.match(fast.warnings[0].message, /at least 1m/);
   const bad = ms('pluginUpdateInterval: soon\n');
   assert.equal(bad.settings.pluginUpdateMs, 3_600_000);
-  assert.match(bad.warnings[0].message, /invalid duration "soon".*checking every hour/);
+  assert.match(bad.warnings[0].message, /invalid duration "soon".*using 1h/);
 });

@@ -4,6 +4,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Fixed
+- settings.yaml: an unknown `language`, `color` or `target` gets a warning and the default, as
+  `theme` already did; before, it was passed to the page as it was.
+- On the settings page, a `{{DASHBOARD_VAR_…}}` with lowercase letters counted as a variable (shown,
+  not hidden), although the dashboard never fills it in; it is now treated as the value it is.
+
 ## [0.24.1] - 2026-11-06
 
 ### Docs

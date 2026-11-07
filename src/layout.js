@@ -11,6 +11,7 @@ import { DEFAULT_LEVELS } from './highlight.js';
 import { parseFilter, bindFilter, filterRefs } from './filter.js';
 import { k8sConnection } from './discovery/kubeconfig.js';
 import { MARK } from './mark.js';
+import { CONFIRM_VALUES } from './config/schema.js';
 
 /**
  * Keys of a widget entry that belong to the dashboard, not to the widget (unless the
@@ -18,7 +19,7 @@ import { MARK } from './mark.js';
  * and whether to hide errors. `refreshInterval` (ms) and `hide_errors` are homepage's names.
  */
 export const INSTANCE_KEYS = ['refresh', 'refreshInterval', 'fields', 'hideErrors', 'hide_errors', 'highlight', 'provider', 'confirm'];
-export const CONFIRM_VALUES = ['password', 'always', 'none'];
+
 export const MIN_REFRESH_MS = 1000;
 
 function splitInstanceKeys(schema, raw) {
@@ -235,7 +236,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const asked = when.length > 0 && when.every(([k, v]) => (options[k] ?? widget.manifest.options[k]?.default) === v);
     let confirm = asked ? 'password' : null;
     if (own !== undefined) {
-      if (!CONFIRM_VALUES.includes(own)) errors.push({ ...where, message: `${type}: confirm: expected password, always or none` });
+      if (!CONFIRM_VALUES.includes(own)) errors.push({ ...where, message: `${type}: confirm: expected ${CONFIRM_VALUES.join(', ')}` });
       else if (own === 'none' && asked && where.discovered) warnings.push({ ...where, message: `${type}: confirm: none is not taken from a discovered service; it asks for the admin password` });
       else confirm = own === 'none' ? null : own;
     }

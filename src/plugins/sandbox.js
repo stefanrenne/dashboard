@@ -5,6 +5,7 @@
 // run in the dashboard process. DASHBOARD_WIDGET_ISOLATION=off runs installed widgets there too.
 
 import { Worker } from 'node:worker_threads';
+import { isConfigVariable } from '../config/vars.js';
 
 export const WORKER_FILE = new URL('./worker.js', import.meta.url);
 export const DEFAULT_MEMORY_MB = 256;
@@ -13,11 +14,11 @@ export const GRACE_MS = 1000;
 // What the worker's process.env leaves out: the values behind {{DASHBOARD_VAR_*}} and
 // {{DASHBOARD_FILE_*}} (and their paths). A widget gets those through ctx.options, for the
 // instances the config gives them to, never all of them.
-const SECRET_VARIABLE = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/;
+
 
 /** The environment of the widget worker: the dashboard's, without the config's variables. */
 export function workerEnv(env = process.env) {
-  return Object.fromEntries(Object.entries(env).filter(([name]) => !SECRET_VARIABLE.test(name)));
+  return Object.fromEntries(Object.entries(env).filter(([name]) => !isConfigVariable(name)));
 }
 
 export class WidgetSandbox {

@@ -6,6 +6,7 @@
 
 import YAML from 'yaml';
 import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
+import { GROUP_STYLES } from './config/schema.js';
 
 const FILE = 'settings.yaml';
 const TRI = ['', 'true', 'false'];
@@ -34,7 +35,7 @@ function formOf(v, nested = false) {
   const o = isMap(v) ? v : {};
   const tri = (x) => (typeof x === 'boolean' ? String(x) : '');
   const out = {
-    style: ['row', 'column'].includes(o.style) ? o.style : '',
+    style: GROUP_STYLES.includes(o.style) ? o.style : '',
     columns: Number.isInteger(Number(o.columns)) && o.columns !== null && o.columns !== undefined && o.columns !== '' ? String(Number(o.columns)) : '',
     header: o.header !== false,
     initiallyCollapsed: tri(o.initiallyCollapsed),
@@ -81,7 +82,7 @@ export function readLayout(configDir, groups) {
 
 function checkGroup(g, at, nested) {
   if (!isMap(g) || typeof g.name !== 'string' || !g.name) return `${at}: expected a group with a name`;
-  if (!['', 'row', 'column'].includes(g.style ?? '')) return `${at}.style: row, column or empty`;
+  if (!['', ...GROUP_STYLES].includes(g.style ?? '')) return `${at}.style: row, column or empty`;
   const cols = String(g.columns ?? '').trim();
   if (cols !== '' && !(Number.isInteger(Number(cols)) && Number(cols) >= 1 && Number(cols) <= 12)) return `${at}.columns: a whole number from 1 to 12, or empty`;
   if (typeof (g.header ?? true) !== 'boolean') return `${at}.header: true or false`;

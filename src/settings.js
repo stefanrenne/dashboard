@@ -5,11 +5,12 @@
 import YAML from 'yaml';
 import { parseDuration } from './util.js';
 import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
-import { SEARCH_PROVIDERS, BLUR_PX } from './config/load.js';
-import { LANGUAGES, THEMES, COLORS } from './onboarding.js';
+import {
+  LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
+  TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
+} from './config/schema.js';
 
-const TARGETS = ['_blank', '_self', '_top'];
-const BLURS = Object.keys(BLUR_PX).filter(Boolean);
+const optional = (values) => ['', ...values];
 
 // The fields the page shows, by name. `at` is the path into the file (the name itself when left
 // out); a value equal to `default` is left out of the file. `special` fields are written by code
@@ -27,47 +28,47 @@ export const FIELDS = {
   theme: { type: 'enum', values: THEMES },
   color: { type: 'enum', values: COLORS },
   showTitle: { type: 'boolean', default: true },
-  headerStyle: { type: 'enum', values: ['boxed', 'clean', 'underlined', 'boxedWidgets'], default: 'boxed' },
-  target: { type: 'enum', values: TARGETS, default: '_blank' },
-  statusStyle: { type: 'enum', values: ['', 'dot', 'basic'], default: '' },
-  cardStyle: { type: 'enum', values: ['', 'hairline'], default: '' },
-  blockStyle: { type: 'enum', values: ['', 'refined'], default: '' },
-  font: { type: 'enum', values: ['', 'plex', 'plexData'], default: '' },
-  iconStyle: { type: 'enum', values: ['gradient', 'theme'], default: 'gradient' },
-  bookmarksStyle: { type: 'enum', values: ['', 'icons'], default: '' },
-  cardBlur: { type: 'enum', values: ['', ...BLURS], default: '' },
+  headerStyle: { type: 'enum', values: HEADER_STYLES, default: DEFAULTS.headerStyle },
+  target: { type: 'enum', values: TARGETS, default: DEFAULTS.target },
+  statusStyle: { type: 'enum', values: optional(STATUS_STYLES), default: '' },
+  cardStyle: { type: 'enum', values: optional(CARD_STYLES), default: '' },
+  blockStyle: { type: 'enum', values: optional(BLOCK_STYLES), default: '' },
+  font: { type: 'enum', values: optional(FONTS), default: '' },
+  iconStyle: { type: 'enum', values: ICON_STYLES, default: DEFAULTS.iconStyle },
+  bookmarksStyle: { type: 'enum', values: optional(BOOKMARK_STYLES), default: '' },
+  cardBlur: { type: 'enum', values: optional(BLURS), default: '' },
   backgroundImage: { type: 'string', at: ['background', 'image'], default: '', special: true },
-  backgroundBlur: { type: 'enum', values: ['', ...BLURS], at: ['background', 'blur'], default: '', special: true },
+  backgroundBlur: { type: 'enum', values: optional(BLURS), at: ['background', 'blur'], default: '', special: true },
   backgroundSaturate: { type: 'int', min: 0, max: 200, at: ['background', 'saturate'], default: '', special: true },
   backgroundBrightness: { type: 'int', min: 0, max: 200, at: ['background', 'brightness'], default: '', special: true },
   backgroundOpacity: { type: 'int', min: 0, max: 100, at: ['background', 'opacity'], default: '', special: true },
   fullWidth: { type: 'boolean', default: false },
-  maxGroupColumns: { type: 'int', min: 1, max: 8, default: '' },
-  maxBookmarkGroupColumns: { type: 'int', min: 1, max: 8, default: '' },
+  maxGroupColumns: { type: 'int', min: 1, max: MAX_GROUP_COLUMNS, default: '' },
+  maxBookmarkGroupColumns: { type: 'int', min: 1, max: MAX_GROUP_COLUMNS, default: '' },
   useEqualHeights: { type: 'boolean', default: false },
   disableCollapse: { type: 'boolean', default: false },
   groupsInitiallyCollapsed: { type: 'boolean', default: false },
   showStats: { type: 'boolean', default: false },
   qlSearchDescriptions: { type: 'boolean', at: ['quicklaunch', 'searchDescriptions'], default: false },
-  qlProvider: { type: 'enum', values: ['', ...SEARCH_PROVIDERS], at: ['quicklaunch', 'provider'], default: '' },
+  qlProvider: { type: 'enum', values: optional(SEARCH_PROVIDERS), at: ['quicklaunch', 'provider'], default: '' },
   qlUrl: { type: 'string', at: ['quicklaunch', 'url'], default: '' },
   qlSuggestionUrl: { type: 'string', at: ['quicklaunch', 'suggestionUrl'], default: '' },
-  qlTarget: { type: 'enum', values: ['', ...TARGETS], at: ['quicklaunch', 'target'], default: '' },
+  qlTarget: { type: 'enum', values: optional(TARGETS), at: ['quicklaunch', 'target'], default: '' },
   qlShowSearchSuggestions: { type: 'tristate', at: ['quicklaunch', 'showSearchSuggestions'], default: '' },
   qlHideInternetSearch: { type: 'boolean', at: ['quicklaunch', 'hideInternetSearch'], default: false },
   qlHideVisitURL: { type: 'boolean', at: ['quicklaunch', 'hideVisitURL'], default: false },
-  qlMobileButtonPosition: { type: 'enum', values: ['', 'top-left', 'top-right', 'bottom-left', 'bottom-right'], at: ['quicklaunch', 'mobileButtonPosition'], default: '' },
+  qlMobileButtonPosition: { type: 'enum', values: optional(BUTTON_POSITIONS), at: ['quicklaunch', 'mobileButtonPosition'], default: '' },
   pwaIcons: { type: 'list', at: ['pwa', 'icons'], keys: ['src', 'sizes', 'type', 'purpose'], required: ['src'] },
   pwaShortcuts: { type: 'list', at: ['pwa', 'shortcuts'], keys: ['name', 'url', 'description'], required: ['name', 'url'] },
   allowedHosts: { type: 'hosts', special: true },
   login: { type: 'boolean', default: false, special: true },
-  loginRemember: { type: 'duration', at: ['login', 'remember'], default: '7d', special: true },
-  actionsRemember: { type: 'duration', at: ['actions', 'remember'], default: '15m', special: true },
+  loginRemember: { type: 'duration', at: ['login', 'remember'], default: DEFAULTS.loginRemember, special: true },
+  actionsRemember: { type: 'duration', at: ['actions', 'remember'], default: DEFAULTS.actionsRemember, special: true },
   hideVersion: { type: 'boolean', default: false },
   disableUpdateCheck: { type: 'boolean', default: false },
   disableIndexing: { type: 'boolean', default: false },
-  pluginUpdateInterval: { type: 'duration', off: true, default: '1h' },
-  discoveryInterval: { type: 'duration', at: ['discovery', 'interval'], default: '30s' },
+  pluginUpdateInterval: { type: 'duration', off: true, default: DEFAULTS.pluginUpdateInterval },
+  discoveryInterval: { type: 'duration', at: ['discovery', 'interval'], default: DEFAULTS.discoveryInterval },
   logpath: { type: 'string', default: '' },
 };
 const HOST = /^(\*|[a-z0-9.-]+(:\d{1,5})?|\[[0-9a-f:]+\](:\d{1,5})?)$/;
@@ -108,12 +109,12 @@ export function readSettings(configDir) {
   const values = {};
   for (const [key, def] of Object.entries(FIELDS)) values[key] = formValue(def, getIn(raw, pathOf(key)));
   // the forms that need more than one path
-  values.title = typeof raw.title === 'string' ? raw.title : 'Homelab';
+  values.title = typeof raw.title === 'string' ? raw.title : DEFAULTS.title;
   if (typeof raw.background === 'string') values.backgroundImage = raw.background;
   values.allowedHosts = Array.isArray(raw.allowedHosts) ? raw.allowedHosts.map(String) : typeof raw.allowedHosts === 'string' ? raw.allowedHosts.split(',').map((h) => h.trim()).filter(Boolean) : [];
   const login = raw.login;
   values.login = login === true || (login !== null && typeof login === 'object');
-  values.loginRemember = typeof login?.remember === 'string' || typeof login?.remember === 'number' ? String(login.remember) : '7d';
+  values.loginRemember = typeof login?.remember === 'string' || typeof login?.remember === 'number' ? String(login.remember) : DEFAULTS.loginRemember;
   const known = new Set([...Object.keys(FIELDS), ...Object.values(FIELDS).map((d) => d.at?.[0]).filter(Boolean), 'adminPassword']);
   return { values, other: Object.keys(raw).filter((k) => !known.has(k)), hasPassword: typeof raw.adminPassword === 'string' && raw.adminPassword !== '' };
 }
@@ -232,13 +233,13 @@ export function writeSettings(configDir, values) {
   }
   if (changed('login') || changed('loginRemember')) {
     const on = values.login ?? readSettings(configDir).values.login;
-    const remember = values.loginRemember ?? '7d';
+    const remember = values.loginRemember ?? DEFAULTS.loginRemember;
     if (!on) doc.set('login', false);
-    else doc.set('login', remember === '7d' ? true : doc.createNode({ remember }, { flow: true }));
+    else doc.set('login', remember === DEFAULTS.loginRemember ? true : doc.createNode({ remember }, { flow: true }));
   }
   if (changed('actionsRemember')) {
     const actions = doc.get('actions');
-    if (values.actionsRemember === '15m') {
+    if (values.actionsRemember === DEFAULTS.actionsRemember) {
       if (YAML.isMap(actions)) {
         actions.delete('remember');
         if (actions.items.length === 0) doc.delete('actions');

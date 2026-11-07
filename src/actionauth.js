@@ -5,6 +5,7 @@
 // memory); failures per address are slowed down.
 
 import crypto from 'node:crypto';
+import { SCRYPT_HASH } from './config/schema.js';
 
 export const COOKIE = 'dash_unlock';
 export const PASSWORD_HEADER = 'x-dashboard-password';
@@ -13,8 +14,7 @@ export const DEFAULT_REMEMBER_MS = 15 * 60 * 1000;
 export const FREE_FAILURES = 5; // then a wait, doubled each time
 export const FIRST_WAIT_MS = 30_000;
 export const MAX_WAIT_MS = 15 * 60 * 1000;
-export const CONFIRM_VALUES = ['password', 'always', 'none'];
-const SCRYPT = /^scrypt:(\d+):(\d+):(\d+):([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)$/;
+const SCRYPT = SCRYPT_HASH;
 
 /** scrypt:N:r:p:salt:hash (no $, which Docker Compose would read as a variable) for a password (base64 salt and hash), as src/hash-password.mjs prints. */
 export function hashPassword(password, { N = 16384, r = 8, p = 1 } = {}) {

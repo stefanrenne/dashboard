@@ -7,6 +7,8 @@
 import YAML from 'yaml';
 import { readConfigFile, parseDocument, documentText, writeConfigFile, ConfigEditError } from './config/edit.js';
 import { tokenFor } from './config/mask.js';
+import { KUBERNETES_MODES } from './config/schema.js';
+import { hasPlaceholder } from './config/vars.js';
 
 // [field, path in the entry, type]; types: string, number, enum (values), boolean (default), secret
 export const SPECS = {
@@ -26,12 +28,11 @@ export const SPECS = {
   'kubernetes.yaml': {
     named: false,
     fields: [
-      ['mode', ['mode'], 'enum', ['disabled', 'cluster', 'default']], ['kubeconfig', ['kubeconfig'], 'string'], ['context', ['context'], 'string'],
+      ['mode', ['mode'], 'enum', KUBERNETES_MODES], ['kubeconfig', ['kubeconfig'], 'string'], ['context', ['context'], 'string'],
       ['ingress', ['ingress'], 'tristate'], ['traefik', ['traefik'], 'tristate'], ['gateway', ['gateway'], 'tristate'],
     ],
   },
 };
-const PLACEHOLDER = /\{\{\s*(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Za-z0-9_]+\s*\}\}/;
 const keyName = (pair) => String(YAML.isScalar(pair.key) ? pair.key.value : pair.key);
 
 function spec(file) {
@@ -55,7 +56,7 @@ function fieldsOf(s, o) {
     const v = getIn(o, at);
     if (type === 'boolean') out[name] = typeof v === 'boolean' ? v : def;
     else if (type === 'tristate') out[name] = typeof v === 'boolean' ? String(v) : '';
-    else if (type === 'secret') out[name] = v === undefined || v === null || v === '' ? '' : PLACEHOLDER.test(String(v)) ? String(v) : tokenFor(v);
+    else if (type === 'secret') out[name] = v === undefined || v === null || v === '' ? '' : hasPlaceholder(String(v)) ? String(v) : tokenFor(v);
     else if (type === 'enum') out[name] = v === undefined || v === null ? s.fields.find((f) => f[0] === name)[3][0] : String(v);
     else out[name] = v === undefined || v === null ? '' : String(v);
   }
@@ -100,7 +101,7 @@ function applyFields(doc, map, s, fields, at, file) {
       if (type === 'enum' && !values.includes(text)) throw new ConfigEditError(`${at}.${name}: one of ${values.filter(Boolean).join(', ')}`, 400);
       if (type === 'number' && text !== '' && !Number.isInteger(Number(text))) throw new ConfigEditError(`${at}.${name}: a whole number`, 400);
       value = text === '' || (type === 'enum' && text === values[0] && name !== 'mode') ? undefined : type === 'number' ? Number(text) : text;
-      if (type === 'secret' && value !== undefined && String(current) !== value && !PLACEHOLDER.test(value)) {
+      if (type === 'secret' && value !== undefined && String(current) !== value && !hasPlaceholder(value)) {
         warnings.push({ file, path: `${at}.${name}`, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' });
       }
     }

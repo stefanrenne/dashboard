@@ -15,11 +15,11 @@
 import crypto from 'node:crypto';
 import YAML from 'yaml';
 import { ConfigEditError } from './edit.js';
+import { hasPlaceholder } from './vars.js';
 
 const KEY = crypto.randomBytes(32); // per process: a token means nothing outside this server
 export const TOKEN = /__SECRET_([0-9a-f]{10})__/g;
 const HAS_TOKEN = /__SECRET_[0-9a-f]{10}__/;
-const PLACEHOLDER = /\{\{\s*(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Za-z0-9_]+\s*\}\}/;
 
 export const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
 const keyOf = (pair) => (YAML.isScalar(pair.key) ? String(pair.key.value) : null);
@@ -38,7 +38,7 @@ function secretScalars(doc, where, schemaFor) {
   const all = (node, p) => {
     if (YAML.isScalar(node)) {
       const v = node.value;
-      if ((typeof v === 'string' && v !== '' && !PLACEHOLDER.test(v)) || typeof v === 'number') found.push({ node, path: p });
+      if ((typeof v === 'string' && v !== '' && !hasPlaceholder(v)) || typeof v === 'number') found.push({ node, path: p });
     } else if (YAML.isMap(node)) node.items.forEach((pair) => all(pair.value, join(p, keyOf(pair))));
     else if (YAML.isSeq(node)) node.items.forEach((item, i) => all(item, join(p, i)));
   };
