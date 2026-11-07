@@ -6,7 +6,7 @@
 
 import YAML from 'yaml';
 import { openYaml } from './yaml.js';
-import { GROUP_STYLES } from '../config/schema.js';
+import { GROUP_STYLES, MAX_COLUMNS_IN_GROUP } from '../config/schema.js';
 
 const FILE = 'settings.yaml';
 const TRI = ['', 'true', 'false'];
@@ -77,7 +77,7 @@ function checkGroup(g, at, nested) {
   if (!isMap(g) || typeof g.name !== 'string' || !g.name) return `${at}: expected a group with a name`;
   if (!['', ...GROUP_STYLES].includes(g.style ?? '')) return `${at}.style: row, column or empty`;
   const cols = String(g.columns ?? '').trim();
-  if (cols !== '' && !(Number.isInteger(Number(cols)) && Number(cols) >= 1 && Number(cols) <= 12)) return `${at}.columns: a whole number from 1 to 12, or empty`;
+  if (cols !== '' && !(Number.isInteger(Number(cols)) && Number(cols) >= 1 && Number(cols) <= MAX_COLUMNS_IN_GROUP)) return `${at}.columns: a whole number from 1 to ${MAX_COLUMNS_IN_GROUP}, or empty`;
   if (typeof (g.header ?? true) !== 'boolean') return `${at}.header: true or false`;
   for (const k of TRISTATES) if (!TRI.includes(g[k] ?? '')) return `${at}.${k}: empty, true or false`;
   for (const k of nested ? ['icon'] : ['icon', 'tab']) if (typeof (g[k] ?? '') !== 'string' || (g[k] ?? '').length > 200) return `${at}.${k}: text of at most 200 characters`;

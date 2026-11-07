@@ -35,6 +35,8 @@ export const HIGHLIGHT_LEVELS = ['good', 'warn', 'danger'];
 export const BLUR_PX = { none: 0, xs: 4, sm: 8, '': 8, md: 12, lg: 16, xl: 24, '2xl': 40, '3xl': 64 };
 export const BLURS = Object.keys(BLUR_PX).filter(Boolean);
 export const MAX_GROUP_COLUMNS = 8;
+// a group's own `columns:` in settings.yaml layout
+export const MAX_COLUMNS_IN_GROUP = 12;
 
 export const DEFAULTS = {
   title: 'Homelab',
@@ -76,14 +78,13 @@ export const MIN_PASSWORD = 8;
 // scrypt:N:r:p:salt:hash, as src/hash-password.mjs prints (no $, which Docker Compose would read)
 export const SCRYPT_HASH = /^scrypt:(\d+):(\d+):(\d+):([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)$/;
 
-/** Everything above that the settings page offers, for /api/settings. */
+/**
+ * What the settings page takes from here besides settings.yaml's fields (form.js formForPage):
+ * the choices of the service and group forms, and the limits it shows. For /api/settings.
+ */
 export function schemaForPage() {
   return {
-    languages: LANGUAGES, themes: THEMES, colors: COLORS, headerStyles: HEADER_STYLES, cardStyles: CARD_STYLES,
-    blockStyles: BLOCK_STYLES, fonts: FONTS, iconStyles: ICON_STYLES, bookmarkStyles: BOOKMARK_STYLES,
-    statusStyles: STATUS_STYLES, targets: TARGETS, serviceTargets: SERVICE_TARGETS, confirm: CONFIRM_VALUES,
-    proxmoxTypes: PROXMOX_TYPES, kubernetesModes: KUBERNETES_MODES, searchProviders: SEARCH_PROVIDERS,
-    buttonPositions: BUTTON_POSITIONS, blurs: BLURS, maxGroupColumns: MAX_GROUP_COLUMNS, minPassword: MIN_PASSWORD,
-    homepageFiles: HOMEPAGE_FILES, groupStyles: GROUP_STYLES,
+    statusStyles: STATUS_STYLES, serviceTargets: SERVICE_TARGETS, confirm: CONFIRM_VALUES, proxmoxTypes: PROXMOX_TYPES,
+    groupStyles: GROUP_STYLES, maxColumnsInGroup: MAX_COLUMNS_IN_GROUP, minPassword: MIN_PASSWORD, homepageFiles: HOMEPAGE_FILES,
   };
 }

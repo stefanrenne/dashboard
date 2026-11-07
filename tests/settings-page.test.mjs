@@ -7,6 +7,7 @@ import { JSDOM } from 'jsdom';
 import { checkLanguages, withCommon } from './helpers.mjs';
 import { SPECS } from '../src/settings/servers.js';
 import { schemaForPage } from '../src/config/schema.js';
+import { formForPage } from '../src/settings/form.js';
 
 const HTML = withCommon(fs.readFileSync(path.resolve('public/settings.html'), 'utf8')).replace('<script src="settings.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/settings.js'), 'utf8');
@@ -50,7 +51,7 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
 // the form of a server file as the server sends it
 const serverForm = (file) => SPECS[file].fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), values: VALUES, other: ['layout', 'plugins'], noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), form: formForPage(), values: VALUES, other: ['layout', 'plugins'], noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });

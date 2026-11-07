@@ -17,7 +17,7 @@ import { widgetCatalog } from '../plugins/loader.js';
 import { homepageFiles, homepageDryRun, keepOwnSecurity } from '../homepage.js';
 import { resolveIcon } from '../icons.js';
 import { scrub } from '../util.js';
-import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './form.js';
+import { readSettings, checkSettings, writeSettings, writeAdminPassword, formForPage } from './form.js';
 import { readLayout, checkLayout, writeLayout } from './layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './plugins.js';
 import { readServices, writeServices } from './services.js';
@@ -57,7 +57,7 @@ export function settingsRoutes(app) {
     const rp = rpContext(req);
     const r = state.pluginResult;
     return {
-      ok: true, schema: schemaForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
+      ok: true, schema: schemaForPage(), form: formForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
       plugins: { ...readPlugins(configDir, app.defaultPlugins), errors: r.errors ?? [], warnings: r.warnings ?? [], packages: r.packages ?? [] },
       noPassword: !gate.password,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] },

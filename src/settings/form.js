@@ -72,6 +72,16 @@ export const FIELDS = {
   discoveryInterval: { type: 'duration', at: ['discovery', 'interval'], default: DEFAULTS.discoveryInterval },
   logpath: { type: 'string', default: '' },
 };
+/** FIELDS as the page builds its form from them: { type, values, min, max, keys } by name. */
+export function formForPage() {
+  return Object.fromEntries(Object.entries(FIELDS).map(([name, d]) => [name, {
+    type: d.type,
+    ...(d.type === 'tristate' ? { values: ['', 'true', 'false'] } : d.values ? { values: d.values } : {}),
+    ...(d.min !== undefined ? { min: d.min } : {}), ...(d.max !== undefined ? { max: d.max } : {}),
+    ...(d.keys ? { keys: d.keys } : {}),
+  }]));
+}
+
 const HOST = /^(\*|[a-z0-9.-]+(:\d{1,5})?|\[[0-9a-f:]+\](:\d{1,5})?)$/;
 const FILE = 'settings.yaml';
 const pathOf = (key) => FIELDS[key].at ?? [key];

@@ -138,12 +138,30 @@ function text(key, attrs = {}) {
   return el('input', { type: 'text', id: key, value: state.values[key], oninput: (e) => { state.values[key] = e.target.value; }, ...attrs });
 }
 
-function number(key, min, max) {
+// the text of a choice, where a value is not its own name
+const VALUE_TEXT = {
+  auto: 'themeAuto', dark: 'themeDark', light: 'themeLight',
+  boxed: 'headerBoxed', clean: 'headerClean', underlined: 'headerUnderlined', boxedWidgets: 'headerBoxedWidgets',
+  _blank: 'targetBlank', _self: 'targetSelf', _top: 'targetTop', 'hidden-iframe': 'targetHidden',
+  dot: 'statusDot', basic: 'statusBasic', hairline: 'cardHairline', refined: 'blockRefined',
+  plexData: 'fontPlexData', plex: 'fontPlex', gradient: 'iconGradient', theme: 'iconTheme', icons: 'bookmarksIcons',
+  'top-left': 'posTopLeft', 'top-right': 'posTopRight', 'bottom-left': 'posBottomLeft', 'bottom-right': 'posBottomRight',
+  password: 'confirmPassword', always: 'confirmAlways', none: 'confirmNone', true: 'on', false: 'off',
+  row: 'styleRow', column: 'styleColumn',
+};
+/** A select's entries for `values` (the server's list); `empty` is the text of '' (the default). */
+const options = (values, empty) => values.map((v) => [v, v === '' ? empty : VALUE_TEXT[v] ? t(VALUE_TEXT[v]) : v]);
+/** The entries of a settings.yaml field (FIELDS on the server). */
+const choices = (key, empty) => options(state.data.form[key].values, empty);
+
+function number(key) {
+  const { min, max } = state.data.form[key];
   return el('input', { type: 'number', id: key, min: String(min), max: String(max), step: '1', inputmode: 'numeric', value: state.values[key], oninput: (e) => { state.values[key] = e.target.value; } });
 }
-const blurs = () => [['', t('blurOff')], ...state.data.schema.blurs.map((b) => [b, b])];
 
-function listField(key, legend, help, columns) {
+/** A list of maps (FIELDS `keys`), a row per entry; a column's text is col<Key>. */
+function listField(key, legend, help) {
+  const columns = state.data.form[key].keys.map((k) => [k, `col${k[0].toUpperCase()}${k.slice(1)}`]);
   const rows = state.values[key];
   const blank = () => Object.fromEntries(columns.map(([k]) => [k, '']));
   return el('fieldset', { class: 'ask' },
@@ -179,35 +197,35 @@ function generalSection() {
     el('section', { class: 'panel' },
       el('h2', { text: t('secAppearance') }),
       el('div', { class: 'grid' },
-        field('title', t('titleLabel'), text('title', { maxlength: '100' })),
+        field('title', t('titleLabel'), text('title', { maxlength: String(state.data.form.title.max) })),
         field('language', t('languageLabel'), select('language', Object.entries(LANGUAGE_NAMES))),
-        field('theme', t('themeLabel'), select('theme', [['auto', t('themeAuto')], ['dark', t('themeDark')], ['light', t('themeLight')]]))),
+        field('theme', t('themeLabel'), select('theme', choices('theme')))),
       el('div', {}, el('span', { class: 'muted', text: t('colorLabel') }), swatches),
       el('div', { class: 'grid' },
-        field('headerStyle', t('headerStyle'), select('headerStyle', [['boxed', t('headerBoxed')], ['clean', t('headerClean')], ['underlined', t('headerUnderlined')], ['boxedWidgets', t('headerBoxedWidgets')]])),
-        field('target', t('target'), select('target', [['_blank', t('targetBlank')], ['_self', t('targetSelf')], ['_top', t('targetTop')]])),
-        field('statusStyle', t('statusStyle'), select('statusStyle', [['', t('statusText')], ['dot', t('statusDot')], ['basic', t('statusBasic')]])),
-        field('cardStyle', t('cardStyle'), select('cardStyle', [['', t('cardShadow')], ['hairline', t('cardHairline')]])),
-        field('blockStyle', t('blockStyle'), select('blockStyle', [['', t('blockNormal')], ['refined', t('blockRefined')]])),
-        field('font', t('font'), select('font', [['', 'Manrope'], ['plexData', t('fontPlexData')], ['plex', t('fontPlex')]])),
-        field('iconStyle', t('iconStyle'), select('iconStyle', [['gradient', t('iconGradient')], ['theme', t('iconTheme')]])),
-        field('bookmarksStyle', t('bookmarksStyle'), select('bookmarksStyle', [['', t('bookmarksNames')], ['icons', t('bookmarksIcons')]]))),
+        field('headerStyle', t('headerStyle'), select('headerStyle', choices('headerStyle'))),
+        field('target', t('target'), select('target', choices('target'))),
+        field('statusStyle', t('statusStyle'), select('statusStyle', choices('statusStyle', t('statusText')))),
+        field('cardStyle', t('cardStyle'), select('cardStyle', choices('cardStyle', t('cardShadow')))),
+        field('blockStyle', t('blockStyle'), select('blockStyle', choices('blockStyle', t('blockNormal')))),
+        field('font', t('font'), select('font', choices('font', 'Manrope'))),
+        field('iconStyle', t('iconStyle'), select('iconStyle', choices('iconStyle'))),
+        field('bookmarksStyle', t('bookmarksStyle'), select('bookmarksStyle', choices('bookmarksStyle', t('bookmarksNames'))))),
       check('showTitle', t('showTitle'))),
     el('section', { class: 'panel' },
       el('h2', { text: t('secBackground') }),
       el('div', { class: 'grid' },
         field('backgroundImage', t('backgroundImage'), text('backgroundImage', { spellcheck: 'false', placeholder: 'https://example.com/wallpaper.jpg', onchange: () => render() }), t('backgroundImageHelp')),
-        field('cardBlur', t('cardBlur'), select('cardBlur', blurs()))),
+        field('cardBlur', t('cardBlur'), select('cardBlur', choices('cardBlur', t('blurOff'))))),
       v.backgroundImage ? el('div', { class: 'grid' },
-        field('backgroundBlur', t('backgroundBlur'), select('backgroundBlur', blurs())),
-        field('backgroundSaturate', t('backgroundSaturate'), number('backgroundSaturate', 0, 200), t('percentHelp')),
-        field('backgroundBrightness', t('backgroundBrightness'), number('backgroundBrightness', 0, 200), t('percentHelp')),
-        field('backgroundOpacity', t('backgroundOpacity'), number('backgroundOpacity', 0, 100), t('percentHelp'))) : null),
+        field('backgroundBlur', t('backgroundBlur'), select('backgroundBlur', choices('backgroundBlur', t('blurOff')))),
+        field('backgroundSaturate', t('backgroundSaturate'), number('backgroundSaturate'), t('percentHelp')),
+        field('backgroundBrightness', t('backgroundBrightness'), number('backgroundBrightness'), t('percentHelp')),
+        field('backgroundOpacity', t('backgroundOpacity'), number('backgroundOpacity'), t('percentHelp'))) : null),
     el('section', { class: 'panel' },
       el('h2', { text: t('secLayout') }),
       el('div', { class: 'grid' },
-        field('maxGroupColumns', t('maxGroupColumns'), number('maxGroupColumns', 1, 8), t('columnsHelp')),
-        field('maxBookmarkGroupColumns', t('maxBookmarkGroupColumns'), number('maxBookmarkGroupColumns', 1, 8), t('columnsHelp'))),
+        field('maxGroupColumns', t('maxGroupColumns'), number('maxGroupColumns'), t('columnsHelp')),
+        field('maxBookmarkGroupColumns', t('maxBookmarkGroupColumns'), number('maxBookmarkGroupColumns'), t('columnsHelp'))),
       check('fullWidth', t('fullWidth')),
       check('useEqualHeights', t('useEqualHeights')),
       check('disableCollapse', t('disableCollapse')),
@@ -217,10 +235,10 @@ function generalSection() {
       el('h2', { text: t('secQuicklaunch') }),
       el('p', { class: 'muted', text: t('quicklaunchHelp') }),
       el('div', { class: 'grid' },
-        field('qlProvider', t('qlProvider'), select('qlProvider', [['', t('asSearchWidget')], ...state.data.schema.searchProviders.map((p) => [p, p])])),
-        field('qlTarget', t('qlTarget'), select('qlTarget', [['', t('asServiceLinks')], ['_blank', t('targetBlank')], ['_self', t('targetSelf')], ['_top', t('targetTop')]])),
-        field('qlShowSearchSuggestions', t('qlShowSearchSuggestions'), select('qlShowSearchSuggestions', [['', t('asSearchWidget')], ['true', t('on')], ['false', t('off')]])),
-        field('qlMobileButtonPosition', t('qlMobileButtonPosition'), select('qlMobileButtonPosition', [['', t('none')], ['top-left', t('posTopLeft')], ['top-right', t('posTopRight')], ['bottom-left', t('posBottomLeft')], ['bottom-right', t('posBottomRight')]]))),
+        field('qlProvider', t('qlProvider'), select('qlProvider', choices('qlProvider', t('asSearchWidget')))),
+        field('qlTarget', t('qlTarget'), select('qlTarget', choices('qlTarget', t('asServiceLinks')))),
+        field('qlShowSearchSuggestions', t('qlShowSearchSuggestions'), select('qlShowSearchSuggestions', choices('qlShowSearchSuggestions', t('asSearchWidget')))),
+        field('qlMobileButtonPosition', t('qlMobileButtonPosition'), select('qlMobileButtonPosition', choices('qlMobileButtonPosition', t('none'))))),
       ql || v.qlUrl || v.qlSuggestionUrl ? el('div', { class: 'grid' },
         field('qlUrl', t('qlUrl'), text('qlUrl', { spellcheck: 'false', placeholder: 'https://search.lan/?q=' }), t('qlUrlHelp')),
         field('qlSuggestionUrl', t('qlSuggestionUrl'), text('qlSuggestionUrl', { spellcheck: 'false' }), t('qlSuggestionUrlHelp'))) : null,
@@ -230,13 +248,13 @@ function generalSection() {
     el('section', { class: 'panel' },
       el('h2', { text: t('secPage') }),
       el('div', { class: 'grid' },
-        field('description', t('description'), text('description', { maxlength: '300' }), t('descriptionHelp')),
+        field('description', t('description'), text('description', { maxlength: String(state.data.form.description.max) }), t('descriptionHelp')),
         field('favicon', t('favicon'), iconInput('favicon', v.favicon, (x) => { v.favicon = x; }, 'proxmox.svg'), t('faviconHelp')),
         field('startUrl', t('startUrl'), text('startUrl', { spellcheck: 'false', placeholder: '/' }), t('startUrlHelp')),
         field('base', t('base'), text('base', { spellcheck: 'false', type: 'url' }), t('baseHelp')),
         field('instanceName', t('instanceName'), text('instanceName', { spellcheck: 'false' }), t('instanceNameHelp'))),
-      listField('pwaIcons', t('pwaIcons'), t('pwaIconsHelp'), [['src', 'colSrc'], ['sizes', 'colSizes'], ['type', 'colType'], ['purpose', 'colPurpose']]),
-      listField('pwaShortcuts', t('pwaShortcuts'), t('pwaShortcutsHelp'), [['name', 'colName'], ['url', 'colUrl'], ['description', 'colDescription']])),
+      listField('pwaIcons', t('pwaIcons'), t('pwaIconsHelp')),
+      listField('pwaShortcuts', t('pwaShortcuts'), t('pwaShortcutsHelp'))),
     el('section', { class: 'panel' },
       el('h2', { text: t('secOther') }),
       el('div', { class: 'grid' },
@@ -325,8 +343,8 @@ function groupFields(g, id, { nested = false, kind = 'services' } = {}) {
   const tri = (key, label) => sel(key, label, [['', t('asPage')], ['true', t('on')], ['false', t('off')]]);
   return [
     el('div', { class: 'grid' },
-      kind === 'services' ? sel('style', t('groupStyle'), [['', t('styleDefault')], ['row', t('styleRow')], ['column', t('styleColumn')]]) : null,
-      kind === 'services' ? field(`${id}-columns`, t('groupColumns'), el('input', { type: 'number', id: `${id}-columns`, min: '1', max: '12', step: '1', inputmode: 'numeric', value: g.columns, oninput: (e) => { g.columns = e.target.value; } }), t('groupColumnsHelp')) : null,
+      kind === 'services' ? sel('style', t('groupStyle'), options(['', ...state.data.schema.groupStyles], t('styleDefault'))) : null,
+      kind === 'services' ? field(`${id}-columns`, t('groupColumns'), el('input', { type: 'number', id: `${id}-columns`, min: '1', max: String(state.data.schema.maxColumnsInGroup), step: '1', inputmode: 'numeric', value: g.columns, oninput: (e) => { g.columns = e.target.value; } }), t('groupColumnsHelp')) : null,
       nested ? null : txt('tab', t('groupTab'), t('groupTabHelp')),
       field(`${id}-icon`, t('groupIcon'), iconInput(`${id}-icon`, g.icon, (v) => { g.icon = v; }, 'mdi-server')),
       tri('initiallyCollapsed', t('groupCollapsed')),
@@ -527,6 +545,7 @@ function allGroups(items, prefix = '') {
 
 function serviceCard(s, list, i) {
   const id = kid(s);
+  const { schema } = state.data;
   const f = s.fields;
   const txt = (key, label, help = '', attrs = {}) => field(`s${id}-${key}`, label, el('input', { type: 'text', id: `s${id}-${key}`, value: f[key], spellcheck: 'false', autocapitalize: 'off', oninput: (e) => { f[key] = e.target.value; }, ...attrs }), help);
   const sel = (key, label, entries) => field(`s${id}-${key}`, label, el('select', { id: `s${id}-${key}`, onchange: (e) => { f[key] = e.target.value; } }, ...entries.map(([v, text]) => el('option', { value: v, selected: v === f[key], text }))));
@@ -550,15 +569,15 @@ function serviceCard(s, list, i) {
         el('details', {},
           el('summary', { text: t('svcMore') }),
           el('div', { class: 'grid' },
-            sel('target', t('fTarget'), [['', t('asPage')], ['_blank', t('targetBlank')], ['_self', t('targetSelf')], ['_top', t('targetTop')], ['hidden-iframe', t('targetHidden')]]),
-            sel('statusStyle', t('statusStyle'), [['', t('asPage')], ['dot', t('statusDot')], ['basic', t('statusBasic')]]),
-            sel('showStats', t('fShowStats'), [['', t('asPage')], ['true', t('on')], ['false', t('off')]]),
-            sel('confirm', t('fConfirm'), [['', t('asPage')], ['password', t('confirmPassword')], ['always', t('confirmAlways')], ['none', t('confirmNone')]]),
+            sel('target', t('fTarget'), options(['', ...schema.serviceTargets], t('asPage'))),
+            sel('statusStyle', t('statusStyle'), options(['', ...schema.statusStyles], t('asPage'))),
+            sel('showStats', t('fShowStats'), options(['', 'true', 'false'], t('asPage'))),
+            sel('confirm', t('fConfirm'), options(['', ...schema.confirm], t('asPage'))),
             txt('weight', t('fWeight'), t('fWeightHelp'), { inputmode: 'numeric' }),
             txt('filter', t('fFilter'), t('fFilterHelp')),
             txt('proxmoxNode', t('fProxmoxNode')),
             txt('proxmoxVMID', t('fProxmoxVMID'), '', { inputmode: 'numeric' }),
-            sel('proxmoxType', t('fProxmoxType'), [['', t('styleDefault')], ['qemu', 'qemu'], ['lxc', 'lxc']]),
+            sel('proxmoxType', t('fProxmoxType'), options(['', ...schema.proxmoxTypes], t('styleDefault'))),
             txt('app', t('fApp')),
             txt('namespace', t('fNamespace')),
             txt('podSelector', t('fPodSelector'))),
