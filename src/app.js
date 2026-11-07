@@ -394,16 +394,10 @@ export async function createApp({
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
-    const address = clientAddress(req);
-    const retryAfter = gate.limiter.waiting(address);
-    if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong tries' });
-    const out = passkeys.verify(req, body);
-    if (!out.ok) {
-      const wait = gate.limiter.failed(address);
-      log.warn(`a passkey refused from ${address}: ${out.error}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
-      return send(res, 401, { ok: false, error: out.error });
-    }
-    gate.limiter.succeeded(address);
+    let out;
+    const tried = await gate.limiter.attempt(req, () => (out = passkeys.verify(req, body)).ok, { log, wrong: 'a passkey refused' });
+    if (tried.retryAfter) return send(res, 429, { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong tries' });
+    if (!tried.ok) return send(res, 401, { ok: false, error: out.error });
     return send(res, 200, { ok: true, token: out.token });
   }
 
@@ -434,16 +428,10 @@ export async function createApp({
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
-    const address = clientAddress(req);
-    const retryAfter = gate.limiter.waiting(address);
-    if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
-    const viaPasskey = typeof body?.passkeyToken === 'string' && passkeys.consume(body.passkeyToken);
-    if (!viaPasskey && !(await checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''))) {
-      const wait = gate.limiter.failed(address);
-      log.warn(`wrong admin password from ${address} at the login${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
-      return send(res, 401, { ok: false, wrongPassword: true, error: 'wrong password' });
-    }
-    gate.limiter.succeeded(address);
+    const tried = await gate.limiter.attempt(req, async () => (typeof body?.passkeyToken === 'string' && passkeys.consume(body.passkeyToken))
+      || checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''), { log, wrong: 'wrong admin password at the login' });
+    if (tried.retryAfter) return send(res, 429, { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong passwords' });
+    if (!tried.ok) return send(res, 401, { ok: false, wrongPassword: true, error: 'wrong password' });
     return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) });
   }
 

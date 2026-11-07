@@ -124,7 +124,7 @@ export function onboardingRoutes(app) {
       }
     }
     if (method === 'POST' && route === 'code') {
-      const out = onboarding.verify(req, body?.code);
+      const out = await onboarding.verify(req, body?.code);
       return out.ok ? send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...out.headers }) : send(res, out.status, out.body);
     }
     if (!onboarding.allowed(req)) return send(res, 401, { ok: false, needsCode: true, error: 'the code from the log is needed' });

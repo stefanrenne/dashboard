@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { FailureLimiter } from '../actionauth.js';
-import { isLocal, cookie, cookieValue, randomToken, clientAddress } from '../http.js';
+import { isLocal, cookie, cookieValue, randomToken } from '../http.js';
 import { LANGUAGES, COLORS } from '../config/schema.js';
 import { writeAtomic } from '../util.js';
 
@@ -280,18 +280,12 @@ export class Onboarding {
   }
 
   /** Checks a code; { ok, headers } with a session cookie, or { ok: false, status, body }. */
-  verify(req, given) {
-    const address = clientAddress(req);
-    const retryAfter = this.limiter.waiting(address);
-    if (retryAfter) return { ok: false, status: 429, body: { ok: false, retryAfter, error: 'too many wrong codes' } };
+  async verify(req, given) {
     const want = Buffer.from(String(this.code ?? ''));
     const got = Buffer.from(String(given ?? '').trim().toUpperCase());
-    if (!this.code || want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
-      const wait = this.limiter.failed(address);
-      this.log.warn(`wrong setup code from ${address}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
-      return { ok: false, status: 401, body: { ok: false, wrongCode: true, error: 'wrong code' } };
-    }
-    this.limiter.succeeded(address);
+    const tried = await this.limiter.attempt(req, () => Boolean(this.code) && want.length === got.length && crypto.timingSafeEqual(want, got), { log: this.log, wrong: 'wrong setup code' });
+    if (tried.retryAfter) return { ok: false, status: 429, body: { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong codes' } };
+    if (!tried.ok) return { ok: false, status: 401, body: { ok: false, wrongCode: true, error: 'wrong code' } };
     const token = randomToken();
     this.sessions.add(token);
     return { ok: true, headers: { 'set-cookie': cookie(req, COOKIE, token) } };

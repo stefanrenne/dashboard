@@ -75,6 +75,24 @@ export class FailureLimiter {
   succeeded(address) {
     this.failures.delete(address);
   }
+
+  /**
+   * One guarded try from the request's address: { ok: false, retryAfter } (seconds) while it must
+   * wait; else `check()` decides, and its outcome is counted: { ok: true }, or { ok: false } with
+   * "<wrong> from <address>" logged (and the wait it starts).
+   */
+  async attempt(req, check, { log, wrong }) {
+    const address = clientAddress(req);
+    const retryAfter = this.waiting(address);
+    if (retryAfter) return { ok: false, retryAfter };
+    if (await check()) {
+      this.succeeded(address);
+      return { ok: true };
+    }
+    const wait = this.failed(address);
+    log.warn(`${wrong} from ${address}${wait ? `; next try in ${Math.round(wait / 1000)} s` : ''}`);
+    return { ok: false };
+  }
 }
 
 

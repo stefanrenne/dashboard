@@ -140,7 +140,7 @@ test('readJson: JSON only, at most the limit, broken JSON is a 400', async () =>
   await assert.rejects(readJson(body('{broken')), (e) => e.status === 400);
 });
 
-test('Onboarding: active with the marker, the code once per start, sessions, wrong codes slowed down, finish writes all or nothing', () => {
+test('Onboarding: active with the marker, the code once per start, sessions, wrong codes slowed down, finish writes all or nothing', async () => {
   const dir = tmpDir('dash-onb-');
   const logged = [];
   const o = new Onboarding({ configDir: dir, log: { ...silentLog, info: (m) => logged.push(m), warn: (m) => logged.push(m) } });
@@ -153,15 +153,15 @@ test('Onboarding: active with the marker, the code once per start, sessions, wro
   const outside = req({}, '203.0.113.9');
   assert.equal(o.allowed(outside), false);
   assert.equal(o.allowed(req()), true, 'local');
-  assert.equal(o.verify(outside, 'WRONG-CODE').status, 401);
-  const ok = o.verify(outside, o.code.toLowerCase());
+  assert.equal((await o.verify(outside, 'WRONG-CODE')).status, 401);
+  const ok = await o.verify(outside, o.code.toLowerCase());
   assert.equal(ok.ok, true, 'case does not matter');
   const cookie = ok.headers['set-cookie'].split(';')[0];
   assert.match(ok.headers['set-cookie'], /^dash_setup=[\w-]+; Path=\/; HttpOnly; SameSite=Strict$/);
   assert.equal(o.allowed(req({ cookie }, '203.0.113.9')), true);
-  for (let i = 0; i < 4; i++) o.verify(req({}, '203.0.113.50'), 'nope');
-  assert.equal(o.verify(req({}, '203.0.113.50'), 'nope').status, 401);
-  assert.equal(o.verify(req({}, '203.0.113.50'), o.code).status, 429, 'waiting');
+  for (let i = 0; i < 4; i++) await o.verify(req({}, '203.0.113.50'), 'nope');
+  assert.equal((await o.verify(req({}, '203.0.113.50'), 'nope')).status, 401);
+  assert.equal((await o.verify(req({}, '203.0.113.50'), o.code)).status, 429, 'waiting');
   // finish: nothing is written when one file exists already
   fs.writeFileSync(path.join(dir, 'services.yaml'), '[]');
   assert.deepEqual(o.finish({ 'settings.yaml': 'title: A\n', 'services.yaml': '[]\n' }), { ok: false, exists: ['services.yaml'] });

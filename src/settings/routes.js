@@ -6,7 +6,7 @@
 // save that changed a file.
 
 import path from 'node:path';
-import { send, sendFile, readJson, isLocal, clientAddress, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
+import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
 import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, checkConfigText, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
 import { parseConfigYaml } from '../config/include.js';
@@ -87,15 +87,9 @@ export function settingsRoutes(app) {
       if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) throw new ConfigEditError(`at least ${MIN_PASSWORD} characters`, 400);
       if (gate.password) {
         // the current password, every time: also when logged in or unlocked
-        const address = clientAddress(req);
-        const retryAfter = gate.limiter.waiting(address);
-        if (retryAfter) return { status: 429, body: { ok: false, retryAfter, error: 'too many wrong passwords' } };
-        if (!(await checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''))) {
-          gate.limiter.failed(address);
-          log.warn(`wrong current admin password from ${address} on the settings page`);
-          return { status: 401, body: { ok: false, wrongPassword: true, error: 'the current password is not right' } };
-        }
-        gate.limiter.succeeded(address);
+        const tried = await gate.limiter.attempt(req, () => checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''), { log, wrong: 'wrong current admin password on the settings page' });
+        if (tried.retryAfter) return { status: 429, body: { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong passwords' } };
+        if (!tried.ok) return { status: 401, body: { ok: false, wrongPassword: true, error: 'the current password is not right' } };
       }
       writeAdminPassword(configDir, hashPassword(body.next));
       log.info('settings: a new admin password; every login session ends');
