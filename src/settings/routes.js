@@ -244,8 +244,6 @@ export function settingsRoutes(app) {
   return async function handle(req, res, { method, path: p, query, loggedIn }) {
     if (method === 'GET' && p === '/settings') return sendFile(res, path.join(app.publicDir, 'settings.html'));
     if (method === 'GET' && p === '/settings.js') return sendFile(res, path.join(app.publicDir, 'settings.js'));
-    // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
     const route = p.slice('/api/settings'.length);
     const noPassword = !gate.password;
     const allowed = noPassword

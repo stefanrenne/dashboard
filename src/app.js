@@ -22,7 +22,7 @@ import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys } from './passkeys.js';
 import { Onboarding } from './onboarding/wizard.js';
 import { CUSTOM_FILES } from './config/schema.js';
-import { send, sendFile, readJson, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
+import { send, sendFile, readJson, fromThisPage, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
 import { settingsRoutes } from './settings/routes.js';
 import { onboardingRoutes } from './onboarding/routes.js';
 
@@ -255,6 +255,7 @@ export async function createApp({
     }
     // HEAD is answered like GET (status checks of this dashboard use it); Node drops the body.
     const method = req.method === 'HEAD' ? 'GET' : req.method;
+    if (method !== 'GET' && !fromThisPage(req)) return send(res, 403, { error: 'missing X-Requested-With' });
     try {
       // a first load that failed (see the log) leaves no config: say so instead of failing each request
       if (!state.config && p !== '/api/health') {
@@ -316,16 +317,12 @@ export async function createApp({
         return;
       }
       if (method === 'POST' && p === '/api/plugins/sync') {
-        // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const allowed = await gate.check(req, 'password', { what: 'the widget sync', loggedIn });
         if (!allowed.ok) return send(res, allowed.status, allowed.body);
         await reload({ update: url.searchParams.get('update') === '1' });
         return send(res, 200, { errors: state.pluginResult.errors, warnings: state.pluginResult.warnings }, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
       }
       if (method === 'POST' && /^\/api\/widgets\/[^/]+\/action$/.test(p)) {
-        // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const id = p.split('/')[3];
         const allowed = await gate.check(req, runtime.instances.get(id)?.confirm ?? null, { what: `widget ${runtime.instances.get(id)?.type ?? id}`, loggedIn });
         if (!allowed.ok) return send(res, allowed.status, allowed.body);
@@ -333,8 +330,6 @@ export async function createApp({
         return send(res, out.busy ? 409 : out.missing ? 404 : 200, out, 'application/json', { ...SECURITY_HEADERS, ...allowed.headers });
       }
       if (method === 'POST' && p.startsWith('/api/run/')) {
-        // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         const action = state.actions.get(p.slice('/api/run/'.length));
         if (!action) return send(res, 404, { error: 'no such action' });
         const allowed = await gate.check(req, action.confirm ?? null, { what: `the webhook of ${action.name}`, loggedIn });
@@ -344,7 +339,6 @@ export async function createApp({
       // whether this browser is unlocked (the page's lock icon), and locking it again
       if (method === 'GET' && p === '/api/lock') return send(res, 200, { protected: gate.protected, unlocked: loggedIn || gate.unlocked(req), loggedIn });
       if (method === 'POST' && p === '/api/lock') {
-        if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
         return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...gate.lock(req) });
       }
       if (method === 'GET' && p.startsWith('/widgets/')) {
@@ -381,7 +375,6 @@ export async function createApp({
     const usable = Boolean(gate.password) && !gate.password.broken;
     if (method === 'GET' && p === '/api/passkey') return send(res, 200, { available: usable && passkeys.available(req) });
     if (method !== 'POST') return send(res, 404, { error: 'not found' });
-    if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
     if (p === '/api/passkey/options') {
       const options = usable ? passkeys.loginOptions(req) : null;
       return send(res, 200, options ? { available: true, publicKey: options } : { available: false });
@@ -418,7 +411,6 @@ export async function createApp({
     if (method === 'GET' && p === '/api/login') {
       return send(res, 200, { login: loginOn, loggedIn, broken: Boolean(gate.password?.broken), language: s.language, theme: s.theme, color: s.color });
     }
-    if (req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
     if (method === 'POST' && p === '/api/logout') return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.end(req) });
     if (method !== 'POST' || p !== '/api/login') return send(res, 404, { error: 'not found' });
     if (!loginOn) return send(res, 404, { error: 'no login page' });

@@ -231,3 +231,10 @@ export function getJson({ url = null, socketPath = null, path: route = '/', head
     req.end();
   });
 }
+
+/**
+ * Whether a write (anything but GET) comes from the dashboard's own pages: they send
+ * X-Requested-With, and a custom header cannot be sent cross-site without a CORS preflight,
+ * which the dashboard never allows. Every route that writes relies on it (app.js checks it once).
+ */
+export const fromThisPage = (req) => req.headers['x-requested-with'] === 'dashboard';

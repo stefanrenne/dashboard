@@ -113,8 +113,6 @@ export function onboardingRoutes(app) {
     if (method === 'GET' && p === '/setup.js') return sendFile(res, path.join(app.publicDir, 'setup.js'));
     const route = p.slice('/api/onboarding/'.length);
     if (method === 'GET' && route === 'state') return send(res, 200, { active: true, allowed: onboarding.allowed(req), version: app.version });
-    // A custom header cannot be sent cross-site without a CORS preflight, which we never allow.
-    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
     let body = null;
     if (method === 'POST') {
       try {
