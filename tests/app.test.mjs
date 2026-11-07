@@ -1281,7 +1281,7 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
     assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
     const docker = await (await post('docker', { docker: [{ address: '127.0.0.1:1' }, { address: 'not valid!' }] })).json();
     assert.deepEqual([docker.servers.length, docker.servers[0].ok, docker.errors.length], [1, false, 1], 'an added server is checked, a bad address said');
-    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1' });
+    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1', isAddress: true, minPassword: 8 });
     assert.match((await (await post('test', { type: 'nope', options: {} })).json()).error, /unknown widget/);
     assert.match((await (await post('test', { type: 'radarr', options: {} })).json()).error, /url/, 'the options are checked first');
     const dry = await (await post('homepage', { files: { 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        widget: { type: plex, url: http://plex.lan, key: "{{HOMEPAGE_VAR_PLEX}}" }\n    - Odd:\n        widget: { type: oddity }\n' } })).json();

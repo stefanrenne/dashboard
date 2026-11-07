@@ -40,7 +40,7 @@ async function page({ allowed = true, answers = {} } = {}) {
           : p === 'widgets' ? { widgets: WIDGETS }
             : p === 'containers' ? { containers: CONTAINERS, problems: [] }
               : p === 'docker' ? (init) => ({ socketMounted: true, errors: [], servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 32 }, ...JSON.parse(init.body).docker.map((d) => ({ name: d.name ?? 'nas', target: `http://${d.address}`, ok: false, error: 'connect ECONNREFUSED', permission: false }))] })
-                : p === 'status' ? { host: '192.168.1.10' }
+                : p === 'status' ? { host: '192.168.1.10', isAddress: true, minPassword: 8 }
                 : answers[p] ?? { ok: true };
         return { json: async () => structuredClone(typeof body === 'function' ? body(init) : body) };
       };

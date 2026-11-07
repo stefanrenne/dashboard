@@ -404,12 +404,10 @@ function homepageSection() {
 }
 
 // ---------------------------------------------------------------- 4. security
-const isIpHost = (h) => /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || /^\[[0-9a-f:.]+\]$/.test(h) || h === 'localhost';
-const MIN_PASSWORD = 8;
-
-/** What the security step still misses: a password of at least 8 characters, typed twice the same. */
+/** What the security step still misses: a password long enough (the server's minimum), typed twice the same. */
 function securityProblem() {
-  if (state.security.password.length < MIN_PASSWORD) return t('passwordShort', { count: MIN_PASSWORD });
+  const min = state.status.minPassword;
+  if (state.security.password.length < min) return t('passwordShort', { count: min });
   if (state.security.password !== state.security.repeat) return t('passwordMismatch');
   return '';
 }
@@ -419,12 +417,16 @@ function renderSecurity() {
     api('status').then((s) => {
       state.status = s;
       // the name the wizard was opened by, when it is a name, as the first allowed host
-      if (!state.security.hostsTouched && !isIpHost(s.host)) state.security.hosts = s.host;
+      if (!state.security.hostsTouched && !s.isAddress) state.security.hosts = s.host;
       if (state.step === 3) render();
-    }).catch(() => {});
+    }).catch((err) => {
+      state.status = { error: err.message };
+      if (state.step === 3) render();
+    });
     return [el('h2', { text: t('stepSecurity'), tabindex: '-1' }), el('p', { class: 'muted', text: '…' })];
   }
   const s = state.status;
+  if (s.error) return [el('h2', { text: t('stepSecurity'), tabindex: '-1' }), el('p', { class: 'error', role: 'alert', text: s.error })];
   const sec = state.security;
   const problem = state.securityShown ? securityProblem() : '';
   const field = (id, value, oninput, attrs = {}) => el('input', { id, value, oninput: (e) => { oninput(e.target.value); }, ...attrs });
@@ -438,7 +440,7 @@ function renderSecurity() {
       el('strong', { text: t('secAdmin') }),
       el('p', { class: 'muted', text: t('secAdminText') }),
       el('div', { class: 'grid' },
-        el('label', { for: 'admin-password' }, t('passwordLabel'), field('admin-password', sec.password, (v) => { sec.password = v; }, { type: 'password', autocomplete: 'new-password', minlength: String(MIN_PASSWORD), required: true })),
+        el('label', { for: 'admin-password' }, t('passwordLabel'), field('admin-password', sec.password, (v) => { sec.password = v; }, { type: 'password', autocomplete: 'new-password', minlength: String(s.minPassword), required: true })),
         el('label', { for: 'admin-repeat' }, t('passwordRepeat'), field('admin-repeat', sec.repeat, (v) => { sec.repeat = v; }, { type: 'password', autocomplete: 'new-password', required: true }))),
       problem ? el('p', { class: 'error', role: 'alert', text: problem }) : null),
     el('div', { class: 'item' },
@@ -456,7 +458,8 @@ function renderSecurity() {
 }
 
 // ---------------------------------------------------------------- 5. done
-function payload(skip = state.skip) {
+function payload() {
+  const { skip } = state;
   const cards = skip ? [] : (state.cards ?? []).filter((c) => c.on && c.name.trim());
   return {
     settings: { ...state.settings, title: state.settings.title.trim() || 'Homelab' },
@@ -475,11 +478,11 @@ function payload(skip = state.skip) {
   };
 }
 
-async function finish(skip = false, status = null) {
+async function finish(status = null) {
   if (status) status.textContent = t('writing');
   let out;
   try {
-    out = await api('finish', payload(skip));
+    out = await api('finish', payload());
   } catch (err) {
     out = { ok: false, error: err.message };
   }
@@ -493,7 +496,7 @@ async function finish(skip = false, status = null) {
 }
 
 function renderDone() {
-  const p = payload(false);
+  const p = payload();
   const fromHomepage = Object.keys(p.homepage ?? {});
   const files = ['settings.yaml', 'services.yaml', 'widgets.yaml', 'bookmarks.yaml', 'docker.yaml', 'kubernetes.yaml'];
   const status = el('p', { role: 'status', class: 'muted' });
@@ -506,7 +509,7 @@ function renderDone() {
     status,
     el('div', { class: 'actions' },
       el('button', { type: 'button', text: t('back'), onclick: () => go(state.step - 1) }),
-      el('div', { class: 'right' }, el('button', { type: 'button', class: 'primary', text: t('write'), onclick: () => finish(false, status) }))),
+      el('div', { class: 'right' }, el('button', { type: 'button', class: 'primary', text: t('write'), onclick: () => finish(status) }))),
   ];
 }
 

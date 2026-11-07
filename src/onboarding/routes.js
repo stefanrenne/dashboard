@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { send, sendFile, readJson, hostName, SECURITY_HEADERS } from '../http.js';
+import { send, sendFile, readJson, hostName, hostIsAddress, SECURITY_HEADERS } from '../http.js';
 import { DEFAULTS, MIN_PASSWORD } from '../config/schema.js';
 import { hashPassword } from '../actionauth.js';
 import { checkDocker, dockerGet } from '../discovery/docker.js';
@@ -132,7 +132,8 @@ export function onboardingRoutes(app) {
       if (route === 'docker') return send(res, 200, { socketMounted: fs.existsSync(app.dockerSocket), servers: await checkDocker({ servers, get: dockerGet }), errors });
       return send(res, 200, await scanContainers({ servers, widgets: widgets(), host: hostName(req.headers.host), get: dockerGet }));
     }
-    if (method === 'GET' && route === 'status') return send(res, 200, { host: hostName(req.headers.host) });
+    // the name the wizard was opened by, and whether it is a name the dashboard would need to allow
+    if (method === 'GET' && route === 'status') return send(res, 200, { host: hostName(req.headers.host), isAddress: hostIsAddress(req.headers.host), minPassword: MIN_PASSWORD });
     if (method === 'POST' && route === 'test') return send(res, 200, await tryWidget({ registry: state.registry, log: app.log, timeoutMs: app.timeoutMs, configDir: path.resolve(app.configDir) }, body?.type, body?.options));
     if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files, { registry: state.registry, env: app.env }));
     if (method === 'POST' && route === 'finish') {

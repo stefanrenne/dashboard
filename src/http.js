@@ -171,6 +171,9 @@ export function hostName(header) {
   return host.startsWith('[') ? host.replace(/^(\[[^\]]*\]).*$/, '$1') : host.replace(/:\d*$/, '');
 }
 const isIp = (name) => /^\d{1,3}(\.\d{1,3}){3}$/.test(name) || /^\[[0-9a-f:.]+\]$/.test(name);
+/** Whether a Host header names this machine by an address (an IP address or loopback), not by a name. */
+export const hostIsAddress = (header) => LOOPBACK.includes(hostName(header)) || isIp(hostName(header));
+
 export function hostAllowed(header, list) {
   if (!list) return true;
   const host = String(header ?? '').trim().toLowerCase();
