@@ -3,10 +3,10 @@
 
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
+import { BOOKMARK_FIELDS as FIELDS } from '../config/schema.js';
 import { readTree, writeTree } from './tree.js';
 
 const FILE = 'bookmarks.yaml';
-const FIELDS = ['href', 'abbr', 'icon', 'description'];
 
 /** The map that holds a bookmark's fields: the first item of homepage's list, or the map itself. */
 function bodyOf(value) {

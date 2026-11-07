@@ -5,13 +5,13 @@
 
 import { validateOptions } from './plugins/options.js';
 import { DEFAULT_REFRESH_MS } from './plugins/loader.js';
-import { CORE_WIDGETS } from './plugins/installer.js';
-import { stableId, parseDuration, isPlainObject, scrub } from './util.js';
+import { CORE_WIDGETS, DEFAULT_PLUGINS } from './plugins/installer.js';
+import { stableId, parseDuration, isPlainObject, scrub, isSecretValue } from './util.js';
 import { DEFAULT_LEVELS } from './highlight.js';
 import { parseFilter, bindFilter, filterRefs } from './filter.js';
 import { k8sConnection } from './discovery/kubeconfig.js';
 import { resolveIcon } from './icons.js';
-import { CONFIRM_VALUES } from './config/schema.js';
+import { CONFIRM_VALUES, DEFAULTS } from './config/schema.js';
 
 /**
  * Keys of a widget entry that belong to the dashboard, not to the widget (unless the
@@ -126,8 +126,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const type = widget?.id ?? requested; // an alias (homepage's customapi) becomes the widget's id
     usedTypes.add(type);
     if (!widget) {
-      const message = CORE_WIDGETS.includes(type)
-        ? `unknown widget type "${type}": it comes with the widgets collection (0.4.0 or newer), which is not installed`
+      const message = Object.values(CORE_WIDGETS).includes(type)
+        ? `unknown widget type "${type}": it comes with the widgets collection (${DEFAULT_PLUGINS[0].atLeast} or newer), which is not installed`
         : `unknown widget type "${type}"`;
       errors.push({ ...where, message });
       instances.set(id, { type, options: {}, secretValues: [], refreshMs: DEFAULT_REFRESH_MS, errors: [message] });
@@ -269,24 +269,24 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   const statusesFor = (group, service, where) => {
     const out = [];
     const id = (kind) => stableId('s', group.name, service.name, kind);
-    if (service.siteMonitor) out.push({ kind: 'siteMonitor', ...addInstance(id('site'), 'http-status', { url: service.siteMonitor }, where) });
-    if (service.ping) out.push({ kind: 'ping', ...addInstance(id('ping'), 'ping', { host: service.ping }, where) });
+    if (service.siteMonitor) out.push({ kind: 'siteMonitor', ...addInstance(id('site'), CORE_WIDGETS.siteMonitor, { url: service.siteMonitor }, where) });
+    if (service.ping) out.push({ kind: 'ping', ...addInstance(id('ping'), CORE_WIDGETS.ping, { host: service.ping }, where) });
     if (service.container) {
       const server =
         config.docker.find((s) => s.name === service.server) ?? (config.docker.length === 1 ? config.docker[0] : null);
       const conn = server?.url ? { url: server.url, ...tlsOptions(server.tls ?? {}) } : server?.socket ? { socket: server.socket } : {};
       if (server?.swarm) conn.swarm = true;
-      out.push({ kind: 'container', ...addInstance(id('container'), 'docker', { container: service.container, ...conn }, where) });
+      out.push({ kind: 'container', ...addInstance(id('container'), CORE_WIDGETS.container, { container: service.container, ...conn }, where) });
     }
     // homepage's app (+ namespace, podSelector): the app's pods, unless external
     if (service.app && !service.external) {
       const options = { app: service.app, ...(service.namespace ? { namespace: service.namespace } : {}), ...(service.podSelector !== undefined ? { podSelector: service.podSelector } : {}) };
-      out.push({ kind: 'pods', ...addInstance(id('pods'), 'kubernetes-pods', options, where) });
+      out.push({ kind: 'pods', ...addInstance(id('pods'), CORE_WIDGETS.pods, options, where) });
     }
     if (service.proxmoxNode && service.proxmoxVMID) {
       const node = proxmoxNode(service.proxmoxNode, where);
       const options = { ...node, node: service.proxmoxNode, vmid: service.proxmoxVMID, ...(service.proxmoxType ? { type: service.proxmoxType } : {}) };
-      out.push({ kind: 'proxmox', ...addInstance(id('proxmox'), 'proxmoxvm', options, where) });
+      out.push({ kind: 'proxmox', ...addInstance(id('proxmox'), CORE_WIDGETS.proxmox, options, where) });
     }
     return out;
   };
@@ -337,7 +337,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       walk(n.b);
     };
     walk(tree);
-    if (literals.some((l) => [...secrets].some((s) => s && s.length >= 3 && l.includes(s)))) {
+    if (literals.some((l) => [...secrets].some((s) => isSecretValue(s) && l.includes(s)))) {
       errors.push({ ...at, message: `a filter cannot hold a secret ({{DASHBOARD_VAR_*}} or {{DASHBOARD_FILE_*}}); the ${what} is shown unfiltered` });
       return {};
     }
@@ -457,7 +457,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       background: config.settings.background ?? null,
       cardBlur: config.settings.cardBlur ?? null,
       bookmarksStyle: config.settings.bookmarksStyle ?? null,
-      iconStyle: config.settings.iconStyle ?? 'gradient',
+      iconStyle: config.settings.iconStyle ?? DEFAULTS.iconStyle,
       cardStyle: config.settings.cardStyle ?? null,
       quicklaunch: config.settings.quicklaunch ?? {},
       highlightLevels: { ...DEFAULT_LEVELS, ...(config.settings.blockHighlights?.levels ?? {}) },

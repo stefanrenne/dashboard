@@ -6,7 +6,7 @@
 
 import path from 'node:path';
 import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
-import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, checkConfigText, listHistory, readHistory } from '../config/edit.js';
+import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
 import { parseConfigYaml } from '../config/include.js';
 import { checkPassword, hashPassword, passwordFingerprint } from '../actionauth.js';
@@ -174,7 +174,7 @@ export function settingsRoutes(app) {
       configPath(configDir, file);
       const where = whereOf(file);
       const current = readConfigFile(configDir, file);
-      if (body.hash !== current.hash) throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409);
+      sameVersion(file, body.hash, current);
       const { text, warnings } = unmaskConfigText(where, body.text, current.text, schemaFor);
       // the admin password changes under Security, with the current one: never through a file
       const touchesPassword = where.root === 'settings.yaml' && (/^adminPassword(\.|\[|$)/.test(where.at)

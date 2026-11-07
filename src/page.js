@@ -6,7 +6,7 @@
 
 import fs from 'node:fs';
 import { MARK, plainIcon } from './icons.js';
-import { scrub } from './util.js';
+import { scrub, escapeHtml } from './util.js';
 
 
 // Shade 800 of each colour palette, as the dark theme shows it: the manifest's theme and
@@ -16,9 +16,6 @@ export const SHADE_800 = Object.fromEntries([.../const PALETTES = \{([\s\S]*?)\n
 
 
 
-
-const escapeHtml = (value) =>
-  String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function renderIndex(html, settings, secrets = new Set(), custom = [], nonce = null) {
   const clean = (value) => escapeHtml(scrub(value, secrets));

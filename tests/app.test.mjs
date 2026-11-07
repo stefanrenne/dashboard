@@ -123,7 +123,7 @@ test('without the widgets collection a service field says where its widget comes
   const app = await createApp({ configDir, log: silentLog, defaultPlugins: [], dockerSocket: null, releasesUrl: null });
   try {
     const messages = app.layout.messages.errors.map((e) => e.message);
-    assert.ok(messages.includes('unknown widget type "http-status": it comes with the widgets collection (0.4.0 or newer), which is not installed'), messages.join('\n'));
+    assert.ok(messages.some((m) => /^unknown widget type "http-status": it comes with the widgets collection \(v[\d.]+ or newer\), which is not installed$/.test(m)), messages.join('\n'));
     assert.ok(messages.includes('unknown widget type "radarr"'));
   } finally {
     app.close();

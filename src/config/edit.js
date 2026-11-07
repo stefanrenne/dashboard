@@ -149,13 +149,18 @@ export function readHistory(configDir, file, id) {
  * changed since. The new text is checked first (checkConfigText): a save that adds errors is refused.
  * Returns { hash, warnings, changed }; throws ConfigEditError (with `errors` for a refused check).
  */
+/** Refuses a save made on a version of `file` other than `current` (409). */
+export function sameVersion(file, hash, current) {
+  if (hash !== undefined && hash !== current.hash) {
+    throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409, { hash: current.hash });
+  }
+}
+
 export function writeConfigFile(configDir, file, text, { hash, opts = {} } = {}) {
   const full = configPath(configDir, file);
   if (typeof text !== 'string') throw new ConfigEditError(`${file}: expected the file's text`);
   const current = readConfigFile(configDir, file);
-  if (hash !== undefined && hash !== current.hash) {
-    throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409, { hash: current.hash });
-  }
+  sameVersion(file, hash, current);
   const { errors, warnings } = checkConfigText(configDir, file, text, opts);
   if (errors.length) {
     const first = errors[0];

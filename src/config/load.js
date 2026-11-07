@@ -11,7 +11,7 @@ import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
-import { CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
+import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
 
 
 const DEFAULT_SETTINGS = {
@@ -218,7 +218,7 @@ function normalizeSettings(raw, ctx) {
       delete settings[key];
     } else settings[key] = settings[key].trim();
   }
-  if (settings.base !== undefined && !/^https?:\/\/[^\s"<>]+$/.test(settings.base)) {
+  if (settings.base !== undefined && !HTTP_URL.test(settings.base)) {
     ctx.warn(file, 'base', 'expected a full URL such as https://lab.example.com/dashboard/, ignored');
     delete settings.base;
   } else if (settings.base && !settings.base.endsWith('/')) settings.base += '/';
@@ -467,13 +467,7 @@ function normalizeBookmarks(raw, ctx) {
         ctx.error(file, `[${gi}].${groupName}[${bi}].${name}`, 'a bookmark needs an "href"');
         continue;
       }
-      group.bookmarks.push({
-        name: String(name),
-        href: body.href,
-        ...(body.abbr ? { abbr: String(body.abbr) } : {}),
-        ...(body.icon ? { icon: String(body.icon) } : {}),
-        ...(body.description ? { description: String(body.description) } : {}),
-      });
+      group.bookmarks.push({ name: String(name), ...Object.fromEntries(BOOKMARK_FIELDS.filter((k) => k === 'href' || body[k]).map((k) => [k, String(body[k])])) });
     }
     groups.push(group);
   }
@@ -518,7 +512,7 @@ function normalizeDocker(raw, ctx, configDir = '.') {
       if (tls === null) continue;
       // tls means https, as in homepage
       const protocol = tls || def.protocol === 'https' ? 'https' : 'http';
-      servers.push({ name, url: `${protocol}://${def.host}:${def.port ?? 2375}`, discover: def.discover !== false, ...swarm, ...allow, ...(tls ? { tls } : {}) });
+      servers.push({ name, url: `${protocol}://${def.host}:${def.port ?? DOCKER_PORT}`, discover: def.discover !== false, ...swarm, ...allow, ...(tls ? { tls } : {}) });
     } else ctx.error(file, name, 'needs "socket" or "host"');
   }
   return servers;

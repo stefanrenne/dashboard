@@ -15,6 +15,9 @@ export function parseDuration(value, fallbackMs) {
   return Number(match[1]) * UNITS[match[2]];
 }
 
+export const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
 /** A short, stable id derived from the given parts. */
 export function stableId(prefix, ...parts) {
   return prefix + '-' + createHash('sha1').update(parts.join('\u0000')).digest('hex').slice(0, 10);
@@ -47,11 +50,13 @@ export function isPlainObject(value) {
 
 // Shorter values are no secret worth hiding (and would garble every message they occur in).
 const MIN_SECRET_LENGTH = 3;
+/** Whether `s` is long enough to be looked for as a secret (a shorter one would match by chance). */
+export const isSecretValue = (s) => typeof s === 'string' && s.length >= MIN_SECRET_LENGTH;
 
 /** `text` with every known secret value replaced by ***. */
 export function scrub(text, secrets = []) {
   let out = String(text);
-  for (const s of secrets) if (typeof s === 'string' && s.length >= MIN_SECRET_LENGTH) out = out.split(s).join('***');
+  for (const s of secrets) if (isSecretValue(s)) out = out.split(s).join('***');
   return out;
 }
 

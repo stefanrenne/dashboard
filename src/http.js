@@ -6,7 +6,7 @@ import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
-import { realInside } from './util.js';
+import { realInside, escapeHtml } from './util.js';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -175,7 +175,6 @@ export function hostAllowed(header, list) {
   return LOOPBACK.includes(name) || isIp(name) || list.includes(host) || list.includes(name);
 }
 
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function hostRefusedPage(header, list) {
   const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');

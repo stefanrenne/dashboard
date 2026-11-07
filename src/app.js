@@ -26,7 +26,7 @@ import { send, sendFile, readJson, fromThisPage, isInternal, securityHeaders, SE
 import { settingsRoutes } from './settings/routes.js';
 import { onboardingRoutes } from './onboarding/routes.js';
 
-export const ACTION_TIMEOUT_MS = 30_000;
+const WEBHOOK_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
 const EVENT_STREAMS = { max: 500, perAddress: 50 };
 import { safeJoin, scrub } from './util.js';
@@ -229,7 +229,7 @@ export async function createApp({
 
 
 
-  const onboardingRoute = onboardingRoutes({ configDir, env, log, publicDir, exampleDir: path.join(ROOT, 'config.example'), version: VERSION, dockerSocket: dockerSocket ?? DEFAULT_SOCKET, onboarding, state, reload, runtime });
+  const onboardingRoute = onboardingRoutes({ configDir, env, log, publicDir, exampleDir: path.join(ROOT, 'config.example'), version: VERSION, dockerSocket, onboarding, state, reload, runtime });
   const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, defaultPlugins, gate, passkeys, sessions, state, reload, runtime });
 
   async function handler(req, res) {
@@ -426,7 +426,7 @@ export async function createApp({
   async function runAction(action) {
     const secrets = [...(state.config?.secrets ?? [])];
     try {
-      const res = await fetch(action.href, { signal: AbortSignal.timeout(ACTION_TIMEOUT_MS), redirect: 'follow' });
+      const res = await fetch(action.href, { signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS), redirect: 'follow' });
       await res.body?.cancel();
       log.info(`action ${action.name}: ${res.status}`);
       return { ok: res.ok, status: res.status };

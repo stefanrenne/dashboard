@@ -8,6 +8,8 @@ import { getJson } from '../http.js';
 
 export const DEFAULT_SOCKET = '/var/run/docker.sock';
 const LABEL_PREFIX = 'dashboard.';
+// the name of a server on a socket that has no name of its own
+export const LOCAL_NAME = 'local';
 export const HOMEPAGE_PREFIX = 'homepage.';
 
 /**
@@ -16,7 +18,7 @@ export const HOMEPAGE_PREFIX = 'homepage.';
  */
 export function withMountedSocket(servers, socket = DEFAULT_SOCKET, exists = fs.existsSync) {
   if (servers.length > 0 || !socket || !exists(socket)) return servers;
-  return [{ name: 'local', socket, discover: true, implicit: true }];
+  return [{ name: LOCAL_NAME, socket, discover: true, implicit: true }];
 }
 
 export function dockerGet(server, path, { timeoutMs = 5000 } = {}) {
@@ -25,17 +27,22 @@ export function dockerGet(server, path, { timeoutMs = 5000 } = {}) {
     : getJson({ socketPath: server.socket || DEFAULT_SOCKET, path, timeoutMs, name: 'Docker API' });
 }
 
+/**
+ * The label prefix a container is discovered by, or null: dashboard.name, or homepage's
+ * homepage.group (homepage only discovers containers that have a group).
+ */
+export function discoveredBy(labels) {
+  if (labels[LABEL_PREFIX + 'name']) return LABEL_PREFIX;
+  return labels[HOMEPAGE_PREFIX + 'group'] ? HOMEPAGE_PREFIX : null;
+}
+
 /** Pure mapping from `GET /containers/json` output to discovered services. */
 export function servicesFromContainers(containers, server) {
   const out = [];
   for (const c of containers) {
     const labels = c.Labels ?? {};
-    // homepage only discovers containers that have both a name and a group.
-    const svc = labels[LABEL_PREFIX + 'name']
-      ? serviceFromLabels(labels, LABEL_PREFIX, server.instanceName)
-      : labels[HOMEPAGE_PREFIX + 'group']
-        ? serviceFromLabels(labels, HOMEPAGE_PREFIX, server.instanceName)
-        : null;
+    const prefix = discoveredBy(labels);
+    const svc = prefix ? serviceFromLabels(labels, prefix, server.instanceName) : null;
     if (!svc) continue;
     const container = (c.Names?.[0] ?? '').replace(/^\//, '');
     svc.group ??= 'Docker';

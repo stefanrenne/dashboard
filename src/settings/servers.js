@@ -8,7 +8,7 @@ import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
 import { KUBERNETES_MODES } from '../config/schema.js';
 import { shownSecret, secretFromPage, refuseToken, isHidden } from './secrets.js';
-import { openYaml, keyName, rename, setItems } from './yaml.js';
+import { openYaml, entries, keyName, rename, setItems } from './yaml.js';
 
 // A file's fields: { name, at (path in the entry), type, values (enum), default (left out of the
 // file) }. Types: string, number, enum, boolean, tristate ('' leaves it out), secret.
@@ -130,20 +130,15 @@ export function writeServers(configDir, file, body, hash, opts = {}) {
   }
   const list = body?.entries;
   if (!Array.isArray(list) || list.length > 50) throw new ConfigEditError(`${file}: expected the list of entries`, 400);
-  const pairs = new Map(root.items.map((p) => [keyName(p), p]));
+  const own = entries(new Map(root.items.map((p) => [keyName(p), p])));
   const names = new Set();
-  const used = new Set();
   const warnings = [];
   setItems(root, list.map((e, i) => {
     const name = typeof e?.name === 'string' ? e.name.trim() : '';
     if (!/^[A-Za-z0-9_.-]{1,64}$/.test(name)) throw new ConfigEditError(`${file} [${i}]: a name of letters, digits, - _ or .`, 400);
     if (names.has(name)) throw new ConfigEditError(`${file} › ${name}: the same name twice`, 400);
     names.add(name);
-    let pair = e.id ? pairs.get(String(e.id)) : null;
-    if (e.id && !pair) throw new ConfigEditError(`${file} › ${e.id}: no such entry any more; reload the page`, 409);
-    if (pair && used.has(pair)) throw new ConfigEditError(`${file} › ${name}: the same entry twice`, 400);
-    pair ??= doc.createPair(name, doc.createNode({}));
-    used.add(pair);
+    const pair = own.take(e.id || null, `${file} › ${e.id || name}`) ?? doc.createPair(name, doc.createNode({}));
     rename(doc, pair, name);
     if (!YAML.isMap(pair.value)) pair.value = doc.createNode({});
     warnings.push(...applyFields(doc, pair.value, s, e.fields, name, file));

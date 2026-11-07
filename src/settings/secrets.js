@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
 import { hasPlaceholder } from '../config/vars.js';
+import { isSecretValue } from '../util.js';
 
 const KEY = crypto.randomBytes(32); // per process: a token means nothing outside this server
 export const TOKEN = /__SECRET_([0-9a-f]{10})__/g;
@@ -145,7 +146,7 @@ export function maskConfigText(file, text, schemaFor = () => null, knownSecrets 
   const doc = parse(text, file);
   if (!doc) {
     let out = text;
-    for (const s of knownSecrets) if (s && s.length >= 3) out = out.split(s).join(tokenFor(s));
+    for (const s of knownSecrets) if (isSecretValue(s)) out = out.split(s).join(tokenFor(s));
     return { text: out, secrets: [] };
   }
   const found = secretScalars(doc, file, schemaFor).filter(({ node }) => node.range);

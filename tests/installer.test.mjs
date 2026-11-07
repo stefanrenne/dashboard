@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import YAML from 'yaml';
-import { syncPlugins, parseSource, readLock, latestTag, withDefaultPlugins, DEFAULT_PLUGINS, defaultPluginsFor, CORE_WIDGETS, olderTag, pluginUpdates, packageInfo } from '../src/plugins/installer.js';
+import { syncPlugins, parseSource, readLock, latestTag, withDefaultPlugins, DEFAULT_PLUGINS, defaultPluginsFor, olderTag, pluginUpdates, packageInfo } from '../src/plugins/installer.js';
 import { loadWidget } from '../src/plugins/loader.js';
 import { WidgetRuntime } from '../src/plugins/runtime.js';
 import { validateOptions } from '../src/plugins/options.js';
@@ -145,7 +145,6 @@ test('withDefaultPlugins: own entries come first, an entry for the same reposito
   const one = { source: def[0].source, subdir: 'widgets/radarr' };
   assert.deepEqual(withDefaultPlugins([one], def), [one], 'a subdir is the user\'s choice of one widget');
   assert.deepEqual(withDefaultPlugins([{ source: 'git+https://github.com/b/other', only: ['x'] }], def)[0].only, ['x'], 'another repository keeps its list');
-  assert.deepEqual(CORE_WIDGETS, ['http-status', 'ping', 'docker', 'kubernetes-pods', 'proxmoxvm']);
   assert.equal(DEFAULT_PLUGINS[0].source, 'git+https://github.com/stefanrenne/dashboard-widgets#latest');
 });
 

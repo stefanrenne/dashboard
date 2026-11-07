@@ -59,6 +59,15 @@ export const SERVICE_FIELDS = {
   app: 'text', namespace: 'text', podSelector: 'text', external: 'flag',
 };
 
+// the Docker API's port when docker.yaml gives a host without one
+export const DOCKER_PORT = 2375;
+
+// a full http(s) URL, as settings.yaml `base` takes it
+export const HTTP_URL = /^https?:\/\/[^\s"<>]+$/;
+
+// a bookmark's fields (all text) besides its name; href is required
+export const BOOKMARK_FIELDS = ['href', 'abbr', 'icon', 'description'];
+
 // settings.yaml's security: kept as it is when homepage's settings.yaml is imported, and the
 // admin password changes only with the current one (never through a file on the settings page)
 export const SECURITY_KEYS = ['adminPassword', 'login', 'allowedHosts', 'actions'];

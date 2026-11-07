@@ -10,7 +10,8 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { FailureLimiter } from '../actionauth.js';
 import { isLocal, cookie, cookieValue, randomToken } from '../http.js';
-import { LANGUAGES, COLORS } from '../config/schema.js';
+import { LANGUAGES, COLORS, DOCKER_PORT } from '../config/schema.js';
+import { discoveredBy, LOCAL_NAME } from '../discovery/docker.js';
 import { writeAtomic } from '../util.js';
 
 export const MARKER = '.onboarding';
@@ -127,7 +128,7 @@ export async function scanContainers({ servers, widgets, host, get, selfId = os.
         image: c.Image,
         widget,
         group: groupFor(widget),
-        discovered: Boolean(labels['dashboard.name'] || labels['homepage.group']),
+        discovered: Boolean(discoveredBy(labels)),
         url: shared && priv ? `http://${name}:${priv}` : pub ? `http://${remote}:${pub}` : ownIp && priv ? `http://${ownIp}:${priv}` : null,
         href: pub ? `http://${remote}:${pub}` : lanIp && priv ? `http://${lanIp}:${priv}` : null,
       });
@@ -148,13 +149,13 @@ export function parseDockerAddress(address, name) {
   if (id && !/^[a-zA-Z0-9][\w-]{0,39}$/.test(id)) return { error: 'name: letters, digits, - and _' };
   if (a.startsWith('/')) {
     if (!/^\/[\w./-]+$/.test(a) || a.includes('..')) return { error: 'not a socket path' };
-    return { server: { name: id || 'local', socket: a, discover: true } };
+    return { server: { name: id || LOCAL_NAME, socket: a, discover: true } };
   }
   const m = /^(?:(https?|tcp):\/\/)?([a-zA-Z0-9.-]+|\[[0-9a-fA-F:]+\])(?::(\d{1,5}))?\/?$/.exec(a);
-  if (!m || Number(m[3] ?? 2375) > 65535) return { error: 'expected /path/to/docker.sock or host:port' };
+  if (!m || Number(m[3] ?? DOCKER_PORT) > 65535) return { error: 'expected /path/to/docker.sock or host:port' };
   const protocol = m[1] === 'https' ? 'https' : 'http';
   const host = m[2];
-  const port = Number(m[3] ?? 2375);
+  const port = Number(m[3] ?? DOCKER_PORT);
   return { server: { name: id || host.replace(/[^\w-]/g, '-').slice(0, 40), url: `${protocol}://${host}:${port}`, discover: true, host, port, protocol } };
 }
 

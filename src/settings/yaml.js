@@ -3,7 +3,7 @@
 // entries by the id of their node; one save writes nothing when nothing changed.
 
 import YAML from 'yaml';
-import { readConfigFile, parseDocument, documentText, writeConfigFile, ConfigEditError } from '../config/edit.js';
+import { readConfigFile, parseDocument, documentText, writeConfigFile, sameVersion, ConfigEditError } from '../config/edit.js';
 
 export const isInclude = (node) => YAML.isScalar(node) && node.tag === '!include';
 /** The one key/value pair of a `- Name: …` entry, or null. */
@@ -25,7 +25,7 @@ export function rename(doc, pair, name) {
  */
 export function openYaml(configDir, file, { shape, hash } = {}) {
   const read = readConfigFile(configDir, file);
-  if (hash !== undefined && hash !== read.hash) throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409);
+  sameVersion(file, hash, read);
   const doc = parseDocument(read.text, file);
   const empty = doc.contents === null;
   if (empty) doc.contents = doc.createNode(shape === 'seq' ? [] : {});

@@ -49,9 +49,9 @@ const DEVELOP_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard
 export function defaultPluginsFor(version) {
   return String(version).startsWith('develop-') ? DEVELOP_PLUGINS : DEFAULT_PLUGINS;
 }
-// The collection's widgets behind a service's siteMonitor:, ping:, container:, app: and
-// proxmoxNode: (src/layout.js). `only:` on a default's repository keeps them.
-export const CORE_WIDGETS = ['http-status', 'ping', 'docker', 'kubernetes-pods', 'proxmoxvm'];
+// The collection's widgets behind a service's fields (src/layout.js), by the card's status kind.
+// `only:` on a default's repository keeps them.
+export const CORE_WIDGETS = { siteMonitor: 'http-status', ping: 'ping', container: 'docker', pods: 'kubernetes-pods', proxmox: 'proxmoxvm' };
 
 /** Parses a plugin entry from settings.yaml. Throws on anything unsafe or unknown. */
 export function parseSource(entry) {
@@ -101,7 +101,7 @@ export function withDefaultPlugins(entries, defaults = DEFAULT_PLUGINS) {
     const d = defaults.find((x) => repoOf(x) && repoOf(x) === repoOf(e));
     if (!d) return e;
     const out = { ...e };
-    if (Array.isArray(e.only) && !e.subdir) out.only = [...new Set([...e.only, ...CORE_WIDGETS])];
+    if (Array.isArray(e.only) && !e.subdir) out.only = [...new Set([...e.only, ...Object.values(CORE_WIDGETS)])];
     if (d.atLeast && String(e.source).endsWith(`#${LATEST_REF}`)) out.atLeast = d.atLeast;
     if (d.label && !e.subdir) out.label = d.label;
     return out;

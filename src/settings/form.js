@@ -8,6 +8,7 @@ import { openYaml } from './yaml.js';
 import {
   LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
   TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
+  HTTP_URL,
 } from '../config/schema.js';
 
 const optional = (values) => ['', ...values];
@@ -111,7 +112,7 @@ function checkValue(key, def, v) {
     const max = def.max ?? 200;
     if (typeof v !== 'string' || v.length > max) return { error: `${key}: text of at most ${max} characters` };
     const text = v.trim();
-    if (def.type === 'url' && text && !/^https?:\/\/[^\s"<>]+$/.test(text)) return { error: `${key}: a full URL such as https://lab.example.com/dashboard/` };
+    if (def.type === 'url' && text && !HTTP_URL.test(text)) return { error: `${key}: a full URL such as https://lab.example.com/dashboard/` };
     return { value: text };
   }
   if (def.type === 'enum') return def.values.includes(v) ? { value: v } : { error: `${key}: one of ${def.values.filter(Boolean).join(', ')}` };
