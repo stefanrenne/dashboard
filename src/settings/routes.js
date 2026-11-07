@@ -16,7 +16,7 @@ import { tryWidget } from '../plugins/runtime.js';
 import { checkDocker, dockerGet } from '../discovery/docker.js';
 import { widgetCatalog } from '../plugins/loader.js';
 import { homepageFiles, homepageDryRun, keepOwnSecurity } from '../homepage.js';
-import { resolveIcon } from '../layout.js';
+import { resolveIcon } from '../icons.js';
 import { scrub } from '../util.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './form.js';
 import { readLayout, checkLayout, writeLayout } from './layout.js';

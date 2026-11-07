@@ -4,11 +4,9 @@
 // HTML-escaped and secrets (values filled in from {{DASHBOARD_VAR_*}}) are replaced by ***
 // (hard rule 1); nothing else is templated.
 
-import { resolveIcon } from './layout.js';
-import { MARK } from './mark.js';
+import { MARK, plainIcon } from './icons.js';
 import { scrub } from './util.js';
 
-export { MARK };
 
 // Shade 800 of each colour palette (PALETTES in index.html; a test keeps them equal): the
 // manifest's theme and background colour, as the dark theme shows it.
@@ -19,8 +17,6 @@ export const SHADE_800 = {
   purple: '#6b21a8', fuchsia: '#86198f', pink: '#9d174d', rose: '#9f1239',
 };
 
-/** An icon URL without the page's #dash-mask marker, and /icons/… relative (for settings.base). */
-const plainIcon = (icon) => resolveIcon(icon)?.split('#')[0].replace(/^\/icons\//, 'icons/') ?? null;
 
 
 

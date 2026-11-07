@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { renderIndex, MARK } from '../src/page.js';
+import { renderIndex } from '../src/page.js';
+import { MARK } from '../src/icons.js';
 
 const HTML = fs.readFileSync('public/index.html', 'utf8');
 

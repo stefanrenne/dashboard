@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveIcon } from '../src/layout.js';
-import { MARK } from '../src/mark.js';
+import { resolveIcon, MARK } from '../src/icons.js';
 
 test('icons: names, extensions, Simple Icons, Material Design, selfh.st, colours, local and URLs', () => {
   const base = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons';
