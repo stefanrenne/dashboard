@@ -16,12 +16,17 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 | Path | What |
 |---|---|
 | `src/server.js` | Entry point: arguments, listen, signals. |
-| `src/app.js` | Application state (config → plugins → registry → discovery → layout), HTTP routes, SSE reload. |
-| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`), `edit.js` (the settings page's writes: allow-list, check, conflict, history), `mask.js` (secrets in those files as `__SECRET_…__` tokens for the page). |
+| `src/app.js` | Application state (config → plugins → registry → discovery → layout), the route list, SSE reload. |
+| `src/http.js` | Requests and answers: headers, `readJson`/`send`/`cookie`, local/private addresses, allowed hosts, `getJson` (Docker, Kubernetes, Proxmox). |
+| `src/config/` | `load.js` (YAML files → normalized config, errors with file + path), `vars.js` (`{{DASHBOARD_VAR_*}}`/`{{DASHBOARD_FILE_*}}`), `include.js` (`!include`), `watch.js` (recursive, skips `plugins/`), `edit.js` (the settings page's writes: allow-list, check, conflict, history), `schema.js` (every list of choices and default, shared by load, the settings page and the wizard). |
+| `src/settings/` | The settings page's server side: `routes.js` (the route table), `form.js` (settings.yaml fields), `yaml.js` (open, edit and save a file keeping comments), `tree.js` (services.yaml/bookmarks.yaml as a tree; `services.js`, `bookmarks.js` are its leaves), `widgets.js`, `servers.js` (docker, proxmox, kubernetes), `tests.js` (their connection tests), `layout.js`, `plugins.js`, `icons.js`, `secrets.js` (secrets as `__SECRET_…__` tokens for the page). |
+| `src/onboarding/` | The setup wizard: `wizard.js` (marker, one-time code, container scan, the files it writes), `routes.js`. |
 | `src/plugins/` | `loader.js` (widget.yaml + server.js → registry), `options.js` (option schema, public/secret split), `runtime.js` (ctx, timeout, cache), `sandbox.js` + `worker.js` (installed widgets in a worker thread), `installer.js` (git/npm/path sources + lock file). |
 | `src/discovery/` | `docker.js` (labels, Swarm services), `kubernetes.js` (Ingress, IngressRoute and HTTPRoute annotations), `kubeconfig.js` (service account or kubeconfig connection), `labels.js`, `index.js` (polling + merge with YAML, weights). |
 | `src/layout.js` | Widget instances (server side) and the layout JSON (browser side). |
+| `src/homepage.js`, `src/icons.js` | Import of homepage's files (wizard and settings page); icon names to URLs. |
 | `public/index.html` | The dashboard. A single file, vanilla JS, no build step. |
+| `public/common.js`, `public/theme.css` | Shared by the pages: palettes, languages, `el`, theme, passkeys (loaded before each page's script); the colour tokens of the settings, setup and login pages. |
 | `examples/widget-template/` | Copy-and-go template for widget authors; covered by tests. Its repository form is `../dashboard-widget-example` ([GitHub](https://github.com/stefanrenne/dashboard-widget-example)); keep the two in step. |
 | `config.example/` | Example config: the default for an empty `/config` and for `npm run dev`. |
 | `deploy/` | Your own installations (config, compose file, preview scripts). Ignored by git; never referenced from the rest of the codebase. |
@@ -112,11 +117,11 @@ Usage limits are shared with the owner: keep a task's context small.
     (I18N, ~390), helpers, theme, widgets (mount, poll, actions), action password (dialog,
     `postAction`), page, groups, service filters, block highlighting, quicklaunch, tabs, then
     `render`/`load` and the event listeners at the end.
-  - `src/app.js` (~770): `createApp` holds `rebuild`/`reload`, `handler` (the route list), and the
-    route groups `settingsRoute` (with `filesRoute` for the config files), `loginRoute`, `onboardingRoute` (with `setupFiles`,
-    `testWidget`, `homepageDryRun`), `runAction`.
-  - The other pages each have their own script: `setup.js` (wizard), `login.js`, `settings.js`;
-    the server side of each is `src/onboarding.js`, `src/login.js`, `src/settings.js` (with `src/settings-layout.js`, `src/settings-plugins.js`, `src/settings-services.js` (also widgets.yaml), `src/settings-bookmarks.js` , `src/settings-servers.js` (docker, proxmox, kubernetes) and `src/settings-tests.js` (their connection tests) for the layout block, the plugins and those files);
+  - `src/app.js` (~480): `createApp` holds `rebuild`/`reload`, `handler` (the route list),
+    `passkeyRoute`, `loginRoute` and `runAction`; the settings and wizard routes are in
+    `src/settings/routes.js` and `src/onboarding/routes.js`.
+  - The other pages each have their own script: `setup.js` (wizard), `login.js`, `settings.js`,
+    after `common.js`; the server side of each is `src/onboarding/`, `src/login.js`, `src/settings/`;
     passwords and unlocks are `src/actionauth.js`.
 - **Run a test file, not the suite, while working** (`node --test tests/<file>.test.mjs`); the
   whole suite once before the commit. Print only the summary (`grep -E '^# (pass|fail)|^not ok'`).
