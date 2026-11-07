@@ -922,11 +922,13 @@ function loadIcons() {
   if (state.icons) return;
   state.icons = { local: [], used: [] };
   api('/icons').then((out) => {
-    if (!out.ok) return;
+    if (!out.ok) throw new Error(out.error);
     state.icons = { local: out.local ?? [], used: out.used ?? [] };
     const list = document.getElementById('icon-list');
     if (list) list.replaceChildren(...iconOptions());
-  }).catch(() => {});
+  }).catch(() => {
+    state.icons = null; // suggestions only: the next form asks again
+  });
 }
 const iconOptions = () => [...new Set([...(state.icons?.used ?? []), ...(state.icons?.local ?? [])])].map((v) => el('option', { value: v }));
 

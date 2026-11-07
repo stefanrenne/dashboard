@@ -48,6 +48,7 @@ const state = {
   skip: false, // Skip the setup: no services, straight to the security step
 };
 const STEPS = ['stepBasics', 'stepDocker', 'stepServices', 'stepSecurity', 'stepDone'];
+const STEP = Object.fromEntries(STEPS.map((key, i) => [key.slice(4).toLowerCase(), i])); // { basics: 0, docker: 1, … }
 
 async function api(path, body) {
   const url = `api/onboarding/${path}`;
@@ -93,11 +94,11 @@ function actions(...extra) {
   if (state.step > 0) right.append(el('button', { type: 'button', text: t('back'), onclick: () => go(state.step - 1) }));
   if (state.step < STEPS.length - 1) {
     const next = el('button', { type: 'button', class: 'primary', text: t('next'), onclick: async () => {
-      if (state.step === 3) {
+      if (state.step === STEP.security) {
         state.securityShown = true;
         if (securityProblem()) return render();
       }
-      if (state.step === 2) {
+      if (state.step === STEP.services) {
         next.disabled = true;
         const ready = await servicesReady();
         next.disabled = false;
@@ -146,7 +147,7 @@ function renderBasics() {
       el('label', { for: 'language' }, t('languageLabel'), select('language', s.language, Object.entries(LANGUAGE_NAMES), (v) => { s.language = v; lang = I18N[v] ? v : 'en'; render(); })),
       el('label', { for: 'theme' }, t('themeLabel'), select('theme', s.theme, state.themes.map((th) => [th, t(`theme${th[0].toUpperCase()}${th.slice(1)}`)]), (v) => { s.theme = v; render(); }))),
     el('div', {}, el('span', { class: 'muted', text: t('colorLabel') }), swatches),
-    actions(el('button', { type: 'button', class: 'link', text: t('skipSetup'), onclick: () => { state.skip = true; go(3); } })),
+    actions(el('button', { type: 'button', class: 'link', text: t('skipSetup'), onclick: () => { state.skip = true; go(STEP.security); } })),
   ];
 }
 
@@ -180,7 +181,7 @@ async function scan() {
     state.scanned = true;
     state.scanError = err.message;
   }
-  if (state.step === 2) render();
+  if (state.step === STEP.services) render();
 }
 
 /** An input for one widget option, by its type in widget.yaml. */
@@ -315,7 +316,7 @@ async function checkDocker() {
     state.dockerReport = { socketMounted: false, servers: [], errors: [err.message] };
   }
   state.cards = null;
-  if (state.step === 1) render();
+  if (state.step === STEP.docker) render();
 }
 
 function renderDocker() {
@@ -411,10 +412,10 @@ function renderSecurity() {
       state.status = s;
       // the name the wizard was opened by, when it is a name, as the first allowed host
       if (!state.security.hostsTouched && !s.isAddress) state.security.hosts = s.host;
-      if (state.step === 3) render();
+      if (state.step === STEP.security) render();
     }).catch((err) => {
       state.status = { error: err.message };
-      if (state.step === 3) render();
+      if (state.step === STEP.security) render();
     });
     return [el('h2', { text: t('stepSecurity'), tabindex: '-1' }), el('p', { class: 'muted', text: '…' })];
   }

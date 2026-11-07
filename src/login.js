@@ -94,7 +94,7 @@ export class SessionStore {
 const sessionCookie = (req, token, rememberMs) => cookie(req, SESSION_COOKIE, token, { maxAge: rememberMs / 1000, sameSite: 'Lax' });
 
 // the script and colours every page loads (public/), the login page too
-export const SHARED_FILES = ['common.js', 'theme.css'];
+export const SHARED_FILES = ['common.js', 'theme.css', 'forms.css'];
 
 // what a visitor who is not logged in may still reach: the login page, its script and API, and
 // the passkey check of the login page, and what tools ask without a browser (the image's health check, robots.txt)
