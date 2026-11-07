@@ -561,6 +561,9 @@ test('hidden-iframe services run through /api/run with the configured URL only',
   });
   try {
     const [run, broken, link] = t.app.layout.groups[0].services;
+    // a webhook is an action: without an admin password, that anyone can run it is said
+    const { warnings } = t.app.layout.messages;
+    assert.match(warnings.map((m) => `${m.path}: ${m.message}`).join('\n'), /Scripts\.Run: webhook: anyone who can open the page can run this/);
     const post = (id, headers = { 'x-requested-with': 'dashboard' }) => t.get(`/api/run/${id}`, { method: 'POST', headers });
     assert.equal((await post(run.id, {})).status, 403, 'needs the header');
     assert.equal(hits, 0);

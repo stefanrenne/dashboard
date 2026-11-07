@@ -14,6 +14,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   `theme` already did; before, it was passed to the page as it was.
 - On the settings page, a `{{DASHBOARD_VAR_…}}` with lowercase letters counted as a variable (shown,
   not hidden), although the dashboard never fills it in; it is now treated as the value it is.
+- A `target: hidden-iframe` webhook without an admin password now gets the same warning as an action
+  widget: anyone who can open the page can run it.
+- A failed check for plugin updates is logged; before, it was silent.
 
 ## [0.24.1] - 2026-11-06
 

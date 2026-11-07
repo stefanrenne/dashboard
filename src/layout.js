@@ -201,10 +201,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   };
 
   /**
-   * Whether an action widget's press needs the admin password: the entry's `confirm:`
-   * (password, always, none), else widget.yaml `confirmWhen` (option values that ask by default,
-   * the button's `user: root`). A discovered service cannot turn it off: its labels come from
-   * whoever starts a container.
+   * Whether an action widget's press needs the admin password: widget.yaml `confirmWhen` (option
+   * values that ask by default, the button's `user: root`), then the entry's `confirm:` (askFor).
    */
   function confirmFor(widget, options, own, where, type) {
     if (!widget.hasAction) {
@@ -212,7 +210,15 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       return null;
     }
     const when = isPlainObject(widget.manifest.confirmWhen) ? Object.entries(widget.manifest.confirmWhen) : [];
-    const asked = when.length > 0 && when.every(([k, v]) => (options[k] ?? widget.manifest.options[k]?.default) === v);
+    return askFor(when.length > 0 && when.every(([k, v]) => (options[k] ?? widget.manifest.options[k]?.default) === v), own, where, type);
+  }
+
+  /**
+   * What an action asks before it runs: 'password' when `asked` by default, unless the entry's
+   * `confirm:` (password, always, none) says otherwise. A discovered service cannot turn it off:
+   * its labels come from whoever starts a container.
+   */
+  function askFor(asked, own, where, type) {
     let confirm = asked ? 'password' : null;
     if (own !== undefined) {
       if (!CONFIRM_VALUES.includes(own)) errors.push({ ...where, message: `${type}: confirm: expected ${CONFIRM_VALUES.join(', ')}` });
@@ -382,9 +388,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
         if (service.target) warnings.push({ ...where, message: 'target: hidden-iframe is not taken from a discovered service; it opens as a link' });
         target = '_blank';
       }
-      // the webhook asks for the admin password unless the service says confirm: none
       const hook = target === 'hidden-iframe' && /^https?:\/\//.test(service.href ?? '');
-      const hookConfirm = !hook ? null : service.confirm === 'none' ? null : service.confirm === 'always' ? 'always' : 'password';
+      const hookConfirm = hook ? askFor(true, service.confirm, where, 'webhook') : null;
       if (hook) actions.set(id, { name: service.name, href: service.href, confirm: hookConfirm });
       const statuses = statusesFor(group, service, where);
       const card = {
