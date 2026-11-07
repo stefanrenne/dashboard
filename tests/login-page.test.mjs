@@ -4,11 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
-import { checkLanguages } from './helpers.mjs';
+import { checkLanguages, withCommon } from './helpers.mjs';
 
-const HTML = fs.readFileSync(path.resolve('public/login.html'), 'utf8').replace('<script src="login.js"></script>', '');
+const HTML = withCommon(fs.readFileSync(path.resolve('public/login.html'), 'utf8')).replace('<script src="login.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/login.js'), 'utf8');
-const INDEX = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
 
 const opened = new Set();
 afterEach(() => {
@@ -41,8 +40,6 @@ test('the login page: in settings.yaml\'s language and colour, every language co
   assert.equal(doc.documentElement.style.getPropertyValue('--t500'), '#10b981');
   assert.equal(doc.getElementById('password').getAttribute('autocomplete'), 'current-password');
   assert.equal(doc.querySelector('input[autocomplete=username]').value, 'dashboard', 'for password managers');
-  const block = /const PALETTES = (\{[\s\S]*?\n\});/.exec(INDEX)[1];
-  assert.deepEqual(JSON.parse(JSON.stringify(w.HD_LOGIN.PALETTES)), new Function(`return ${block}`)());
   const { I18N } = w.HD_LOGIN;
   checkLanguages(assert, I18N);
 });

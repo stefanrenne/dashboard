@@ -33,6 +33,8 @@ import { safeJoin, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
+// the browser code and styles the pages share
+const SHARED_FILES = ['common.js', 'theme.css'];
 export const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
  * The version: the VERSION file the Docker build writes (1.2.3, or develop-<sha> / main-<sha>), else DASHBOARD_VERSION,
@@ -263,6 +265,8 @@ export async function createApp({
       if (!state.config && p !== '/api/health') {
         return send(res, 503, 'The dashboard could not load its configuration; see its log.', 'text/plain; charset=utf-8');
       }
+      // what every page loads (index, login, setup, settings): before the wizard and the login page
+      if (method === 'GET' && SHARED_FILES.includes(p.slice(1))) return sendFile(res, path.join(publicDir, p.slice(1)));
       if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, { method, path: p });
       // a first install: the wizard first (docker/start.sh wrote the marker into the empty config folder)
       if (method === 'GET' && (p === '/' || p === '/index.html') && onboarding.active) {

@@ -96,4 +96,4 @@ const sessionCookie = (req, token, rememberMs) => cookie(req, SESSION_COOKIE, to
 
 // what a visitor who is not logged in may still reach: the login page, its script and API, and
 // the passkey check of the login page, and what tools ask without a browser (the image's health check, robots.txt)
-export const OPEN_PATHS = new Set(['/login', '/login.js', '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify']);
+export const OPEN_PATHS = new Set(['/login', '/login.js', '/common.js', '/theme.css', '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify']);

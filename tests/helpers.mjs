@@ -72,3 +72,8 @@ export function checkLanguages(assert, I18N) {
     for (const k of own) assert.equal(marks(dict[lang][k]), marks(dict.en[k]), `${lang}.${k}: the same placeholders`);
   }
 }
+
+// The pages load public/common.js before their own script; jsdom loads no files, so the tests
+// put it in the page's HTML.
+const COMMON = fs.readFileSync(path.resolve('public/common.js'), 'utf8');
+export const withCommon = (html) => html.replace('<script src="common.js"></script>', () => `<script>${COMMON}</script>`);

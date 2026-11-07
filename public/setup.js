@@ -3,38 +3,6 @@
 // The YAML stays the source: this page only sends what you chose, the server writes the files.
 'use strict';
 
-// the colour palettes of index.html (tests/frontend.test.mjs keeps the two the same)
-const PALETTES = {
-  slate: '#f8fafc #f1f5f9 #e2e8f0 #cbd5e1 #94a3b8 #64748b #475569 #334155 #1e293b #0f172a #020617',
-  gray: '#f9fafb #f3f4f6 #e5e7eb #d1d5db #9ca3af #6b7280 #4b5563 #374151 #1f2937 #111827 #030712',
-  zinc: '#fafafa #f4f4f5 #e4e4e7 #d4d4d8 #a1a1aa #71717a #52525b #3f3f46 #27272a #18181b #09090b',
-  neutral: '#fafafa #f5f5f5 #e5e5e5 #d4d4d4 #a3a3a3 #737373 #525252 #404040 #262626 #171717 #0a0a0a',
-  stone: '#fafaf9 #f5f5f4 #e7e5e4 #d6d3d1 #a8a29e #78716c #57534e #44403c #292524 #1c1917 #0c0a09',
-  red: '#fef2f2 #fee2e2 #fecaca #fca5a5 #f87171 #ef4444 #dc2626 #b91c1c #991b1b #7f1d1d #450a0a',
-  orange: '#fff7ed #ffedd5 #fed7aa #fdba74 #fb923c #f97316 #ea580c #c2410c #9a3412 #7c2d12 #431407',
-  amber: '#fffbeb #fef3c7 #fde68a #fcd34d #fbbf24 #f59e0b #d97706 #b45309 #92400e #78350f #451a03',
-  yellow: '#fefce8 #fef9c3 #fef08a #fde047 #facc15 #eab308 #ca8a04 #a16207 #854d0e #713f12 #422006',
-  lime: '#f7fee7 #ecfccb #d9f99d #bef264 #a3e635 #84cc16 #65a30d #4d7c0f #3f6212 #365314 #1a2e05',
-  green: '#f0fdf4 #dcfce7 #bbf7d0 #86efac #4ade80 #22c55e #16a34a #15803d #166534 #14532d #052e16',
-  emerald: '#ecfdf5 #d1fae5 #a7f3d0 #6ee7b7 #34d399 #10b981 #059669 #047857 #065f46 #064e3b #022c22',
-  teal: '#f0fdfa #ccfbf1 #99f6e4 #5eead4 #2dd4bf #14b8a6 #0d9488 #0f766e #115e59 #134e4a #042f2e',
-  cyan: '#ecfeff #cffafe #a5f3fc #67e8f9 #22d3ee #06b6d4 #0891b2 #0e7490 #155e75 #164e63 #083344',
-  sky: '#f0f9ff #e0f2fe #bae6fd #7dd3fc #38bdf8 #0ea5e9 #0284c7 #0369a1 #075985 #0c4a6e #082f49',
-  blue: '#eff6ff #dbeafe #bfdbfe #93c5fd #60a5fa #3b82f6 #2563eb #1d4ed8 #1e40af #1e3a8a #172554',
-  indigo: '#eef2ff #e0e7ff #c7d2fe #a5b4fc #818cf8 #6366f1 #4f46e5 #4338ca #3730a3 #312e81 #1e1b4b',
-  violet: '#f5f3ff #ede9fe #ddd6fe #c4b5fd #a78bfa #8b5cf6 #7c3aed #6d28d9 #5b21b6 #4c1d95 #2e1065',
-  purple: '#faf5ff #f3e8ff #e9d5ff #d8b4fe #c084fc #a855f7 #9333ea #7e22ce #6b21a8 #581c87 #3b0764',
-  fuchsia: '#fdf4ff #fae8ff #f5d0fe #f0abfc #e879f9 #d946ef #c026d3 #a21caf #86198f #701a75 #4a044e',
-  pink: '#fdf2f8 #fce7f3 #fbcfe8 #f9a8d4 #f472b6 #ec4899 #db2777 #be185d #9d174d #831843 #500724',
-  rose: '#fff1f2 #ffe4e6 #fecdd3 #fda4af #fb7185 #f43f5e #e11d48 #be123c #9f1239 #881337 #4c0519',
-};
-const SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-// each language by its own name
-const LANGUAGE_NAMES = {
-  en: 'English', nl: 'Nederlands', fr: 'Français', de: 'Deutsch', es: 'Español', ca: 'Català', he: 'עברית', hr: 'Hrvatski',
-  hu: 'Magyar', it: 'Italiano', 'nb-NO': 'Norsk bokmål', pt: 'Português', ru: 'Русский', sv: 'Svenska', vi: 'Tiếng Việt',
-  'zh-Hans': '简体中文', 'zh-Hant': '繁體中文',
-};
 
 const I18N = {
   en: {"heading":"Set up your dashboard","intro":"A few steps, and the dashboard writes its configuration for you. You can change everything later in its YAML files.","stepBasics":"Basics","stepDocker":"Docker","stepServices":"Services","stepHomepage":"From homepage","dockerText":"Where the dashboard finds your containers: for the next step, for container status on the cards and for discovery by labels.","dockerChecking":"Asking Docker…","dockerOk":"{name} ({target}): Docker {version}, {count} containers","dockerFailed":"{name} ({target}): {error}","dockerPermission":"The dashboard may not use this socket. Start the container as root (the default, not --user), so it can join the socket's group, or use a socket proxy.","dockerNone":"No Docker server. Mount the Docker socket into the container (and recreate it), or add the address of a docker-socket-proxy or Docker API below.","dockerAddress":"Socket or address","dockerName":"Name (optional)","dockerAdd":"Add and check","dockerAdded":"Added here (written to docker.yaml):","dockerAddressHint":"A socket path such as /var/run/docker.sock, or host:port of a socket proxy or Docker API (docker-proxy:2375, https://nas.lan:2376).","needName":"A name is needed.","needLink":"A link is needed, starting with http:// or https://.","needOption":"{name} is needed.","checking":"Checking the services…","servicesBlocked":"Some services are not ready: fix the ones marked in red, or untick them.","migrateHomepage":"Migrate from homepage","homepageReplaces":"homepage's services.yaml is used, in place of the services below.","scanFailed":"The scan failed: {error}","dockerServers":"{count} Docker servers","stepSecurity":"Security","stepDone":"Done","next":"Next","back":"Back","skipSetup":"Skip the setup: start with an empty dashboard","codeTitle":"Enter the setup code","codeText":"You are not on the local network, so the setup asks for the code from the dashboard's log: docker logs dashboard","codeLabel":"Setup code","codeSubmit":"Continue","codeWrong":"Wrong code","wait":"Too many tries; wait {seconds} s","basicsText":"How the page looks.","titleLabel":"Title","languageLabel":"Language","themeLabel":"Theme","themeAuto":"Follow the system","themeDark":"Dark","themeLight":"Light","colorLabel":"Colour","servicesText":"The running containers, with the widget that fits each one. Tick the ones you want on the page and fill in what a widget needs.","scanning":"Looking for containers…","noDocker":"No Docker found. Mount the Docker socket (or a socket proxy) to find containers, or add services by hand.","discovered":"on the page already, through its labels","noWidget":"no widget, a link only","addService":"Add a service by hand","nameLabel":"Name","groupLabel":"Group","linkLabel":"Link","widgetLabel":"Widget","none":"None","moreOptions":"More options","test":"Test","testing":"Testing…","works":"Works","remove":"Remove","newService":"New service","homepageText":"Coming from homepage? Choose its configuration files (services.yaml, settings.yaml, bookmarks.yaml, widgets.yaml, docker.yaml). They are taken over as they are, in place of what the steps before would write.","chooseFiles":"Choose files","check":"Check","importSummary":"{services} services, {bookmarks} bookmarks, {header} header widgets","unknownWidgets":"Widgets without a match: {list}","importUse":"Use these files","importUsed":"These files are used","importDrop":"Do not use them","notHomepage":"None of these is a homepage file: {list}","secHosts":"Allowed hosts","passwordLabel":"Password","doneText":"The dashboard writes these files into its config folder:","write":"Write the configuration","writing":"Writing…","exists":"Already there: {list}. Nothing was written.","failed":"Could not write: {error}","fromHomepage":"from homepage","services":"{count} services","secHostsHelp":"The names you open the dashboard by, separated by commas. IP addresses and localhost always work. Written to settings.yaml.","secAdmin":"Admin password","secAdminText":"Required. It guards the buttons that run something and, if you like, the whole page. Only its hash is written to settings.yaml.","passwordRepeat":"Repeat the password","passwordShort":"The admin password needs at least {count} characters.","passwordMismatch":"The two passwords are not the same.","secLogin":"Security level","loginPage":"Dashboard access","loginActions":"Only privileged actions","loginActionsText":"Anyone can open the dashboard, but changing the settings and running commands that need root, or are marked with confirm:, require authentication.","loginPageText":"The dashboard cannot be opened without authentication.","safer":"safer"},
@@ -57,20 +25,8 @@ const I18N = {
 };
 
 let lang = 'en';
-const t = (key, vars = {}) => String((I18N[lang] ?? {})[key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+const t = translator(I18N, () => lang);
 
-function el(tag, attrs, ...children) {
-  const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v === null || v === undefined || v === false) continue;
-    if (k === 'class') node.className = v;
-    else if (k === 'text') node.textContent = v;
-    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
-    else node.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) node.append(c);
-  return node;
-}
 
 const state = {
   step: 0,
@@ -102,16 +58,10 @@ async function api(path, body) {
 }
 
 // ---------------------------------------------------------------- theme
-function systemLight() {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches;
-}
 function applyTheme() {
-  const shades = (PALETTES[state.settings.color] ?? PALETTES.slate).split(' ');
-  SHADES.forEach((s, i) => document.documentElement.style.setProperty(`--t${s}`, shades[i]));
-  const theme = state.settings.theme === 'auto' ? (systemLight() ? 'light' : 'dark') : state.settings.theme;
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  applyPalette(state.settings.color);
+  applyAppearance(state.settings.theme);
+  applyLanguage(lang, I18N);
 }
 
 // ---------------------------------------------------------------- frame
@@ -585,5 +535,5 @@ async function init() {
   start();
 }
 
-window.HD_SETUP = { I18N, PALETTES, state };
+window.HD_SETUP = { I18N, state };
 init();

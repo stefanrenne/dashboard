@@ -4,11 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
-import { checkLanguages } from './helpers.mjs';
+import { checkLanguages, withCommon } from './helpers.mjs';
 
-const HTML = fs.readFileSync(path.resolve('public/settings.html'), 'utf8').replace('<script src="settings.js"></script>', '');
+const HTML = withCommon(fs.readFileSync(path.resolve('public/settings.html'), 'utf8')).replace('<script src="settings.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/settings.js'), 'utf8');
-const INDEX = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
 const VALUES = {
   title: 'Lab', language: 'nl', theme: 'dark', color: 'slate', showTitle: true, headerStyle: 'boxed', target: '_blank', statusStyle: '',
   allowedHosts: ['dash.lan'], login: false, loginRemember: '7d', actionsRemember: '15m', hideVersion: false, disableUpdateCheck: false, disableIndexing: false,
@@ -47,14 +46,12 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
   return { w: dom.window, doc: dom.window.document, calls };
 }
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, schema: { minPassword: 8 }, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });
-  const { I18N, PALETTES } = w.HD_SETTINGS;
+  const { I18N } = w.HD_SETTINGS;
   checkLanguages(assert, I18N);
-  const block = /const PALETTES = (\{[\s\S]*?\n\});/.exec(INDEX)[1];
-  assert.deepEqual(JSON.parse(JSON.stringify(PALETTES)), new Function(`return ${block}`)());
 });
 
 test('settings page: asks for the admin password, then shows settings.yaml and saves what changed', async () => {

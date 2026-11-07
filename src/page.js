@@ -4,18 +4,15 @@
 // HTML-escaped and secrets (values filled in from {{DASHBOARD_VAR_*}}) are replaced by ***
 // (hard rule 1); nothing else is templated.
 
+import fs from 'node:fs';
 import { MARK, plainIcon } from './icons.js';
 import { scrub } from './util.js';
 
 
-// Shade 800 of each colour palette (PALETTES in index.html; a test keeps them equal): the
-// manifest's theme and background colour, as the dark theme shows it.
-export const SHADE_800 = {
-  slate: '#1e293b', gray: '#1f2937', zinc: '#27272a', neutral: '#262626', stone: '#292524', red: '#991b1b',
-  orange: '#9a3412', amber: '#92400e', yellow: '#854d0e', lime: '#3f6212', green: '#166534', emerald: '#065f46',
-  teal: '#115e59', cyan: '#155e75', sky: '#075985', blue: '#1e40af', indigo: '#3730a3', violet: '#5b21b6',
-  purple: '#6b21a8', fuchsia: '#86198f', pink: '#9d174d', rose: '#9f1239',
-};
+// Shade 800 of each colour palette, as the dark theme shows it: the manifest's theme and
+// background colour. The palettes are written once, in the pages' public/common.js.
+const COMMON_JS = fs.readFileSync(new URL('../public/common.js', import.meta.url), 'utf8');
+export const SHADE_800 = Object.fromEntries([.../const PALETTES = \{([\s\S]*?)\n\};/.exec(COMMON_JS)[1].matchAll(/(\w+): '([^']+)'/g)].map(([, name, shades]) => [name, shades.split(' ')[8]]));
 
 
 

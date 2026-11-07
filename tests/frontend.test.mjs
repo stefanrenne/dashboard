@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
-import { checkLanguages } from './helpers.mjs';
+import { checkLanguages, withCommon } from './helpers.mjs';
 
-const HTML = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
+const HTML = withCommon(fs.readFileSync(path.resolve('public/index.html'), 'utf8'));
 
 const LAYOUT = {
   version: '0.1.0',
@@ -290,9 +290,9 @@ test('an empty dashboard shows how to add services', async () => {
 
 test('every UI text in English and Dutch; the other languages fall back to English', async () => {
   const w = await page();
-  const { I18N, PALETTES } = w.HD;
+  const { I18N } = w.HD;
   checkLanguages(assert, I18N);
-  for (const [name, shades] of Object.entries(PALETTES)) assert.equal(shades.split(' ').length, 11, name);
+  for (const [name, shades] of Object.entries(w.eval('PALETTES'))) assert.equal(shades.split(' ').length, 11, name);
   assert.equal(w.HD.safeHref(' JavaScript:alert(1)'), null);
   assert.equal(w.HD.safeHref('smb://nas/share'), 'smb://nas/share');
   w.close();

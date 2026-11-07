@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { renderIndex } from '../src/page.js';
 import { MARK } from '../src/icons.js';
 
@@ -31,11 +32,13 @@ test('renderIndex: a secret in the description never reaches the page', () => {
   assert.match(out, /content="key \*\*\* here"/);
 });
 
-test('SHADE_800 matches shade 800 of every palette in index.html', async () => {
+test('the colours settings.yaml takes are the palettes the pages have, and the manifest uses their shade 800', async () => {
+  const { COLORS } = await import('../src/config/schema.js');
   const { SHADE_800 } = await import('../src/page.js');
-  const block = HTML.slice(HTML.indexOf('const PALETTES = {'), HTML.indexOf('};', HTML.indexOf('const PALETTES = {')));
-  const fromPage = Object.fromEntries([...block.matchAll(/^\s+([a-z]+): '([^']+)'/gm)].map((m) => [m[1], m[2].split(' ')[8]]));
-  assert.deepEqual(SHADE_800, fromPage);
+  const common = fs.readFileSync(path.resolve('public/common.js'), 'utf8');
+  const palettes = new Function(`${/const PALETTES = \{[\s\S]*?\n\};/.exec(common)[0]} return PALETTES;`)();
+  assert.deepEqual(Object.keys(palettes).sort(), [...COLORS].sort());
+  assert.equal(SHADE_800.emerald, palettes.emerald.split(' ')[8]);
 });
 
 test('renderManifest: name, start_url, colours, icons from pwa or the favicon, shortcuts', async () => {

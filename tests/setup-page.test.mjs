@@ -4,11 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
-import { checkLanguages } from './helpers.mjs';
+import { checkLanguages, withCommon } from './helpers.mjs';
 
-const HTML = fs.readFileSync(path.resolve('public/setup.html'), 'utf8');
+const HTML = withCommon(fs.readFileSync(path.resolve('public/setup.html'), 'utf8'));
 const SCRIPT = fs.readFileSync(path.resolve('public/setup.js'), 'utf8');
-const INDEX = fs.readFileSync(path.resolve('public/index.html'), 'utf8');
 
 const WIDGETS = [
   { id: 'radarr', name: 'Radarr', options: { url: { type: 'url', required: true, secret: false }, key: { type: 'string', required: true, secret: true }, enableQueue: { type: 'boolean', required: false, secret: false, default: false }, version: { type: 'enum', required: false, secret: false, values: [1, 2], default: 1 } } },
@@ -57,8 +56,6 @@ const next = (doc) => doc.querySelector('.actions button.primary').click();
 
 test('the palettes are the page\'s own; English and Dutch complete, the other languages fall back to English', async () => {
   const { w } = await page();
-  const block = /const PALETTES = (\{[\s\S]*?\n\});/.exec(INDEX)[1];
-  assert.deepEqual(JSON.parse(JSON.stringify(w.HD_SETUP.PALETTES)), new Function(`return ${block}`)());
   checkLanguages(assert, w.HD_SETUP.I18N);
 });
 
