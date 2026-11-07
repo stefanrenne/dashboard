@@ -7,21 +7,21 @@ import { highlightBlocks } from '../highlight.js';
 import { scrub } from '../util.js';
 import { validateOptions } from './options.js';
 
-export const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 10_000;
 // the most an action may take; a widget keeps its own, shorter limit (the button's `timeout`)
 export const ACTION_TIMEOUT_MS = 60 * 60 * 1000;
 // what an action shows is cut to this many characters (the end is kept)
-export const ACTION_OUTPUT_MAX = 64 * 1024;
+const ACTION_OUTPUT_MAX = 64 * 1024;
 // After an action, the other instances on its card answer fresh for a while (the page asks right
 // away, after 5 and after 30 seconds): their results are kept this short meanwhile.
-export const SETTLE_MS = 35_000;
-export const SETTLE_CACHE_MS = 4_000;
+const SETTLE_MS = 35_000;
+const SETTLE_CACHE_MS = 4_000;
 // Fresh runs with params a minute, per instance: a visitor who varies them (a weather widget's
 // coordinates) cannot make unlimited calls on the user's API key.
 export const PARAM_RUNS_PER_MINUTE = 30;
-export const BLOCK_STATUSES = ['ok', 'warn', 'error', 'unknown'];
-export const SERVICE_STATUSES = ['up', 'down', 'warn', 'unknown'];
-export const ROW_ICONS = ['play', 'pause'];
+const BLOCK_STATUSES = ['ok', 'warn', 'error', 'unknown'];
+const SERVICE_STATUSES = ['up', 'down', 'warn', 'unknown'];
+const ROW_ICONS = ['play', 'pause'];
 
 export class WidgetRuntime {
   /**
@@ -372,7 +372,7 @@ export function selectAttributes(attributes, schema, secretValues = []) {
 }
 
 /** Keeps only the blocks named in `fields` (by `key`, else `label`), in the widget's order. */
-export function selectFields(data, fields) {
+function selectFields(data, fields) {
   if (!fields || !Array.isArray(data.blocks)) return data;
   return { ...data, blocks: data.blocks.filter((b) => fields.includes(b.key ?? b.label)) };
 }
@@ -389,7 +389,7 @@ export function describeError(err) {
 
 /** Removes secret values from a message before it is logged or sent to the browser. */
 /** What an action returned, as the page shows it: status, output (its end), exit code, error; secrets scrubbed. */
-export function actionResult(data, secrets = []) {
+function actionResult(data, secrets = []) {
   const d = data && typeof data === 'object' ? data : {};
   const out = { status: d.status === 'ok' ? 'ok' : 'error' };
   if (d.output !== undefined && d.output !== null) {

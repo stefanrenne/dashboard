@@ -7,7 +7,7 @@ import { serviceFromLabels } from './labels.js';
 import { getJson } from '../http.js';
 
 export const DEFAULT_SOCKET = '/var/run/docker.sock';
-export const LABEL_PREFIX = 'dashboard.';
+const LABEL_PREFIX = 'dashboard.';
 export const HOMEPAGE_PREFIX = 'homepage.';
 
 /**
@@ -50,7 +50,7 @@ export function servicesFromContainers(containers, server) {
  * A Swarm's services (`docker service ls`) in the shape of containers: the service labels
  * (compose `deploy.labels`) and the service name, as in homepage.
  */
-export function containersFromSwarmServices(services) {
+function containersFromSwarmServices(services) {
   return services.map((s) => ({ Labels: s.Spec?.Labels ?? {}, Names: [s.Spec?.Name ?? ''] }));
 }
 

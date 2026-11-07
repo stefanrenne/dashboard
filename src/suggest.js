@@ -10,7 +10,7 @@ export const SUGGEST_URLS = {
   baidu: 'https://suggestion.baidu.com/su?action=opensearch&ie=utf-8&wd=',
   brave: 'https://search.brave.com/api/suggest?q=',
 };
-export const MAX_SUGGESTIONS = 8;
+const MAX_SUGGESTIONS = 8;
 
 /**
  * Where suggestions come from for one search box: its provider's URL, or its own suggestionUrl

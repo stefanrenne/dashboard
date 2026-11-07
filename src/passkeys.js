@@ -15,7 +15,7 @@ import { secureRequest, hostName } from './http.js';
 import { writeAtomic } from './util.js';
 
 export const PASSKEYS_FILE = '.passkeys.json';
-export const CHALLENGE_MS = 5 * 60 * 1000;
+const CHALLENGE_MS = 5 * 60 * 1000;
 export const TOKEN_MS = 2 * 60 * 1000;
 // the COSE algorithms a passkey may use: the key type it must have and the hash its signature takes
 const ALGORITHMS = {

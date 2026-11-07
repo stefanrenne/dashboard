@@ -4,11 +4,10 @@
 import http from 'node:http';
 import https from 'node:https';
 import { serviceFromLabels, ownLabels } from './labels.js';
-import { k8sConnection, k8sHeaders, k8sApiUrl, K8S_SA_DIR } from './kubeconfig.js';
+import { k8sConnection, k8sHeaders } from './kubeconfig.js';
 import { getJson } from '../http.js';
 
-export { k8sApiUrl, K8S_SA_DIR };
-export const ANNOTATION_PREFIX = 'getdashboard.dev/';
+const ANNOTATION_PREFIX = 'getdashboard.dev/';
 export const HOMEPAGE_PREFIX = 'gethomepage.dev/';
 
 /** GET on the Kubernetes API with a connection from k8sConnection(). */
@@ -24,7 +23,7 @@ export function k8sGet(path, { connection: conn, timeoutMs = 5000 }) {
  * Annotated resources (Ingress, IngressRoute, HTTPRoute) to discovered services. `hrefOf`
  * derives the link when the annotations give none.
  */
-export function servicesFromResources(list, instanceName = null, hrefOf = () => null) {
+function servicesFromResources(list, instanceName = null, hrefOf = () => null) {
   const out = [];
   for (const res of list.items ?? []) {
     const ann = res.metadata?.annotations ?? {};
@@ -51,7 +50,7 @@ export function servicesFromResources(list, instanceName = null, hrefOf = () => 
 }
 
 /** An Ingress's link: its first rule's host and path, https when TLS covers that host. */
-export function ingressHref(ing) {
+function ingressHref(ing) {
   const rule = ing.spec?.rules?.find((r) => r.host);
   if (!rule) return null;
   const tls = (ing.spec.tls ?? []).some((t) => (t.hosts ?? []).includes(rule.host));
@@ -106,7 +105,7 @@ const orNone = (err) => {
   throw err;
 };
 
-export const TRAEFIK_GROUPS = ['traefik.io', 'traefik.containo.us'];
+const TRAEFIK_GROUPS = ['traefik.io', 'traefik.containo.us'];
 
 /** opts: { config (kubernetes.yaml: ingress, traefik, gateway), instanceName, connection (tests) }. */
 export async function discoverKubernetes(opts = {}) {

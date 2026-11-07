@@ -46,7 +46,7 @@ export function isPlainObject(value) {
 }
 
 // Shorter values are no secret worth hiding (and would garble every message they occur in).
-export const MIN_SECRET_LENGTH = 3;
+const MIN_SECRET_LENGTH = 3;
 
 /** `text` with every known secret value replaced by ***. */
 export function scrub(text, secrets = []) {

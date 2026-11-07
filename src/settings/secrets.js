@@ -21,7 +21,7 @@ const KEY = crypto.randomBytes(32); // per process: a token means nothing outsid
 export const TOKEN = /__SECRET_([0-9a-f]{10})__/g;
 const HAS_TOKEN = /__SECRET_[0-9a-f]{10}__/;
 
-export const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
+const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
 const SECRET_WRITTEN = 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file';
 
 // ---------------------------------------------------------------- one secret value, for the form editors

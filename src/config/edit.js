@@ -16,9 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { checkConfigFile } from './load.js';
-import { CONFIG_FILES, CUSTOM_FILES } from './schema.js';
+import { CONFIG_FILES, CUSTOM_FILES, PLUGINS_DIR } from './schema.js';
 import { listIncludes } from './include.js';
-import { PLUGINS_DIR } from './schema.js';
 import { scrub, writeAtomic } from '../util.js';
 
 export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
@@ -34,7 +33,7 @@ export class ConfigEditError extends Error {
   }
 }
 
-export const hashText = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
+const hashText = (text) => crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
 
 /**
  * The files the settings page edits: the config files, then every file they `!include`

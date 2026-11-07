@@ -22,9 +22,9 @@ export const BOOKMARK_STYLES = ['icons'];
 export const STATUS_STYLES = ['dot', 'basic'];
 export const TARGETS = ['_blank', '_self', '_top'];
 // a service's link can also call its address in the background, as a webhook
-export const SERVICE_TARGETS = [...TARGETS, 'hidden-iframe'];
+const SERVICE_TARGETS = [...TARGETS, 'hidden-iframe'];
 export const CONFIRM_VALUES = ['password', 'always', 'none'];
-export const PROXMOX_TYPES = ['qemu', 'lxc'];
+const PROXMOX_TYPES = ['qemu', 'lxc'];
 export const KUBERNETES_MODES = ['disabled', 'cluster', 'default'];
 export const SEARCH_PROVIDERS = ['google', 'duckduckgo', 'bing', 'baidu', 'brave', 'startpage', 'custom'];
 export const BUTTON_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];

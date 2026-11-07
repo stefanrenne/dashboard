@@ -3,7 +3,7 @@
 // disableUpdateCheck, and without a url (tests). A failed check is logged and tried again the next day.
 
 export const RELEASES_URL = 'https://api.github.com/repos/stefanrenne/dashboard/releases/latest';
-export const CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
+const CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
 
 const parts = (v) => (/^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(v)) ?? []).slice(1).map(Number);
 

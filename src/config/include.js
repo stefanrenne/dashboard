@@ -14,7 +14,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { safeJoin, isPlainObject } from '../util.js';
 
-export const MAX_DEPTH = 8;
+const MAX_DEPTH = 8;
 
 class Include {
   constructor(file) {

@@ -2,7 +2,7 @@
 
 import { isPlainObject } from '../util.js';
 
-export const OPTION_TYPES = ['string', 'url', 'number', 'boolean', 'list', 'object', 'enum', 'icon'];
+const OPTION_TYPES = ['string', 'url', 'number', 'boolean', 'list', 'object', 'enum', 'icon'];
 
 /** Checks the schema itself; returns a list of problems. */
 export function checkSchema(schema) {

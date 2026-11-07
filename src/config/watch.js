@@ -14,10 +14,10 @@ export function isConfigChange(filename) {
   return /\.ya?ml$/.test(parts.at(-1)) && parts[0] !== PLUGINS_DIR;
 }
 
-export const FALLBACK_POLL_MS = 5000;
+const FALLBACK_POLL_MS = 5000;
 
 /** "path size mtime" of every YAML file under `dir` (plugins/ left out), as one string. */
-export function snapshot(dir, rel = '') {
+function snapshot(dir, rel = '') {
   let entries;
   try {
     entries = fs.readdirSync(rel ? `${dir}/${rel}` : dir, { withFileTypes: true });

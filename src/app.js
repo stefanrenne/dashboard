@@ -28,14 +28,14 @@ import { onboardingRoutes } from './onboarding/routes.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
-export const EVENT_STREAMS = { max: 500, perAddress: 50 };
+const EVENT_STREAMS = { max: 500, perAddress: 50 };
 import { safeJoin, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const PUBLIC_DIR = path.join(ROOT, 'public');
+const PUBLIC_DIR = path.join(ROOT, 'public');
 // the browser code and styles the pages share
 const SHARED_FILES = ['common.js', 'theme.css'];
-export const REPO_URL = 'https://github.com/stefanrenne/dashboard';
+const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
  * The version: the VERSION file the Docker build writes (1.2.3, or develop-<sha> / main-<sha>), else DASHBOARD_VERSION,
  * else package.json's. The file comes first because it is part of the image: a container

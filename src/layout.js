@@ -18,9 +18,9 @@ import { CONFIRM_VALUES } from './config/schema.js';
  * widget declares an option with that name): how often to refresh, which blocks to show
  * and whether to hide errors. `refreshInterval` (ms) and `hide_errors` are homepage's names.
  */
-export const INSTANCE_KEYS = ['refresh', 'refreshInterval', 'fields', 'hideErrors', 'hide_errors', 'highlight', 'provider', 'confirm'];
+const INSTANCE_KEYS = ['refresh', 'refreshInterval', 'fields', 'hideErrors', 'hide_errors', 'highlight', 'provider', 'confirm'];
 
-export const MIN_REFRESH_MS = 1000;
+const MIN_REFRESH_MS = 1000;
 
 function splitInstanceKeys(schema, raw) {
   const own = {};
@@ -33,7 +33,7 @@ function splitInstanceKeys(schema, raw) {
 }
 
 /** The origin of an http(s) URL, as a CSP source ("https://example.com:8443"), or null. */
-export function frameOrigin(value) {
+function frameOrigin(value) {
   try {
     const u = new URL(String(value));
     return u.protocol === 'http:' || u.protocol === 'https:' ? u.origin : null;

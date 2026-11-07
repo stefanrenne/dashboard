@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parse } from 'yaml';
 
-export const K8S_SA_DIR = '/var/run/secrets/kubernetes.io/serviceaccount';
+const K8S_SA_DIR = '/var/run/secrets/kubernetes.io/serviceaccount';
 
 export function k8sApiUrl(env = process.env) {
   const host = env.KUBERNETES_SERVICE_HOST;

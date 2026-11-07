@@ -11,9 +11,9 @@ import { checkSchema } from './options.js';
 import { parseDuration, isPlainObject } from '../util.js';
 
 /** Widget API versions this core can run. Never drop one without a major release. */
-export const SUPPORTED_API_VERSIONS = [2];
+const SUPPORTED_API_VERSIONS = [2];
 export const DEFAULT_REFRESH_MS = 30_000;
-export const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 // Other names a widget answers to, e.g. homepage's `customapi` or `unifi_console`.
 const ALIAS_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
@@ -63,9 +63,9 @@ export function readManifest(dir) {
   return manifest;
 }
 
-export const ATTRIBUTE_TYPES = ['boolean', 'number', 'string'];
+const ATTRIBUTE_TYPES = ['boolean', 'number', 'string'];
 // `from:` sources other than a block key, with the type they give
-export const ATTRIBUTE_SOURCES = { '@attention': 'boolean', '@status': 'string', '@rows': 'number' };
+const ATTRIBUTE_SOURCES = { '@attention': 'boolean', '@status': 'string', '@rows': 'number' };
 const ATTRIBUTE_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
 /**
@@ -75,7 +75,7 @@ const ATTRIBUTE_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
  * or error, `'@status'` is the result's status (up, down, ...), `'@rows'` the number of rows.
  * Without `from`, server.js returns the value in `attributes`.
  */
-export function checkAttributes(attributes) {
+function checkAttributes(attributes) {
   if (attributes === undefined) return [];
   if (!isPlainObject(attributes)) return ['attributes: a map of name to { type: boolean | number | string }'];
   const problems = [];

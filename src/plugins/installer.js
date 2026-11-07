@@ -28,8 +28,7 @@ import { readManifest, widgetDirs } from './loader.js';
 import { safeJoin } from '../util.js';
 import { PLUGINS_DIR } from '../config/schema.js';
 
-export { PLUGINS_DIR };
-export const LOCK_FILE = 'plugins.lock.yaml';
+const LOCK_FILE = 'plugins.lock.yaml';
 
 const GIT_URL = /^(https?:\/\/|ssh:\/\/|file:\/\/|git@)[^\s]+$/;
 const NPM_NAME = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
@@ -39,14 +38,14 @@ const PINNED_REF = /^([0-9a-f]{40}|v?\d+\.\d+\.\d+([-+][\w.-]+)?)$/;
 const repoName = (url) => path.basename(url.replace(/\/+$/, '')).replace(/\.git$/, '');
 const PINNED_VERSION = /^\d+\.\d+\.\d+([-+][\w.-]+)?$/;
 const RELEASE_TAG = /^v?(\d+)\.(\d+)\.(\d+)$/;
-export const LATEST_REF = 'latest';
+const LATEST_REF = 'latest';
 // atLeast: the release this dashboard needs; a #latest locked below it moves on by itself.
 // label: its name in the footer.
 export const DEFAULT_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', atLeast: 'v0.13.0', label: 'widgets' }];
 // A develop build of the dashboard (version develop-<sha>, the image's `develop` tag) takes the
 // collection's develop branch instead, so both develop lines are tried together. A branch moves:
 // it is checked like any other (pluginUpdateInterval), without the warning for not being pinned.
-export const DEVELOP_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#develop', label: 'widgets', followsBranch: true }];
+const DEVELOP_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#develop', label: 'widgets', followsBranch: true }];
 
 /** The default plugins for a dashboard of this version: the develop branch for a develop build. */
 export function defaultPluginsFor(version) {
@@ -278,7 +277,7 @@ function removeUnlocked(pluginsRoot, lock, log, warnings) {
 }
 
 /** The widget folders of a package: the package itself, or the widgets of a collection. */
-export function collectionDirs(root) {
+function collectionDirs(root) {
   return [...widgetDirs(root), ...widgetDirs(path.join(root, 'widgets'))];
 }
 

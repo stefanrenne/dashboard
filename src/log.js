@@ -9,8 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const LOG_FILE = 'dashboard.log';
-export const MAX_LOG_BYTES = 10 * 1024 * 1024;
-export const ROTATED_FILES = 4;
+const MAX_LOG_BYTES = 10 * 1024 * 1024;
+const ROTATED_FILES = 4;
 const TARGETS = ['both', 'stdout', 'file'];
 
 export function createLogger({ targets = process.env.LOG_TARGETS, out = console, now = () => new Date(), maxBytes = MAX_LOG_BYTES } = {}) {

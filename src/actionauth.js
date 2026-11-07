@@ -9,12 +9,12 @@ import { SCRYPT_HASH } from './config/schema.js';
 import { cookie, cookieValue, randomToken, clientAddress, isInternal } from './http.js';
 
 export const COOKIE = 'dash_unlock';
-export const PASSWORD_HEADER = 'x-dashboard-password';
-export const PASSKEY_HEADER = 'x-dashboard-passkey'; // a one-time token from a passkey check (src/passkeys.js)
-export const DEFAULT_REMEMBER_MS = 15 * 60 * 1000;
-export const FREE_FAILURES = 5; // then a wait, doubled each time
-export const FIRST_WAIT_MS = 30_000;
-export const MAX_WAIT_MS = 15 * 60 * 1000;
+const PASSWORD_HEADER = 'x-dashboard-password';
+const PASSKEY_HEADER = 'x-dashboard-passkey'; // a one-time token from a passkey check (src/passkeys.js)
+const DEFAULT_REMEMBER_MS = 15 * 60 * 1000;
+const FREE_FAILURES = 5; // then a wait, doubled each time
+const FIRST_WAIT_MS = 30_000;
+const MAX_WAIT_MS = 15 * 60 * 1000;
 const SCRYPT = SCRYPT_HASH;
 
 /** scrypt:N:r:p:salt:hash (no $, which Docker Compose would read as a variable) for a password (base64 salt and hash), as src/hash-password.mjs prints. */

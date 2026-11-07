@@ -17,7 +17,7 @@
 
 import { isPlainObject } from './util.js';
 
-export const LEVELS = ['good', 'warn', 'danger'];
+const LEVELS = ['good', 'warn', 'danger'];
 
 // homepage's default colours per level, as Tailwind classes; settings.blockHighlights.levels
 // overrides them per level and the page turns them into CSS with its palettes.
