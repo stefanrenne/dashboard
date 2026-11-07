@@ -5,6 +5,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- An installed widget's `fetch` got `ctx.configDir` as null in the widget worker (only its
+  `action` got the config folder); both get it now, as built-in widgets always did.
 - settings.yaml: an unknown `language`, `color` or `target` gets a warning and the default, as
   `theme` already did; before, it was passed to the page as it was.
 - On the settings page, a `{{DASHBOARD_VAR_…}}` with lowercase letters counted as a variable (shown,

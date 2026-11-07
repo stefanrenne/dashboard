@@ -3,7 +3,7 @@
 // folder, a log and fetch. `kind: 'action'` calls the widget's action instead of its fetch. Results go back as plain data; anything else becomes the widget's error.
 
 import { parentPort } from 'node:worker_threads';
-import { widgetFetch, describeError } from './runtime.js';
+import { widgetContext, describeError } from './runtime.js';
 
 const modules = new Map(); // server.js URL (with its mtime) -> the module's default export
 const stores = new Map(); // instanceId -> Map for ctx.cache
@@ -35,17 +35,7 @@ parentPort.on('message', async (m) => {
     }
     if (!stores.has(m.instanceId)) stores.set(m.instanceId, new Map());
     const log = Object.fromEntries(['info', 'warn', 'error'].map((level) => [level, (...a) => parentPort.postMessage({ type: 'log', id: m.id, level, text: a.map((x) => (typeof x === 'string' ? x : describeError(x))).join(' ') })]));
-    const ctx = Object.freeze({
-      apiVersion: m.apiVersion ?? 2,
-      instanceId: m.instanceId,
-      options: m.options,
-      params: Object.freeze({ ...m.params }),
-      signal: controller.signal,
-      cache: stores.get(m.instanceId),
-      configDir: m.configDir ?? null,
-      log,
-      fetch: (input, init = {}) => widgetFetch(input, init, m.options.url, controller.signal),
-    });
+    const ctx = widgetContext({ instanceId: m.instanceId, apiVersion: m.apiVersion, options: m.options, params: m.params, signal: controller.signal, cache: stores.get(m.instanceId), configDir: m.configDir, log });
     if (m.kind === 'action' && typeof server.action !== 'function') throw new Error('server.js has no action');
     const data = m.kind === 'action' ? await server.action(ctx) : await server.fetch(ctx);
     reply({ type: 'result', id: m.id, data: data ?? {} });

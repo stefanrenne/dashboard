@@ -9,12 +9,12 @@ import { tmpDir, writeWidget, serve } from './helpers.mjs';
 
 const base = { name: 'T', version: '1.0.0', apiVersion: 2 };
 
-async function setup(id, serverJs, { timeoutMs = 5000, memoryMb, source = 'path', options = {}, secretValues = [] } = {}) {
+async function setup(id, serverJs, { timeoutMs = 5000, memoryMb, source = 'path', options = {}, secretValues = [], configDir = null } = {}) {
   const widget = await loadWidget(writeWidget(tmpDir(), { ...base, id, options: { url: { type: 'url' }, key: { type: 'string', secret: true } } }, { 'server.js': serverJs }), { source });
   const logs = [];
   const log = { info: (...a) => logs.push(a.join(' ')), warn: (...a) => logs.push(a.join(' ')), error: (...a) => logs.push(a.join(' ')) };
   const sandbox = new WidgetSandbox({ log, memoryMb, graceMs: 200 });
-  const runtime = new WidgetRuntime({ registry: new Map([[id, widget]]), timeoutMs, log, sandbox });
+  const runtime = new WidgetRuntime({ registry: new Map([[id, widget]]), timeoutMs, log, sandbox, configDir });
   runtime.setInstances(new Map([['i1', { type: id, options, secretValues, refreshMs: 0 }]]));
   return { runtime, sandbox, logs, get: () => runtime.get('i1') };
 }
@@ -98,5 +98,14 @@ test('sandbox: errors are scrubbed, non-plain data refused, built-ins stay in th
     assert.equal((await builtin.get()).data.blocks[0].value, 'true');
   } finally {
     for (const s of [bad, fn, builtin]) s.sandbox.close();
+  }
+});
+
+test('sandbox: fetch gets ctx.configDir in the worker too, as in the process', async () => {
+  const { sandbox, get } = await setup('cfg', 'export default { async fetch(ctx) { return { blocks: [{ label: "dir", value: ctx.configDir }] }; } };', { configDir: '/config' });
+  try {
+    assert.equal((await get()).data.blocks[0].value, '/config');
+  } finally {
+    sandbox.close();
   }
 });

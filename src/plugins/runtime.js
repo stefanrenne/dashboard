@@ -98,17 +98,8 @@ export class WidgetRuntime {
     } else if (!widget.server) {
       result = { ok: true, data: null, fetchedAt: this.now() };
     } else {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(new Error(`timed out after ${this.timeoutMs} ms`)), this.timeoutMs);
       try {
-        const isolated = this.sandbox && widget.source !== 'builtin' && widget.serverUrl;
-        const call = isolated
-          ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), params, signal: controller.signal, log: this.#log(instance) })
-          : () => widget.server.fetch(this.#context(instanceId, instance, controller.signal, params));
-        const data = await Promise.race([
-          Promise.resolve().then(call),
-          new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(controller.signal.reason))),
-        ]);
+        const data = await this.#call('fetch', instanceId, instance, widget, { params, timeoutMs: this.timeoutMs });
         const checked = checkData(data ?? {});
         const published = { ...blockAttributes(checked, widget.manifest.attributes), ...(checked.attributes ?? {}) };
         const { attributes, dropped } = selectAttributes(Object.keys(published).length ? published : checked.attributes, widget.manifest.attributes, instance.secretValues);
@@ -123,9 +114,6 @@ export class WidgetRuntime {
         const message = scrub(describeError(err), instance.secretValues);
         this.log.warn(`widget ${instance.type} (${instanceId}): ${message}`);
         result = { ok: false, error: message, fetchedAt: this.now() };
-      } finally {
-        clearTimeout(timer);
-        controller.abort();
       }
     }
     const settling = this.settling.get(instanceId);
@@ -153,25 +141,14 @@ export class WidgetRuntime {
     if (this.running.has(instanceId)) return { ok: false, busy: true, error: 'already running' };
     this.running.add(instanceId);
     const secrets = [...instance.secretValues, ...this.secrets];
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(new Error(`timed out after ${this.actionTimeoutMs} ms`)), this.actionTimeoutMs);
     try {
-      const isolated = this.sandbox && widget.source !== 'builtin' && widget.serverUrl;
-      const call = isolated
-        ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), kind: 'action', configDir: this.configDir, signal: controller.signal, log: this.#log(instance) })
-        : () => widget.server.action(this.#context(instanceId, instance, controller.signal));
-      const data = await Promise.race([
-        Promise.resolve().then(call),
-        new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(controller.signal.reason))),
-      ]);
+      const data = await this.#call('action', instanceId, instance, widget, { timeoutMs: this.actionTimeoutMs });
       return { ok: true, data: actionResult(data, secrets) };
     } catch (err) {
       const message = scrub(describeError(err), secrets);
       this.log.warn(`widget ${instance.type} (${instanceId}) action: ${message}`);
       return { ok: false, error: message };
     } finally {
-      clearTimeout(timer);
-      controller.abort();
       this.running.delete(instanceId);
       this.#settleCard(instanceId);
     }
@@ -208,21 +185,46 @@ export class WidgetRuntime {
     };
   }
 
-  #context(instanceId, instance, signal, params = {}) {
-    if (!this.stores.has(instanceId)) this.stores.set(instanceId, new Map());
+  /**
+   * Calls a widget's `kind` ('fetch' or 'action') with its ctx: in the worker for an installed
+   * widget when there is a sandbox, else in this process; given up after `timeoutMs`.
+   */
+  async #call(kind, instanceId, instance, widget, { params = {}, timeoutMs }) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`timed out after ${timeoutMs} ms`)), timeoutMs);
     const log = this.#log(instance);
-    return Object.freeze({
-      apiVersion: instance.apiVersion ?? 2,
-      instanceId,
-      options: structuredClone(instance.options),
-      params: Object.freeze({ ...params }),
-      signal,
-      cache: this.stores.get(instanceId),
-      configDir: this.configDir,
-      log,
-      fetch: (input, init = {}) => widgetFetch(input, init, instance.options.url, signal),
-    });
+    try {
+      const isolated = this.sandbox && widget.source !== 'builtin' && widget.serverUrl;
+      const call = isolated
+        ? () => this.sandbox.run({ url: widget.serverUrl, instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), params, kind, configDir: this.configDir, signal: controller.signal, log })
+        : () => {
+          if (!this.stores.has(instanceId)) this.stores.set(instanceId, new Map());
+          return widget.server[kind](widgetContext({ instanceId, apiVersion: instance.apiVersion, options: structuredClone(instance.options), params, signal: controller.signal, cache: this.stores.get(instanceId), configDir: this.configDir, log }));
+        };
+      return await Promise.race([
+        Promise.resolve().then(call),
+        new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(controller.signal.reason))),
+      ]);
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
+    }
   }
+}
+
+/** A widget's ctx (the widget API), the same in this process and in the worker. */
+export function widgetContext({ instanceId, apiVersion, options, params = {}, signal, cache, configDir = null, log }) {
+  return Object.freeze({
+    apiVersion: apiVersion ?? 2,
+    instanceId,
+    options,
+    params: Object.freeze({ ...params }),
+    signal,
+    cache,
+    configDir,
+    log,
+    fetch: (input, init = {}) => widgetFetch(input, init, options.url, signal),
+  });
 }
 
 /**
