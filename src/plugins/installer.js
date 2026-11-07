@@ -26,8 +26,9 @@ import { execFile } from 'node:child_process';
 import YAML from 'yaml';
 import { readManifest, widgetDirs } from './loader.js';
 import { safeJoin } from '../util.js';
+import { PLUGINS_DIR } from '../config/schema.js';
 
-export const PLUGINS_DIR = 'plugins';
+export { PLUGINS_DIR };
 export const LOCK_FILE = 'plugins.lock.yaml';
 
 const GIT_URL = /^(https?:\/\/|ssh:\/\/|file:\/\/|git@)[^\s]+$/;

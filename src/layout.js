@@ -6,7 +6,7 @@
 import { validateOptions } from './plugins/options.js';
 import { DEFAULT_REFRESH_MS } from './plugins/loader.js';
 import { CORE_WIDGETS } from './plugins/installer.js';
-import { stableId, parseDuration, isPlainObject } from './util.js';
+import { stableId, parseDuration, isPlainObject, scrub } from './util.js';
 import { DEFAULT_LEVELS } from './highlight.js';
 import { parseFilter, bindFilter, filterRefs } from './filter.js';
 import { k8sConnection } from './discovery/kubeconfig.js';
@@ -78,7 +78,7 @@ export function frameOrigin(value) {
 export function buildState({ config, registry, groups, extraErrors = [], extraWarnings = [], secrets: knownSecrets = config.secrets, actionsProtected = false }) {
   // every value under settings.providers is a secret, also when written there literally
   const providers = isPlainObject(config.settings.providers) ? config.settings.providers : {};
-  const secrets = new Set([...knownSecrets, ...stringsIn(providers).filter((s) => s.length >= 4)]);
+  const secrets = new Set([...knownSecrets, ...stringsIn(providers)]);
   const instances = new Map();
   const actions = new Map(); // serviceId -> { name, href }: services the dashboard calls for the viewer
   const frames = new Set(); // origins the page may show in a frame (widget.yaml `frames`)
@@ -466,7 +466,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   const scrubbed = (list) =>
     // `discovered` only steers confirm: (see confirmFor), it is no part of a message
-    list.map(({ discovered, ...m }) => ({ ...m, message: [...secrets].reduce((s, secret) => s.split(secret).join('***'), m.message) }));
+    list.map(({ discovered, ...m }) => ({ ...m, message: scrub(m.message, secrets) }));
 
   // homepage's tabs: on when a layout group has `tab`, in the order of the layout block
   const tabs = [...new Set(Object.values(config.settings.layout).map((l) => l?.tab).filter((t) => typeof t === 'string' && t))];

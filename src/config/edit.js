@@ -18,8 +18,8 @@ import YAML from 'yaml';
 import { checkConfigFile } from './load.js';
 import { CONFIG_FILES, CUSTOM_FILES } from './schema.js';
 import { listIncludes } from './include.js';
-import { PLUGINS_DIR } from '../plugins/installer.js';
-import { scrub } from '../plugins/runtime.js';
+import { PLUGINS_DIR } from './schema.js';
+import { scrub } from '../util.js';
 
 export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
 export const HISTORY_DIR = '.history';

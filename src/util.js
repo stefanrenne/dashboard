@@ -44,3 +44,13 @@ export async function realInside(root, file) {
 export function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
+
+// Shorter values are no secret worth hiding (and would garble every message they occur in).
+export const MIN_SECRET_LENGTH = 3;
+
+/** `text` with every known secret value replaced by ***. */
+export function scrub(text, secrets = []) {
+  let out = String(text);
+  for (const s of secrets) if (typeof s === 'string' && s.length >= MIN_SECRET_LENGTH) out = out.split(s).join('***');
+  return out;
+}

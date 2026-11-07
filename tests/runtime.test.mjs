@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { loadWidget, loadRegistry, readManifest } from '../src/plugins/loader.js';
 import { validateOptions } from '../src/plugins/options.js';
-import { WidgetRuntime, blockAttributes, checkData, scrub, selectAttributes, widgetFetch } from '../src/plugins/runtime.js';
+import { WidgetRuntime, blockAttributes, checkData, selectAttributes, widgetFetch } from '../src/plugins/runtime.js';
+import { scrub } from '../src/util.js';
 import { tmpDir, writeWidget, silentLog, serve, COLLECTION_WIDGETS } from './helpers.mjs';
 
 const base = { name: 'T', version: '1.0.0', apiVersion: 2 };

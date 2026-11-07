@@ -6,6 +6,7 @@
 
 import { resolveIcon } from './layout.js';
 import { MARK } from './mark.js';
+import { scrub } from './util.js';
 
 export { MARK };
 
@@ -22,7 +23,6 @@ export const SHADE_800 = {
 const plainIcon = (icon) => resolveIcon(icon)?.split('#')[0].replace(/^\/icons\//, 'icons/') ?? null;
 
 
-const scrub = (value, secrets) => [...secrets].reduce((s, secret) => s.split(secret).join('***'), String(value));
 
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

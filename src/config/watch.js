@@ -5,7 +5,7 @@
 // When fs.watch cannot start at all, polling every 5 seconds takes over.
 
 import fs from 'node:fs';
-import { PLUGINS_DIR } from '../plugins/installer.js';
+import { PLUGINS_DIR } from './schema.js';
 
 /** Whether a change to `filename` (relative to the config dir) should reload the config. */
 export function isConfigChange(filename) {

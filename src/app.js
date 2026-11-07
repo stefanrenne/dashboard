@@ -19,7 +19,7 @@ import { buildState, resolveIcon } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
-import { describeError, scrub } from './plugins/runtime.js';
+import { describeError } from './plugins/runtime.js';
 import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
@@ -43,7 +43,7 @@ import { validateOptions } from './plugins/options.js';
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
 export const EVENT_STREAMS = { max: 500, perAddress: 50 };
-import { safeJoin, realInside } from './util.js';
+import { safeJoin, realInside, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');

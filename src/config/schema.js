@@ -2,6 +2,8 @@
 // settings page and the setup wizard offer them (/api/settings sends them to the page), and the
 // rest of the server reads them from here.
 
+// the folder in the config folder where the dashboard keeps the widget packages it installs
+export const PLUGINS_DIR = 'plugins';
 export const CONFIG_FILES = ['settings', 'services', 'widgets', 'bookmarks', 'docker', 'kubernetes', 'proxmox'];
 // the page's own CSS and JavaScript in the config folder (homepage's)
 export const CUSTOM_FILES = ['custom.css', 'custom.js'];

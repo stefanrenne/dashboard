@@ -4,6 +4,7 @@
 import http from 'node:http';
 import https from 'node:https';
 import { highlightBlocks } from '../highlight.js';
+import { scrub } from '../util.js';
 
 export const DEFAULT_TIMEOUT_MS = 10_000;
 // the most an action may take; a widget keeps its own, shorter limit (the button's `timeout`)
@@ -397,8 +398,3 @@ export function actionResult(data, secrets = []) {
   return out;
 }
 
-export function scrub(message, secretValues = []) {
-  let out = message;
-  for (const s of secretValues) if (s && s.length >= 3) out = out.split(s).join('***');
-  return out;
-}
