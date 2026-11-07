@@ -8,12 +8,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
-import { FailureLimiter, cookieValue, secureRequest } from './actionauth.js';
+import { FailureLimiter } from './actionauth.js';
+import { isLocal, cookie, cookieValue, randomToken, clientAddress } from './http.js';
 import { LANGUAGES, COLORS } from './config/schema.js';
 
 export const MARKER = '.onboarding';
 export const COOKIE = 'dash_setup';
-export const BODY_LIMIT = 1024 * 1024;
 const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
 
 /** A code such as K7QM-3XWD, for the log. */
@@ -23,65 +23,9 @@ export function newCode() {
   return `${chars.slice(0, 4)}-${chars.slice(4)}`;
 }
 
-/** A private, loopback or link-local address (IPv4, IPv6, or IPv4 mapped in IPv6). */
-export function isPrivateAddress(address) {
-  let a = String(address ?? '').trim().toLowerCase().replace(/^\[|\]$/g, '');
-  if (a.startsWith('::ffff:')) a = a.slice(7);
-  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(a);
-  if (v4) {
-    const [x, y] = [Number(v4[1]), Number(v4[2])];
-    return x === 10 || x === 127 || (x === 172 && y >= 16 && y <= 31) || (x === 192 && y === 168) || (x === 100 && y >= 64 && y <= 127) || (x === 169 && y === 254);
-  }
-  if (!a.includes(':')) return false;
-  return a === '::1' || /^f[cd][0-9a-f]{2}:/.test(a) || /^fe[89ab][0-9a-f]:/.test(a);
-}
 
-/** The addresses a request passed through: X-Forwarded-For and Forwarded `for=`, in order. */
-export function forwardedChain(req) {
-  const out = [];
-  for (const part of String(req.headers['x-forwarded-for'] ?? '').split(',')) if (part.trim()) out.push(part.trim());
-  for (const m of String(req.headers.forwarded ?? '').matchAll(/for="?([^";,]+)"?/gi)) out.push(m[1].replace(/:\d+$/, '').trim());
-  return out;
-}
 
-/**
- * The visitor is on the local network: the connection comes from a private address, and so does
- * every address a proxy passed on. A proxy appends the real address, so a private one an
- * internet visitor writes into X-Forwarded-For does not help.
- */
-export function isLocal(req) {
-  if (!isPrivateAddress(req.socket?.remoteAddress)) return false;
-  return forwardedChain(req).every((a) => isPrivateAddress(a.replace(/^([\d.]+):\d+$/, '$1')));
-}
 
-/**
- * The request body as JSON: only `application/json`, at most `limit` bytes. Rejects with an
- * Error whose `status` is the answer to give (413, 415 or 400).
- */
-export function readJson(req, limit = BODY_LIMIT) {
-  return new Promise((resolve, reject) => {
-    const fail = (status, message) => Object.assign(new Error(message), { status });
-    if (!/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))) return reject(fail(415, 'expected application/json'));
-    if (Number(req.headers['content-length']) > limit) return reject(fail(413, 'too large'));
-    const chunks = [];
-    let size = 0;
-    req.on('data', (c) => {
-      size += c.length;
-      if (size > limit) {
-        reject(fail(413, 'too large'));
-        req.destroy();
-      } else chunks.push(c);
-    });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || 'null'));
-      } catch {
-        reject(fail(400, 'broken JSON'));
-      }
-    });
-    req.on('error', (err) => reject(fail(400, err.message)));
-  });
-}
 
 /** `ghcr.io/hotio/sonarr:release@sha256:…` → `hotio/sonarr`; `nginx` → `library/nginx`. */
 export function imageRepository(image) {
@@ -374,7 +318,7 @@ export class Onboarding {
 
   /** Checks a code; { ok, headers } with a session cookie, or { ok: false, status, body }. */
   verify(req, given) {
-    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const address = clientAddress(req);
     const retryAfter = this.limiter.waiting(address);
     if (retryAfter) return { ok: false, status: 429, body: { ok: false, retryAfter, error: 'too many wrong codes' } };
     const want = Buffer.from(String(this.code ?? ''));
@@ -385,9 +329,9 @@ export class Onboarding {
       return { ok: false, status: 401, body: { ok: false, wrongCode: true, error: 'wrong code' } };
     }
     this.limiter.succeeded(address);
-    const token = crypto.randomBytes(32).toString('base64url');
+    const token = randomToken();
     this.sessions.add(token);
-    return { ok: true, headers: { 'set-cookie': `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict${secureRequest(req) ? '; Secure' : ''}` } };
+    return { ok: true, headers: { 'set-cookie': cookie(req, COOKIE, token) } };
   }
 
   /**

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ActionGate, COOKIE, checkPassword, cookieValue, hashPassword, isInternal } from '../src/actionauth.js';
+import { ActionGate, COOKIE, checkPassword, hashPassword } from '../src/actionauth.js';
+import { cookieValue, isInternal } from '../src/http.js';
 import { tmpDir, silentLog } from './helpers.mjs';
 
 /** A request as http gives it: headers and the socket's address. */

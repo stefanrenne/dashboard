@@ -6,7 +6,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { cookieValue, secureRequest } from './actionauth.js';
+import { cookie, cookieValue, randomToken } from './http.js';
 
 export const SESSION_COOKIE = 'dash_session';
 export const SESSIONS_FILE = '.sessions.json';
@@ -47,7 +47,7 @@ export class SessionStore {
 
   /** A new session for `password` (its fingerprint); the Set-Cookie header. */
   create(req, password, rememberMs) {
-    const token = crypto.randomBytes(32).toString('base64url');
+    const token = randomToken();
     const now = this.now();
     this.sessions.set(tokenHash(token), { expires: now + rememberMs, touched: now, password });
     // the oldest go when there are many (each login from another browser makes one)
@@ -56,7 +56,7 @@ export class SessionStore {
       for (const [k] of oldest) this.sessions.delete(k);
     }
     this.#save();
-    return cookie(req, token, rememberMs);
+    return sessionCookie(req, token, rememberMs);
   }
 
   /**
@@ -80,22 +80,20 @@ export class SessionStore {
     s.expires = now + rememberMs;
     s.touched = now;
     this.#save();
-    return { ok: true, headers: { 'set-cookie': cookie(req, token, rememberMs) } };
+    return { ok: true, headers: { 'set-cookie': sessionCookie(req, token, rememberMs) } };
   }
 
   /** Ends the request's session; the Set-Cookie header that clears it. */
   end(req) {
     const token = cookieValue(req, SESSION_COOKIE);
     if (token && this.sessions.delete(tokenHash(token))) this.#save();
-    return `${SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secureRequest(req) ? '; Secure' : ''}`;
+    return sessionCookie(req, '', 0);
   }
 }
 
 // Lax, not Strict: a link to the dashboard from elsewhere (a bookmark bar, another page) opens it
 // logged in; the POST endpoints keep needing X-Requested-With, which no other site can send.
-function cookie(req, token, rememberMs) {
-  return `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${Math.round(rememberMs / 1000)}; HttpOnly; SameSite=Lax${secureRequest(req) ? '; Secure' : ''}`;
-}
+const sessionCookie = (req, token, rememberMs) => cookie(req, SESSION_COOKIE, token, { maxAge: rememberMs / 1000, sameSite: 'Lax' });
 
 // what a visitor who is not logged in may still reach: the login page, its script and API, and
 // the passkey check of the login page, and what tools ask without a browser (the image's health check, robots.txt)

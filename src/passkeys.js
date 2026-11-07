@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { secureRequest } from './actionauth.js';
+import { secureRequest } from './http.js';
 
 export const PASSKEYS_FILE = '.passkeys.json';
 export { PASSKEY_HEADER } from './actionauth.js';

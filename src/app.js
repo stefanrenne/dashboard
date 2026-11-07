@@ -20,7 +20,7 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { describeError } from './plugins/runtime.js';
-import { ActionGate, hashPassword, checkPassword, isInternal, passwordFingerprint } from './actionauth.js';
+import { ActionGate, hashPassword, checkPassword, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys, rpContext } from './passkeys.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings/form.js';
@@ -35,11 +35,11 @@ import { testKubernetes, testProxmox } from './settings/tests.js';
 import { substitute } from './config/vars.js';
 import { checkConfigText, parseDocument, documentText, editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
 import { maskConfigText, unmaskConfigText } from './settings/secrets.js';
-import { isLocal, BODY_LIMIT } from './onboarding.js';
 import { parseConfigYaml } from './config/include.js';
-import { Onboarding, readJson, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML } from './onboarding.js';
+import { Onboarding, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML } from './onboarding.js';
 import { LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES, CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
 import { validateOptions } from './plugins/options.js';
+import { send, sendFile, readJson, BODY_LIMIT, isLocal, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress } from './http.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
@@ -65,37 +65,7 @@ export function readVersion(root = ROOT, env = process.env) {
 }
 export const VERSION = readVersion();
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2',
-};
 
-/**
- * The security headers; `frames` are the origins the page may frame (the iframe widget's src).
- * Scripts come from the dashboard itself; the page's one inline script carries `nonce`, so an
- * injected inline script or event handler does not run.
- */
-export function securityHeaders(frames = [], nonce = null) {
-  return {
-    'x-content-type-options': 'nosniff',
-    'referrer-policy': 'no-referrer',
-    'content-security-policy':
-      "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-      `font-src 'self' https://fonts.gstatic.com; script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; connect-src 'self'; ` +
-      `frame-src ${frames.length ? frames.join(' ') : "'none'"}; frame-ancestors 'self'`,
-  };
-}
-const SECURITY_HEADERS = securityHeaders();
 
 /**
  * settings.yaml `allowedHosts`: the host names the dashboard answers, against DNS rebinding. An
@@ -318,25 +288,6 @@ export async function createApp({
     for (const res of sseClients) res.write(': ping\n\n');
   }, 25_000).unref();
 
-  function send(res, status, body, type = 'application/json', headers = SECURITY_HEADERS) {
-    const data = type === 'application/json' ? JSON.stringify(body) : body;
-    res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', ...headers });
-    res.end(data);
-  }
-
-  /** Sends a file; with `root`, only when its real path (symlinks resolved) is inside root. */
-  async function sendFile(res, file, { cache = 'no-cache', root = null } = {}) {
-    if (root && !(await realInside(root, file))) return send(res, 404, { error: 'not found' });
-    fs.readFile(file, (err, data) => {
-      if (err) return send(res, 404, { error: 'not found' });
-      res.writeHead(200, {
-        'content-type': TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
-        'cache-control': cache,
-        ...SECURITY_HEADERS,
-      });
-      res.end(data);
-    });
-  }
 
 
   async function handler(req, res) {
@@ -407,7 +358,7 @@ export async function createApp({
       }
       if (method === 'GET' && p === '/api/events') {
         // each open stream holds a socket: a cap overall and per address (a proxy is one address)
-        const address = String(req.socket?.remoteAddress ?? 'unknown');
+        const address = clientAddress(req);
         const fromHere = [...sseClients].filter((c) => c.address === address).length;
         if (sseClients.size >= eventStreams.max || fromHere >= eventStreams.perAddress) {
           return send(res, 503, { error: 'too many open event streams' }, 'application/json', { ...SECURITY_HEADERS, 'retry-after': '60' });
@@ -806,7 +757,7 @@ export async function createApp({
       if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) return send(res, 400, { ok: false, error: `at least ${MIN_PASSWORD} characters` });
       if (gate.password) {
         // the current password, every time: also when logged in or unlocked
-        const address = String(req.socket?.remoteAddress ?? 'unknown');
+        const address = clientAddress(req);
         const retryAfter = gate.limiter.waiting(address);
         if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
         if (!(await checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''))) {
@@ -854,7 +805,7 @@ export async function createApp({
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
-    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const address = clientAddress(req);
     const retryAfter = gate.limiter.waiting(address);
     if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong tries' });
     const out = passkeys.verify(req, body);
@@ -894,7 +845,7 @@ export async function createApp({
     } catch (err) {
       return send(res, err.status ?? 400, { ok: false, error: err.message });
     }
-    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const address = clientAddress(req);
     const retryAfter = gate.limiter.waiting(address);
     if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
     const viaPasskey = typeof body?.passkeyToken === 'string' && passkeys.consume(body.passkeyToken);

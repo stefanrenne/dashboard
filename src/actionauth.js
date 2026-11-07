@@ -6,6 +6,7 @@
 
 import crypto from 'node:crypto';
 import { SCRYPT_HASH } from './config/schema.js';
+import { cookie, cookieValue, randomToken, clientAddress, isInternal } from './http.js';
 
 export const COOKIE = 'dash_unlock';
 export const PASSWORD_HEADER = 'x-dashboard-password';
@@ -44,20 +45,7 @@ export function passwordFingerprint(password) {
   return password?.value ? crypto.createHash('sha256').update(`dash-session:${password.value}`).digest('hex').slice(0, 32) : '';
 }
 
-export function isInternal(req) {
-  const address = String(req.socket?.remoteAddress ?? '');
-  const loopback = address === '::1' || address.startsWith('127.') || address.startsWith('::ffff:127.');
-  return loopback && req.headers['x-forwarded-for'] === undefined && req.headers.forwarded === undefined;
-}
 
-/** The value of one cookie of a request, or null. */
-export function cookieValue(req, name) {
-  for (const part of String(req.headers.cookie ?? '').split(';')) {
-    const at = part.indexOf('=');
-    if (at > 0 && part.slice(0, at).trim() === name) return part.slice(at + 1).trim();
-  }
-  return null;
-}
 
 /**
  * Wrong tries per address: FREE_FAILURES free, then a wait of FIRST_WAIT_MS that doubles up to
@@ -89,7 +77,6 @@ export class FailureLimiter {
   }
 }
 
-export const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
 
 export class ActionGate {
   constructor({ password = null, rememberMs = DEFAULT_REMEMBER_MS, now = Date.now, log = console, passkeys = null } = {}) {
@@ -120,9 +107,9 @@ export class ActionGate {
     if (!(this.rememberMs > 0)) return null;
     const now = this.now();
     for (const [t, until] of this.unlocks) if (until <= now) this.unlocks.delete(t);
-    const token = crypto.randomBytes(32).toString('base64url');
+    const token = randomToken();
     this.unlocks.set(token, now + this.rememberMs);
-    return `${COOKIE}=${token}; Path=${base}; Max-Age=${Math.round(this.rememberMs / 1000)}; HttpOnly; SameSite=Strict${secureRequest(req) ? '; Secure' : ''}`;
+    return cookie(req, COOKIE, token, { path: base, maxAge: this.rememberMs / 1000 });
   }
 
   /**
@@ -133,7 +120,7 @@ export class ActionGate {
     if (!this.password || !requirement || isInternal(req)) return { ok: true, headers: {} };
     // a login with the admin password counts as unlocked; `always` asks every time anyway
     if (requirement === 'password' && (loggedIn || this.#unlocked(req))) return { ok: true, headers: {} };
-    const address = String(req.socket?.remoteAddress ?? 'unknown');
+    const address = clientAddress(req);
     const retryAfter = this.limiter.waiting(address);
     if (retryAfter) return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter, error: 'too many wrong passwords' } };
     const passkeyToken = req.headers[PASSKEY_HEADER];
@@ -159,7 +146,7 @@ export class ActionGate {
   lock(req, base = '/') {
     const token = cookieValue(req, COOKIE);
     if (token) this.unlocks.delete(token);
-    return { 'set-cookie': `${COOKIE}=; Path=${base}; Max-Age=0; HttpOnly; SameSite=Strict${secureRequest(req) ? '; Secure' : ''}` };
+    return { 'set-cookie': cookie(req, COOKIE, '', { path: base, maxAge: 0 }) };
   }
 
   /** Whether this browser is unlocked now (for the page's lock icon). */
