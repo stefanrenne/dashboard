@@ -33,7 +33,10 @@ export const LOCK_FILE = 'plugins.lock.yaml';
 
 const GIT_URL = /^(https?:\/\/|ssh:\/\/|file:\/\/|git@)[^\s]+$/;
 const NPM_NAME = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
+const COMMIT = /^[0-9a-f]{40}$/;
 const PINNED_REF = /^([0-9a-f]{40}|v?\d+\.\d+\.\d+([-+][\w.-]+)?)$/;
+// the name of a git repository from its URL: https://github.com/a/widgets.git → widgets
+const repoName = (url) => path.basename(url.replace(/\/+$/, '')).replace(/\.git$/, '');
 const PINNED_VERSION = /^\d+\.\d+\.\d+([-+][\w.-]+)?$/;
 const RELEASE_TAG = /^v?(\d+)\.(\d+)\.(\d+)$/;
 export const LATEST_REF = 'latest';
@@ -173,8 +176,8 @@ export function packageInfo(entry, src, record, dir) {
     const url = `https://www.npmjs.com/package/${src.name}/v/${encodeURIComponent(record.version)}`;
     return { name: entry.label ?? (src.subdir ? `${src.name}/${path.basename(src.subdir)}` : src.name), version: record.version, url };
   }
-  const repo = path.basename(src.url.replace(/\/+$/, '')).replace(/\.git$/, '');
-  const tag = record.tag ?? (!src.floating && !/^[0-9a-f]{40}$/.test(src.ref) ? src.ref : null);
+  const repo = repoName(src.url);
+  const tag = record.tag ?? (!src.floating && !COMMIT.test(src.ref) ? src.ref : null);
   const web = githubRepo(src.url);
   const url = web && (tag ? `${web}/releases/tag/${encodeURIComponent(tag)}` : `${web}/commit/${record.commit}`);
   return { name: entry.label ?? (src.subdir ? `${repo}/${path.basename(src.subdir)}` : repo), version: tag ?? record.commit.slice(0, 7), url };
@@ -348,28 +351,23 @@ export async function pluginUpdates({ configDir, entries, run = defaultRun }) {
   return news;
 }
 
+// a release tag's [major, minor, patch], or undefined (pre-releases are no release)
+const tagVersion = (tag) => RELEASE_TAG.exec(String(tag))?.slice(1).map(Number);
+/** <0, 0 or >0 as release tag `a` is older than, the same as or newer than `b`. */
+const compareTags = (a, b) => {
+  const [x, y] = [tagVersion(a), tagVersion(b)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
+  return 0;
+};
+
 /** True when release tag `tag` is older than `min` (both v1.2.3 or 1.2.3). */
 export function olderTag(tag, min) {
-  const a = RELEASE_TAG.exec(tag)?.slice(1).map(Number);
-  const b = RELEASE_TAG.exec(min)?.slice(1).map(Number);
-  if (!a || !b) return false;
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i];
-  return false;
+  return Boolean(tagVersion(tag) && tagVersion(min)) && compareTags(tag, min) < 0;
 }
 
 /** The highest release tag (v1.2.3 or 1.2.3, no pre-releases) out of `names`, or undefined. */
 export function latestTag(names) {
-  const version = (name) => RELEASE_TAG.exec(name)?.slice(1).map(Number);
-  const newer = (a, b) => {
-    for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
-    return false;
-  };
-  let best;
-  for (const name of names) {
-    const v = version(name);
-    if (v && (!best || newer(v, version(best)))) best = name;
-  }
-  return best;
+  return names.filter(tagVersion).reduce((best, name) => (best === undefined || compareTags(name, best) > 0 ? name : best), undefined);
 }
 
 async function resolveLatestTag(url, run) {
@@ -386,7 +384,7 @@ async function installGit(src, pluginsRoot, run, locked) {
   let tag = locked?.tag;
   try {
     const commit = locked?.commit;
-    if (commit || /^[0-9a-f]{40}$/.test(src.ref)) {
+    if (commit || COMMIT.test(src.ref)) {
       await run('git', ['clone', '--quiet', '--', src.url, checkout]);
       await run('git', ['-C', checkout, 'checkout', '--quiet', '--detach', commit ?? src.ref]);
     } else {
@@ -397,8 +395,7 @@ async function installGit(src, pluginsRoot, run, locked) {
     }
     const resolved = (await run('git', ['-C', checkout, 'rev-parse', 'HEAD'])).trim();
     fs.rmSync(path.join(checkout, '.git'), { recursive: true, force: true });
-    const repo = path.basename(src.url.replace(/\/+$/, '')).replace(/\.git$/, '');
-    const dir = place(checkout, src.subdir, pluginsRoot, `${repo}@${resolved.slice(0, 12)}`);
+    const dir = place(checkout, src.subdir, pluginsRoot, `${repoName(src.url)}@${resolved.slice(0, 12)}`);
     return tag ? { dir, commit: resolved, tag } : { dir, commit: resolved };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
