@@ -24,7 +24,7 @@ import { readPlugins, checkPlugins, writePlugins } from './plugins.js';
 import { readServices, writeServices } from './services.js';
 import { readBookmarks, writeBookmarks } from './bookmarks.js';
 import { readServers, writeServers } from './servers.js';
-import { readHeader, writeHeader, optionsForTest } from './widgets.js';
+import { readHeader, writeHeader, optionsForTest, formCatalog } from './widgets.js';
 import { maskConfigText, unmaskConfigText, secretsOf } from './secrets.js';
 import { testKubernetes, testProxmox } from './tests.js';
 import { iconSuggestions } from './icons.js';
@@ -41,6 +41,7 @@ export function settingsRoutes(app) {
   const { configDir, env, log, gate, passkeys, sessions, state } = app;
   const schemaFor = (type) => state.registry?.get(type)?.manifest?.options ?? null;
   const knownSecrets = () => [...(state.config?.secrets ?? [])];
+  const catalog = () => formCatalog(widgetCatalog(state.registry));
 
   // the groups the dashboard has now, discovered ones included, for the Groups section
   const groupInfo = () => ({
@@ -129,17 +130,17 @@ export function settingsRoutes(app) {
     }],
 
     // the forms of the other config files: GET reads, POST saves and answers as a read
-    ['GET', '/services', () => ({ ok: true, ...readServices(configDir, schemaFor), widgets: widgetCatalog(state.registry), discovered: discovered() })],
+    ['GET', '/services', () => ({ ok: true, ...readServices(configDir, schemaFor), widgets: catalog(), discovered: discovered() })],
     ['POST', '/services', async ({ body }) => {
       const out = writeServices(configDir, body?.items, body?.hash, { env }, schemaFor);
       await saved(out, 'services.yaml');
-      return { ok: true, ...readServices(configDir, schemaFor), widgets: widgetCatalog(state.registry), discovered: discovered(), warnings: out.warnings };
+      return { ok: true, ...readServices(configDir, schemaFor), widgets: catalog(), discovered: discovered(), warnings: out.warnings };
     }, BODY_LIMIT],
-    ['GET', '/header', () => ({ ok: true, ...readHeader(configDir, schemaFor), catalog: widgetCatalog(state.registry) })],
+    ['GET', '/header', () => ({ ok: true, ...readHeader(configDir, schemaFor), catalog: catalog() })],
     ['POST', '/header', async ({ body }) => {
       const out = writeHeader(configDir, body?.widgets, body?.hash, { env }, schemaFor);
       await saved(out, 'widgets.yaml');
-      return { ok: true, ...readHeader(configDir, schemaFor), catalog: widgetCatalog(state.registry), warnings: out.warnings };
+      return { ok: true, ...readHeader(configDir, schemaFor), catalog: catalog(), warnings: out.warnings };
     }, BODY_LIMIT],
     ['GET', '/bookmarks', () => ({ ok: true, ...readBookmarks(configDir) })],
     ['POST', '/bookmarks', async ({ body }) => {
@@ -228,7 +229,9 @@ export function settingsRoutes(app) {
     ['GET', '/icon', ({ query }) => {
       // the address an icon name stands for, for the preview on the page
       const name = String(query.get('name') ?? '').trim().slice(0, 300);
-      return { ok: true, name, url: name ? resolveIcon(name) : null };
+      // the address, and whether the page draws it as a mask in the text colour (mdi-, si-)
+      const url = name ? resolveIcon(name) : null;
+      return { ok: true, name, url: url?.split('#dash-mask')[0] ?? null, mask: Boolean(url?.includes('#dash-mask')) };
     }],
     ['GET', '/icons', () => ({ ok: true, ...iconSuggestions(configDir, state.config) })],
   ];

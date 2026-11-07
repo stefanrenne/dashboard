@@ -28,7 +28,7 @@ const copy = (value) => JSON.parse(JSON.stringify(value));
 let lang = 'en';
 const t = translator(I18N, () => lang);
 
-const state = { section: 'general', files: null, file: {}, chosen: {}, mode: {}, svc: null, hdr: null, bm: null, srv: {}, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
+const state = { section: 'general', files: null, file: {}, chosen: {}, mode: {}, forms: {}, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
 
 async function api(path, body, headers = {}) {
   const init = body === undefined && !Object.keys(headers).length ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) };
@@ -145,11 +145,7 @@ function listField(key, legend, help, columns) {
     el('div', { class: 'row' }, el('button', { type: 'button', text: t('addRow'), onclick: () => { state.values[key] = [...rows, blank()]; render(); document.getElementById(`${key}-${rows.length}-${columns[0][0]}`)?.focus(); } })));
 }
 
-function saveBar() {
-  return el('div', { class: 'saved' },
-    el('span', { class: state.statusClass, role: 'status', text: state.status }),
-    el('button', { type: 'button', class: 'primary', text: t('save'), onclick: save }));
-}
+const saveBar = () => statusBar(state, save);
 
 function render() {
   const v = state.values;
@@ -467,19 +463,63 @@ async function syncPlugins(update) {
   render();
 }
 
+// ---------------------------------------------------------------- the forms of the config files
+// One editor for every form section: state.forms[file] holds the server's answer (data) and the
+// last save's status, its problems (refused) and its remarks (saved, with something to know).
+function formOf(file, path) {
+  if (state.forms[file]) return state.forms[file];
+  state.forms[file] = { loading: true };
+  api(path).catch((err) => ({ ok: false, error: err.message })).then((out) => {
+    if (out.needsPassword) return askPassword();
+    state.forms[file] = out.ok ? { data: out } : { error: out.error };
+    render();
+  });
+  return state.forms[file];
+}
+
+/** A form section: the switch to the text, then `body(data, form)` once the server answered. */
+function formSection(file, path, body) {
+  const f = formOf(file, path);
+  if (f.loading || f.error) return [modeToggle(file), el('section', { class: 'panel' }, el('p', { class: f.error ? 'error' : 'muted', text: f.error ?? t('fileLoading') }))];
+  return [modeToggle(file), ...body(f.data, f)];
+}
+
+/** Saves a form: `body` to `path`; the answer is the form's new data (or why not). */
+async function saveForm(file, path, body) {
+  const f = state.forms[file];
+  Object.assign(f, { status: t('saving'), statusClass: 'muted', problems: [], remarks: [] });
+  render();
+  const out = await api(path, body).catch((err) => ({ ok: false, error: err.message }));
+  if (out.needsPassword) return askPassword();
+  if (out.ok) {
+    state.forms[file] = { data: out, status: t('saved'), statusClass: 'ok', remarks: out.warnings ?? [] };
+    delete state.file[file];
+    state.files = null;
+  } else Object.assign(f, { status: t('failed', { error: out.error }), statusClass: 'error', problems: out.errors ?? [] });
+  render();
+}
+
+const messageItem = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
+/** A save's problems (it was refused) and remarks (saved, with something to know). */
+function messages({ problems, remarks }) {
+  return [
+    problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...problems.map(messageItem))) : null,
+    remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...remarks.map(messageItem))) : null,
+  ];
+}
+
+/** The bar at the bottom: the last save's status, other buttons, and Save. */
+function statusBar({ status, statusClass }, onSave, ...buttons) {
+  return el('div', { class: 'saved' }, el('span', { class: statusClass ?? 'muted', role: 'status', text: status ?? '' }), ...buttons,
+    el('button', { type: 'button', class: 'primary', text: t('save'), onclick: onSave }));
+}
+
 // ---------------------------------------------------------------- services.yaml as a form
-// Each entry keeps the id of its YAML node; the server rebuilds the file from them (src/settings-services.js).
+// Each entry keeps the id of its YAML node; the server rebuilds the file from them (src/settings/tree.js).
 let uid = 0;
 const keyOf = new WeakMap();
 const kid = (o) => { if (!keyOf.has(o)) keyOf.set(o, ++uid); return keyOf.get(o); };
-
-async function loadServices() {
-  state.svc = { loading: true };
-  const out = await api('/services').catch((err) => ({ ok: false, error: err.message }));
-  if (out.needsPassword) return askPassword();
-  state.svc = out.ok ? { hash: out.hash, items: out.items, discovered: out.discovered ?? [], widgets: out.widgets ?? [] } : { error: out.error };
-  render();
-}
+const services = () => state.forms['services.yaml'].data;
 
 function modeToggle(root) {
   const text = state.mode[root] === 'text';
@@ -512,7 +552,7 @@ function serviceCard(s, list, i) {
   const f = s.fields;
   const txt = (key, label, help = '', attrs = {}) => field(`s${id}-${key}`, label, el('input', { type: 'text', id: `s${id}-${key}`, value: f[key], spellcheck: 'false', autocapitalize: 'off', oninput: (e) => { f[key] = e.target.value; }, ...attrs }), help);
   const sel = (key, label, entries) => field(`s${id}-${key}`, label, el('select', { id: `s${id}-${key}`, onchange: (e) => { f[key] = e.target.value; } }, ...entries.map(([v, text]) => el('option', { value: v, selected: v === f[key], text }))));
-  const groups = allGroups(state.svc.items);
+  const groups = allGroups(services().items);
   const here = groups.find((g) => g.group.items === list);
   return el('div', { class: 'card' },
     el('header', {}, el('strong', { text: s.name }), el('span', { class: 'image', text: f.href }), orderButtons(list, i, s.name, id)),
@@ -545,7 +585,7 @@ function serviceCard(s, list, i) {
             txt('namespace', t('fNamespace')),
             txt('podSelector', t('fPodSelector'))),
           el('label', { class: 'check', for: `s${id}-external` }, el('input', { type: 'checkbox', id: `s${id}-external`, checked: f.external, onchange: (e) => { f.external = e.target.checked; } }), t('fExternal'))),
-        widgetEditor(s.widgets, state.svc.widgets ?? [], 'services.yaml', `s${id}`),
+        widgetEditor(s.widgets, services().widgets, 'services.yaml', `s${id}`),
         s.other?.length ? el('p', { class: 'muted', text: t('svcOtherKeys', { list: s.other.join(', ') }) }) : null,
         groups.length > 1 ? field(`s${id}-move`, t('svcMoveTo'), el('select', { id: `s${id}-move`, onchange: (e) => {
           const target = groups[Number(e.target.value)];
@@ -586,62 +626,30 @@ function groupPanel(g, list, i, depth = 0) {
       ? el('p', { class: 'muted' }, t('svcIncluded', { file: g.include }), ' ', el('button', { type: 'button', class: 'link', text: t('svcOpenFile', { file: g.include }), onclick: () => openFile('services.yaml', g.include) }))
       : el('div', { class: 'cards' }, ...itemsOf(g.items, depth)),
     g.include ? null : el('div', { class: 'row' },
-      el('button', { type: 'button', text: t('svcAddService'), onclick: () => add({ kind: 'service', id: null, name: t('svcNewService'), fields: { href: '', icon: '', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false }, widgets: [], other: [] }) }),
+      el('button', { type: 'button', text: t('svcAddService'), onclick: () => add({ kind: 'service', id: null, name: t('svcNewService'), ...copy(services().blank) }) }),
       el('button', { type: 'button', text: t('svcAddNested'), onclick: () => add({ kind: 'group', id: null, name: t('svcNewGroup'), items: [] }) })));
 }
 
 function servicesSection() {
-  if (!state.svc) {
-    loadServices();
-    return [modeToggle('services.yaml'), el('section', { class: 'panel' }, el('p', { class: 'muted', text: t('fileLoading') }))];
-  }
-  if (state.svc.loading) return [modeToggle('services.yaml'), el('section', { class: 'panel' }, el('p', { class: 'muted', text: t('fileLoading') }))];
-  if (state.svc.error) return [modeToggle('services.yaml'), el('section', { class: 'panel' }, el('p', { class: 'error', text: state.svc.error }))];
-  const items = state.svc.items;
-  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
-  return [
-    modeToggle('services.yaml'),
+  return formSection('services.yaml', '/services', (d, f) => [
     el('p', { class: 'muted', text: t('svcHelp') }),
-    ...items.map((x, i) => (x.kind === 'group' ? groupPanel(x, items, i) : el('section', { class: 'panel' }, ...itemsOf([x], 0).map((n) => n)))),
+    ...d.items.map((x, i) => (x.kind === 'group' ? groupPanel(x, d.items, i) : el('section', { class: 'panel' }, ...itemsOf([x], 0)))),
     el('div', { class: 'row' }, el('button', { type: 'button', text: t('svcAddGroup'), onclick: () => {
       const g = { kind: 'group', id: null, name: t('svcNewGroup'), items: [] };
-      items.push(g);
+      d.items.push(g);
       render();
       document.getElementById(`g${kid(g)}-name`)?.focus();
     } })),
-    state.svc.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...state.svc.problems.map(message))) : null,
-    state.svc.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...state.svc.remarks.map(message))) : null,
-    state.svc.discovered.length ? el('section', { class: 'panel' },
+    ...messages(f),
+    d.discovered.length ? el('section', { class: 'panel' },
       el('h2', { text: t('svcDiscovered') }),
       el('p', { class: 'muted', text: t('svcDiscoveredHelp') }),
-      el('ul', { class: 'plain' }, ...state.svc.discovered.map((d) => el('li', { text: `${d.group} › ${d.name} (${d.origin})` })))) : null,
-    el('div', { class: 'saved' },
-      el('span', { class: state.svc.statusClass ?? 'muted', role: 'status', text: state.svc.status ?? '' }),
-      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: saveServices })),
-  ];
-}
-
-async function saveServices() {
-  const svc = state.svc;
-  svc.status = t('saving');
-  svc.statusClass = 'muted';
-  svc.problems = [];
-  render();
-  const strip = (x) => (x.kind === 'group' ? { kind: x.kind, id: x.id, name: x.name, include: x.include, items: x.items.map(strip) } : x.kind === 'service' ? { kind: x.kind, id: x.id, name: x.name, fields: x.fields, widgets: x.widgets.map((w) => ({ id: w.id, type: w.type, options: w.options })) } : { kind: x.kind, id: x.id });
-  const res = await fetch('api/settings/services', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ hash: svc.hash, items: svc.items.map(strip) }) })
-    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
-  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
-  if (out.needsPassword) return askPassword();
-  if (out.ok) {
-    state.svc = { hash: out.hash, items: out.items, discovered: out.discovered ?? [], widgets: out.widgets ?? svc.widgets, status: t('saved'), statusClass: 'ok', remarks: out.warnings ?? [] };
-    delete state.file['services.yaml'];
-    state.files = null;
-  } else {
-    svc.status = t('failed', { error: out.error });
-    svc.statusClass = 'error';
-    svc.problems = out.errors ?? [];
-  }
-  render();
+      el('ul', { class: 'plain' }, ...d.discovered.map((x) => el('li', { text: `${x.group} › ${x.name} (${x.origin})` })))) : null,
+    statusBar(f, () => {
+      const strip = (x) => (x.kind === 'group' ? { kind: x.kind, id: x.id, name: x.name, include: x.include, items: x.items.map(strip) } : x.kind === 'service' ? { kind: x.kind, id: x.id, name: x.name, fields: x.fields, widgets: x.widgets.map((w) => ({ id: w.id, type: w.type, options: w.options })) } : { kind: x.kind, id: x.id });
+      saveForm('services.yaml', '/services', { hash: d.hash, items: d.items.map(strip) });
+    }),
+  ]);
 }
 
 // ---------------------------------------------------------------- widgets by their options' schema
@@ -706,68 +714,21 @@ async function testWidget(w, file) {
 }
 
 // ---------------------------------------------------------------- widgets.yaml: the header widgets
-async function loadHeader() {
-  state.hdr = { loading: true };
-  const out = await api('/header').catch((err) => ({ ok: false, error: err.message }));
-  if (out.needsPassword) return askPassword();
-  state.hdr = out.ok ? { hash: out.hash, widgets: out.widgets, catalog: out.catalog ?? [] } : { error: out.error };
-  render();
-}
-
 function headerSection() {
-  const h = state.hdr;
-  if (!h || h.loading || h.error) {
-    if (!h) loadHeader();
-    return [modeToggle('widgets.yaml'), el('section', { class: 'panel' }, el('p', { class: h?.error ? 'error' : 'muted', text: h?.error ?? t('fileLoading') }))];
-  }
-  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
-  return [
-    modeToggle('widgets.yaml'),
+  return formSection('widgets.yaml', '/header', (d, f) => [
     el('section', { class: 'panel' },
       el('h2', { text: t('navHeader') }),
-      widgetEditor(h.widgets, h.catalog, 'widgets.yaml', 'h'),
-      h.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...h.problems.map(message))) : null,
-      h.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...h.remarks.map(message))) : null),
-    el('div', { class: 'saved' },
-      el('span', { class: h.statusClass ?? 'muted', role: 'status', text: h.status ?? '' }),
-      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: saveHeader })),
-  ];
-}
-
-async function saveHeader() {
-  const h = state.hdr;
-  h.status = t('saving');
-  h.statusClass = 'muted';
-  h.problems = [];
-  render();
-  const res = await fetch('api/settings/header', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ hash: h.hash, widgets: h.widgets.map((w) => ({ id: w.id, type: w.type, options: w.options })) }) })
-    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
-  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
-  if (out.needsPassword) return askPassword();
-  if (out.ok) {
-    state.hdr = { hash: out.hash, widgets: out.widgets, catalog: out.catalog ?? h.catalog, status: t('saved'), statusClass: 'ok', remarks: out.warnings ?? [] };
-    delete state.file['widgets.yaml'];
-  } else {
-    h.status = t('failed', { error: out.error });
-    h.statusClass = 'error';
-    h.problems = out.errors ?? [];
-  }
-  render();
+      widgetEditor(d.widgets, d.catalog, 'widgets.yaml', 'h'),
+      ...messages(f)),
+    statusBar(f, () => saveForm('widgets.yaml', '/header', { hash: d.hash, widgets: d.widgets.map((w) => ({ id: w.id, type: w.type, options: w.options })) })),
+  ]);
 }
 
 // ---------------------------------------------------------------- bookmarks.yaml as a form
-async function loadBookmarks() {
-  state.bm = { loading: true };
-  const out = await api('/bookmarks').catch((err) => ({ ok: false, error: err.message }));
-  if (out.needsPassword) return askPassword();
-  state.bm = out.ok ? { hash: out.hash, items: out.items } : { error: out.error };
-  render();
-}
-
 function bookmarkCard(b, list, i) {
   const id = kid(b);
   const txt = (key, label, attrs = {}) => field(`b${id}-${key}`, label, el('input', { type: 'text', id: `b${id}-${key}`, value: b.fields[key], spellcheck: 'false', autocapitalize: 'off', oninput: (e) => { b.fields[key] = e.target.value; }, ...attrs }));
-  const groups = state.bm.items.filter((g) => g.kind === 'group' && !g.include);
+  const groups = state.forms['bookmarks.yaml'].data.items.filter((g) => g.kind === 'group' && !g.include);
   return el('div', { class: 'card' },
     el('header', {}, el('strong', { text: b.name }), el('span', { class: 'image', text: b.fields.href }), orderButtons(list, i, b.name, id)),
     el('div', { class: 'grid' },
@@ -787,186 +748,129 @@ function bookmarkCard(b, list, i) {
 }
 
 function bookmarksSection() {
-  const bm = state.bm;
-  if (!bm || bm.loading || bm.error) {
-    if (!bm) loadBookmarks();
-    return [modeToggle('bookmarks.yaml'), el('section', { class: 'panel' }, el('p', { class: bm?.error ? 'error' : 'muted', text: bm?.error ?? t('fileLoading') }))];
-  }
-  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
-  const group = (g, i) => {
-    if (g.kind !== 'group') return el('section', { class: 'panel' }, g.kind === 'include' ? includeCard(g, bm.items, i, 'bookmarks.yaml') : el('pre', { text: g.text }));
-    const id = kid(g);
-    return el('section', { class: 'panel' },
-      el('header', { class: 'group' },
-        field(`g${id}-name`, t('svcGroupName'), el('input', { type: 'text', id: `g${id}-name`, value: g.name, oninput: (e) => { g.name = e.target.value; } })),
-        orderButtons(bm.items, i, g.name, id)),
-      g.include
-        ? el('p', { class: 'muted' }, t('bIncluded', { file: g.include }), ' ', el('button', { type: 'button', class: 'link', text: t('svcOpenFile', { file: g.include }), onclick: () => openFile('bookmarks.yaml', g.include) }))
-        : el('div', { class: 'cards' }, ...g.items.map((b, j) => (b.kind === 'bookmark' ? bookmarkCard(b, g.items, j) : b.kind === 'include' ? includeCard(b, g.items, j, 'bookmarks.yaml') : el('div', { class: 'card invalid' }, el('pre', { text: b.text }), orderButtons(g.items, j, b.text.split('\n')[0], kid(b)))))),
-      g.include ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('bAdd'), onclick: () => {
-        const b = { kind: 'bookmark', id: null, name: t('bNew'), fields: { href: '', abbr: '', icon: '', description: '' }, other: [] };
-        g.items.push(b);
+  return formSection('bookmarks.yaml', '/bookmarks', (d, f) => {
+    const group = (g, i) => {
+      if (g.kind !== 'group') return el('section', { class: 'panel' }, g.kind === 'include' ? includeCard(g, d.items, i, 'bookmarks.yaml') : el('pre', { text: g.text }));
+      const id = kid(g);
+      return el('section', { class: 'panel' },
+        el('header', { class: 'group' },
+          field(`g${id}-name`, t('svcGroupName'), el('input', { type: 'text', id: `g${id}-name`, value: g.name, oninput: (e) => { g.name = e.target.value; } })),
+          orderButtons(d.items, i, g.name, id)),
+        g.include
+          ? el('p', { class: 'muted' }, t('bIncluded', { file: g.include }), ' ', el('button', { type: 'button', class: 'link', text: t('svcOpenFile', { file: g.include }), onclick: () => openFile('bookmarks.yaml', g.include) }))
+          : el('div', { class: 'cards' }, ...g.items.map((b, j) => (b.kind === 'bookmark' ? bookmarkCard(b, g.items, j) : b.kind === 'include' ? includeCard(b, g.items, j, 'bookmarks.yaml') : el('div', { class: 'card invalid' }, el('pre', { text: b.text }), orderButtons(g.items, j, b.text.split('\n')[0], kid(b)))))),
+        g.include ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('bAdd'), onclick: () => {
+          const b = { kind: 'bookmark', id: null, name: t('bNew'), ...copy(d.blank) };
+          g.items.push(b);
+          render();
+          document.getElementById(`b${kid(b)}-name`)?.focus();
+        } })));
+    };
+    return [
+      ...d.items.map(group),
+      el('div', { class: 'row' }, el('button', { type: 'button', text: t('svcAddGroup'), onclick: () => {
+        const g = { kind: 'group', id: null, name: t('svcNewGroup'), items: [] };
+        d.items.push(g);
         render();
-        document.getElementById(`b${kid(b)}-name`)?.focus();
-      } })));
-  };
-  return [
-    modeToggle('bookmarks.yaml'),
-    ...bm.items.map(group),
-    el('div', { class: 'row' }, el('button', { type: 'button', text: t('svcAddGroup'), onclick: () => {
-      const g = { kind: 'group', id: null, name: t('svcNewGroup'), items: [] };
-      bm.items.push(g);
-      render();
-      document.getElementById(`g${kid(g)}-name`)?.focus();
-    } })),
-    bm.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...bm.problems.map(message))) : null,
-    el('div', { class: 'saved' },
-      el('span', { class: bm.statusClass ?? 'muted', role: 'status', text: bm.status ?? '' }),
-      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: saveBookmarks })),
-  ];
-}
-
-async function saveBookmarks() {
-  const bm = state.bm;
-  bm.status = t('saving');
-  bm.statusClass = 'muted';
-  bm.problems = [];
-  render();
-  const strip = (x) => (x.kind === 'group' ? { kind: x.kind, id: x.id, name: x.name, include: x.include, items: x.items.map(strip) } : x.kind === 'bookmark' ? { kind: x.kind, id: x.id, name: x.name, fields: x.fields } : { kind: x.kind, id: x.id });
-  const res = await fetch('api/settings/bookmarks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ hash: bm.hash, items: bm.items.map(strip) }) })
-    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
-  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
-  if (out.needsPassword) return askPassword();
-  if (out.ok) {
-    state.bm = { hash: out.hash, items: out.items, status: t('saved'), statusClass: 'ok' };
-    delete state.file['bookmarks.yaml'];
-    state.files = null;
-  } else {
-    bm.status = t('failed', { error: out.error });
-    bm.statusClass = 'error';
-    bm.problems = out.errors ?? [];
-  }
-  render();
+        document.getElementById(`g${kid(g)}-name`)?.focus();
+      } })),
+      ...messages(f),
+      statusBar(f, () => {
+        const strip = (x) => (x.kind === 'group' ? { kind: x.kind, id: x.id, name: x.name, include: x.include, items: x.items.map(strip) } : x.kind === 'bookmark' ? { kind: x.kind, id: x.id, name: x.name, fields: x.fields } : { kind: x.kind, id: x.id });
+        saveForm('bookmarks.yaml', '/bookmarks', { hash: d.hash, items: d.items.map(strip) });
+      }),
+    ];
+  });
 }
 
 // ---------------------------------------------------------------- docker.yaml, proxmox.yaml, kubernetes.yaml as forms
-// [field, text key, kind, choices]; kinds: text, number, secret, select, check, tristate
+// The fields and their types come from the server (src/settings/servers.js); the page adds their
+// labels (text keys), example values, the words for some values, and the connection test.
 const SERVER_FORMS = {
-  'docker.yaml': { help: 'dHelp', fields: [['socket', 'dSocket', 'text', '/var/run/docker.sock'], ['host', 'dHost', 'text', '192.168.1.20'], ['port', 'dPort', 'number', '2375'],
-    ['protocol', 'dProtocol', 'select', [['', 'http'], ['https', 'https']]], ['caFile', 'dCa', 'text'], ['certFile', 'dCert', 'text'], ['keyFile', 'dKey', 'text'],
-    ['discover', 'dDiscover', 'check'], ['swarm', 'dSwarm', 'check']] },
-  'proxmox.yaml': { help: 'pHelp', fields: [['url', 'colUrl', 'text', 'https://pve.lan:8006'], ['token', 'pToken', 'text', 'api@pam!dashboard'], ['secret', 'pSecret', 'secret'], ['insecure', 'pInsecure', 'check']] },
-  'kubernetes.yaml': { help: 'kHelp', fields: [['mode', 'kMode', 'select', [['disabled', 'off'], ['cluster', 'kCluster'], ['default', 'kDefault']]], ['kubeconfig', 'kKubeconfig', 'text'], ['context', 'kContext', 'text'],
-    ['ingress', 'kIngress', 'tristate'], ['traefik', 'kTraefik', 'tristate'], ['gateway', 'kGateway', 'tristate']] },
+  'docker.yaml': {
+    help: 'dHelp',
+    labels: { socket: 'dSocket', host: 'dHost', port: 'dPort', protocol: 'dProtocol', caFile: 'dCa', certFile: 'dCert', keyFile: 'dKey', discover: 'dDiscover', swarm: 'dSwarm' },
+    examples: { socket: '/var/run/docker.sock', host: '192.168.1.20', port: '2375' },
+    values: { protocol: { '': 'http', https: 'https' } },
+    test: { path: '/docker-test', body: (e) => ({ name: e.id }), ok: (out) => t('dTestOk', { version: out.version ?? '?', count: out.containers ?? 0 }) },
+  },
+  'proxmox.yaml': {
+    help: 'pHelp',
+    labels: { url: 'colUrl', token: 'pToken', secret: 'pSecret', insecure: 'pInsecure' },
+    examples: { url: 'https://pve.lan:8006', token: 'api@pam!dashboard' },
+    test: { path: '/proxmox-test', body: (e) => ({ name: e.id }), ok: (out) => t('pTestOk', { version: out.version ?? '?' }) },
+  },
+  'kubernetes.yaml': {
+    help: 'kHelp',
+    labels: { mode: 'kMode', kubeconfig: 'kKubeconfig', context: 'kContext', ingress: 'kIngress', traefik: 'kTraefik', gateway: 'kGateway' },
+    values: { mode: { disabled: 'off', cluster: 'kCluster', default: 'kDefault' } },
+    test: { path: '/kubernetes-test', body: () => ({}), ok: (out) => t('kTestOk', { version: out.version ?? '?', count: out.services }) },
+  },
 };
 
-async function loadServers(file) {
-  state.srv[file] = { loading: true };
-  const out = await api(`/servers/${file}`).catch((err) => ({ ok: false, error: err.message }));
-  if (out.needsPassword) return askPassword();
-  state.srv[file] = out.ok ? out : { error: out.error };
-  render();
-}
-
-function serverFields(file, fields, id) {
-  return el('div', { class: 'grid' }, ...SERVER_FORMS[file].fields.map(([key, label, kind, extra]) => {
-    const fid = `${id}-${key}`;
-    if (kind === 'check') return el('label', { class: 'check', for: fid }, el('input', { type: 'checkbox', id: fid, checked: fields[key], onchange: (e) => { fields[key] = e.target.checked; } }), t(label));
-    if (kind === 'select' || kind === 'tristate') {
-      const choices = kind === 'tristate' ? [['', t('styleDefault')], ['true', t('on')], ['false', t('off')]] : extra.map(([v, k]) => [v, file === 'kubernetes.yaml' || k !== 'http' ? t(k) : k]);
-      return field(fid, t(label), el('select', { id: fid, onchange: (e) => { fields[key] = e.target.value; } }, ...choices.map(([v, text]) => el('option', { value: v, selected: v === fields[key], text }))));
+function serverFields(file, form, entry, id) {
+  const spec = SERVER_FORMS[file];
+  return el('div', { class: 'grid' }, ...form.map(({ name, type, values }) => {
+    const fid = `${id}-${name}`;
+    const label = t(spec.labels[name]);
+    const fields = entry.fields;
+    if (type === 'boolean') return el('label', { class: 'check', for: fid }, el('input', { type: 'checkbox', id: fid, checked: fields[name], onchange: (e) => { fields[name] = e.target.checked; } }), label);
+    if (type === 'enum' || type === 'tristate') {
+      const choices = type === 'tristate' ? [['', t('styleDefault')], ['true', t('on')], ['false', t('off')]] : values.map((v) => [v, spec.values?.[name]?.[v] ? t(spec.values[name][v]) : v]);
+      return field(fid, label, el('select', { id: fid, onchange: (e) => { fields[name] = e.target.value; } }, ...choices.map(([v, text]) => el('option', { value: v, selected: v === fields[name], text }))));
     }
-    const hidden = kind === 'secret' && /^__SECRET_[0-9a-f]{10}__$/.test(fields[key] ?? '');
-    return field(fid, t(label), el('input', { type: kind === 'secret' ? 'password' : 'text', id: fid, value: fields[key] ?? '', spellcheck: 'false', autocapitalize: 'off',
-      autocomplete: kind === 'secret' ? 'new-password' : 'off', inputmode: kind === 'number' ? 'numeric' : null, placeholder: typeof extra === 'string' ? extra : null,
-      oninput: (e) => { fields[key] = e.target.value; } }), hidden ? t('wHidden') : '');
+    return field(fid, label, el('input', { type: type === 'secret' ? 'password' : 'text', id: fid, value: fields[name] ?? '', spellcheck: 'false', autocapitalize: 'off',
+      autocomplete: type === 'secret' ? 'new-password' : 'off', inputmode: type === 'number' ? 'numeric' : null, placeholder: spec.examples?.[name] ?? null,
+      oninput: (e) => { fields[name] = e.target.value; } }), entry.hidden?.includes(name) ? t('wHidden') : '');
   }));
 }
 
+/** A connection test of what is saved, with its result next to the button. */
+function testButton(file, target) {
+  const { test } = SERVER_FORMS[file];
+  if (!test) return null;
+  return el('div', { class: 'row' },
+    el('button', { type: 'button', text: t('dTest'), title: t('testSaved'), onclick: async () => {
+      target.test = { text: t('wTesting') };
+      render();
+      const out = await api(test.path, test.body(target)).catch((err) => ({ ok: false, error: err.message }));
+      target.test = out.ok ? { ok: true, text: test.ok(out) } : { ok: false, text: t('failed', { error: out.error }) };
+      render();
+    } }),
+    target.test ? el('span', { class: `result ${target.test.ok === undefined ? 'muted' : target.test.ok ? 'ok' : 'error'}`, role: 'status', text: target.test.text }) : null);
+}
+
 function serversSection(file) {
-  const sv = state.srv[file];
-  if (!sv || sv.loading || sv.error) {
-    if (!sv) loadServers(file);
-    return [modeToggle(file), el('section', { class: 'panel' }, el('p', { class: sv?.error ? 'error' : 'muted', text: sv?.error ?? t('fileLoading') }))];
-  }
-  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
-  const blank = () => Object.fromEntries(SERVER_FORMS[file].fields.map(([k, , kind]) => [k, kind === 'check' ? k === 'discover' : '']));
-  const body = sv.entries
-    ? [
-      sv.flat ? el('p', { class: 'muted', text: t('pFlat') }) : null,
-      ...sv.entries.map((e, i) => el('div', { class: 'card' },
-        sv.flat ? null : el('header', {},
-          field(`sv${kid(e)}-name`, t('colName'), el('input', { type: 'text', id: `sv${kid(e)}-name`, value: e.name, spellcheck: 'false', oninput: (ev) => { e.name = ev.target.value; } })),
-          orderButtons(sv.entries, i, e.name || '?', kid(e))),
-        serverFields(file, e.fields, `sv${kid(e)}`),
-        e.other?.length ? el('p', { class: 'muted', text: t('svcOtherKeys', { list: e.other.join(', ') }) }) : null,
-        (file === 'docker.yaml' || file === 'proxmox.yaml') && (e.id || sv.flat) ? el('div', { class: 'row' },
-          el('button', { type: 'button', text: t('dTest'), onclick: () => (file === 'docker.yaml' ? testDocker(e) : testServer(e, '/proxmox-test', { name: e.id })) }),
-          e.test ? el('span', { class: `result ${e.test.ok === undefined ? 'muted' : e.test.ok ? 'ok' : 'error'}`, role: 'status', text: e.test.text }) : null) : null)),
-      sv.flat ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('srvAdd'), onclick: () => {
-        const e = { id: null, name: '', fields: blank(), other: [] };
-        sv.entries.push(e);
-        render();
-        document.getElementById(`sv${kid(e)}-name`)?.focus();
-      } })),
-    ]
-    : [serverFields(file, sv.fields, 'kube'), sv.other?.length ? el('p', { class: 'muted', text: t('svcOtherKeys', { list: sv.other.join(', ') }) }) : null,
-      el('div', { class: 'row' },
-        el('button', { type: 'button', text: t('dTest'), title: t('testSaved'), onclick: () => testServer(sv, '/kubernetes-test', {}) }),
-        sv.test ? el('span', { class: `result ${sv.test.ok === undefined ? 'muted' : sv.test.ok ? 'ok' : 'error'}`, role: 'status', text: sv.test.text }) : null)];
-  return [
-    modeToggle(file),
-    el('section', { class: 'panel' },
-      el('h2', { text: file }),
-      el('p', { class: 'muted', text: t(SERVER_FORMS[file].help) }),
-      ...body,
-      sv.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...sv.problems.map(message))) : null,
-      sv.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...sv.remarks.map(message))) : null),
-    el('div', { class: 'saved' },
-      el('span', { class: sv.statusClass ?? 'muted', role: 'status', text: sv.status ?? '' }),
-      el('button', { type: 'button', class: 'primary', text: t('save'), onclick: () => saveServers(file) })),
-  ];
-}
-
-async function saveServers(file) {
-  const sv = state.srv[file];
-  sv.status = t('saving');
-  sv.statusClass = 'muted';
-  sv.problems = [];
-  render();
-  const payload = sv.entries ? { hash: sv.hash, entries: sv.entries.map(({ id, name, fields }) => ({ id, name, fields })) } : { hash: sv.hash, fields: sv.fields };
-  const res = await fetch(`api/settings/servers/${file}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify(payload) })
-    .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
-  const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
-  if (out.needsPassword) return askPassword();
-  if (out.ok) {
-    state.srv[file] = { ...out, status: t('saved'), statusClass: 'ok', remarks: out.warnings ?? [] };
-    delete state.file[file];
-  } else {
-    sv.status = t('failed', { error: out.error });
-    sv.statusClass = 'error';
-    sv.problems = out.errors ?? [];
-  }
-  render();
-}
-
-/** A test of the saved config: Proxmox (a node's version) or Kubernetes (its version and the services found). */
-async function testServer(target, path, body) {
-  target.test = { text: t('wTesting') };
-  render();
-  const out = await api(path, body).catch((err) => ({ ok: false, error: err.message }));
-  target.test = !out.ok ? { ok: false, text: t('failed', { error: out.error }) }
-    : out.services !== undefined ? { ok: true, text: t('kTestOk', { version: out.version ?? '?', count: out.services }) }
-      : { ok: true, text: t('pTestOk', { version: out.version ?? '?' }) };
-  render();
-}
-
-async function testDocker(e) {
-  e.test = { text: t('wTesting') };
-  render();
-  const out = await api('/docker-test', { name: e.id }).catch((err) => ({ ok: false, error: err.message }));
-  e.test = out.ok ? { ok: true, text: t('dTestOk', { version: out.version ?? '?', count: out.containers ?? 0 }) } : { ok: false, text: t('failed', { error: out.error }) };
-  render();
+  return formSection(file, `/servers/${file}`, (d, f) => {
+    const other = (x) => (x.other?.length ? el('p', { class: 'muted', text: t('svcOtherKeys', { list: x.other.join(', ') }) }) : null);
+    const body = d.entries
+      ? [
+        d.flat ? el('p', { class: 'muted', text: t('pFlat') }) : null,
+        ...d.entries.map((e, i) => el('div', { class: 'card' },
+          d.flat ? null : el('header', {},
+            field(`sv${kid(e)}-name`, t('colName'), el('input', { type: 'text', id: `sv${kid(e)}-name`, value: e.name, spellcheck: 'false', oninput: (ev) => { e.name = ev.target.value; } })),
+            orderButtons(d.entries, i, e.name || '?', kid(e))),
+          serverFields(file, d.form, e, `sv${kid(e)}`),
+          other(e),
+          e.id !== null ? testButton(file, e) : null)),
+        d.flat ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('srvAdd'), onclick: () => {
+          const e = { id: null, name: '', fields: copy(d.blank), hidden: [], other: [] };
+          d.entries.push(e);
+          render();
+          document.getElementById(`sv${kid(e)}-name`)?.focus();
+        } })),
+      ]
+      : [serverFields(file, d.form, d, 'kube'), other(d), testButton(file, d)];
+    const payload = () => (d.entries ? { hash: d.hash, entries: d.entries.map(({ id, name, fields }) => ({ id, name, fields })) } : { hash: d.hash, fields: d.fields });
+    return [
+      el('section', { class: 'panel' },
+        el('h2', { text: file }),
+        el('p', { class: 'muted', text: t(SERVER_FORMS[file].help) }),
+        ...body,
+        ...messages(f)),
+      statusBar(f, () => saveForm(file, `/servers/${file}`, payload())),
+    ];
+  });
 }
 
 // ---------------------------------------------------------------- import from homepage, download
@@ -1213,10 +1117,7 @@ async function saveFile(name) {
     f.remarks = out.warnings ?? [];
     await loadFile(name, true);
     state.files = null; // an include added or removed changes the list
-    if (state.section === 'services') state.svc = null;
-    if (state.section === 'header') state.hdr = null;
-    if (state.section === 'bookmarks') state.bm = null;
-    delete state.srv[name];
+    state.forms = {}; // the forms read the files again (an included file belongs to one of them)
     if (state.section === 'advanced' || name === 'settings.yaml' || out.changed) {
       const fresh = await api('').catch(() => null);
       if (fresh?.ok) {

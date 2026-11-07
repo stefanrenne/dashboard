@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { checkLanguages, withCommon } from './helpers.mjs';
+import { SPECS } from '../src/settings/servers.js';
 
 const HTML = withCommon(fs.readFileSync(path.resolve('public/settings.html'), 'utf8')).replace('<script src="settings.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/settings.js'), 'utf8');
@@ -45,6 +46,8 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
   await new Promise((r) => setTimeout(r, 20));
   return { w: dom.window, doc: dom.window.document, calls };
 }
+// the form of a server file as the server sends it
+const serverForm = (file) => SPECS[file].fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
 const tick = () => new Promise((r) => setTimeout(r, 20));
 const data = (extra = {}) => ({ ok: true, schema: { minPassword: 8 }, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
 
@@ -381,10 +384,10 @@ test('settings page: services as a form: fields, rename, move to another group, 
   ];
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/services': { ok: true, hash: 'h1', items, discovered: [{ group: 'Media', name: 'Jellyfin', origin: 'docker:local' }],
+    'GET /api/settings/services': { ok: true, hash: 'h1', items, blank: { fields: fields(), widgets: [], other: [] }, discovered: [{ group: 'Media', name: 'Jellyfin', origin: 'docker:local' }],
       widgets: [{ id: 'custom-api', name: 'Custom API', options: { url: { type: 'url', required: true }, key: { type: 'string', secret: true }, live: { type: 'boolean' } } }, { id: 'ping', name: 'Ping', options: { host: { type: 'string' } } }] },
     'POST /api/settings/widget-test': (init) => (JSON.parse(init.body).options.url ? { ok: true, blocks: [{ label: 'Up', value: 'yes' }] } : { ok: false, error: 'url: required' }),
-    'POST /api/settings/services': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items, discovered: [] }),
+    'POST /api/settings/services': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items, blank: { fields: fields(), widgets: [], other: [] }, discovered: [], widgets: [] }),
   }, () => {}, 'http://dash.lan/settings#services');
   await tick();
   const panel = () => doc.getElementById('panel').textContent;
@@ -467,8 +470,8 @@ test('settings page: bookmarks as a form: fields, move to another group, add, re
   ];
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/bookmarks': { ok: true, hash: 'h1', items },
-    'POST /api/settings/bookmarks': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items }),
+    'GET /api/settings/bookmarks': { ok: true, hash: 'h1', items, blank: { fields: fields({}), other: [] } },
+    'POST /api/settings/bookmarks': (init) => ({ ok: true, hash: 'h2', items: JSON.parse(init.body).items, blank: { fields: fields({}), other: [] } }),
   }, () => {}, 'http://dash.lan/settings#bookmarks');
   await tick();
   assert.match(doc.getElementById('panel').textContent, /De bladwijzers van deze groep staan in shared\.yaml/);
@@ -492,15 +495,15 @@ test('settings page: bookmarks as a form: fields, move to another group, add, re
 });
 
 test('settings page: Docker, Proxmox and Kubernetes as forms', async () => {
-  const docker = { ok: true, hash: 'd1', flat: false, entries: [{ id: 'nas', name: 'nas', fields: { socket: '', host: '192.168.1.20', port: '2375', protocol: '', caFile: '', certFile: '', keyFile: '', discover: false, swarm: false }, other: ['allowVariables'] }] };
+  const docker = { ok: true, hash: 'd1', form: serverForm('docker.yaml'), blank: { socket: '', host: '', port: '', protocol: '', caFile: '', certFile: '', keyFile: '', discover: true, swarm: false }, flat: false, entries: [{ id: 'nas', name: 'nas', fields: { socket: '', host: '192.168.1.20', port: '2375', protocol: '', caFile: '', certFile: '', keyFile: '', discover: false, swarm: false }, other: ['allowVariables'] }] };
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
     'GET /api/settings/servers/docker.yaml': docker,
     'POST /api/settings/servers/docker.yaml': (init) => ({ ...docker, hash: 'd2', entries: JSON.parse(init.body).entries.map((e) => ({ ...e, id: e.name, other: [] })) }),
     'POST /api/settings/docker-test': { name: 'nas', ok: true, version: '27.0', containers: 12 },
-    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, other: [] }] },
-    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', fields: { mode: 'disabled', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
-    'POST /api/settings/servers/kubernetes.yaml': (init) => ({ ok: true, hash: 'k2', fields: JSON.parse(init.body).fields, other: [] }),
+    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', form: serverForm('proxmox.yaml'), flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, hidden: ['secret'], other: [] }] },
+    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', form: serverForm('kubernetes.yaml'), hidden: [], fields: { mode: 'disabled', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
+    'POST /api/settings/servers/kubernetes.yaml': (init) => ({ ok: true, hash: 'k2', form: serverForm('kubernetes.yaml'), hidden: [], fields: JSON.parse(init.body).fields, other: [] }),
   }, () => {}, 'http://dash.lan/settings#docker');
   await tick();
   const panel = () => doc.getElementById('panel').textContent;
@@ -558,9 +561,9 @@ test('settings page: Advanced imports homepage files after a check', async () =>
 test('settings page: connection tests for a Proxmox node and Kubernetes', async () => {
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, other: [] }] },
+    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', form: serverForm('proxmox.yaml'), flat: false, entries: [{ id: 'pve', name: 'pve', fields: { url: 'https://pve.lan', token: 't', secret: '__SECRET_0123456789__', insecure: false }, hidden: ['secret'], other: [] }] },
     'POST /api/settings/proxmox-test': { ok: true, version: '8.2.4' },
-    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', fields: { mode: 'cluster', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
+    'GET /api/settings/servers/kubernetes.yaml': { ok: true, hash: 'k1', form: serverForm('kubernetes.yaml'), hidden: [], fields: { mode: 'cluster', kubeconfig: '', context: '', ingress: '', traefik: '', gateway: '' }, other: [] },
     'POST /api/settings/kubernetes-test': { ok: true, version: 'v1.30.2', services: 3 },
   }, () => {}, 'http://dash.lan/settings#proxmox');
   await tick();

@@ -75,7 +75,7 @@ export function readServers(configDir, file) {
   const root = doc.contents;
   if (!s.named) return { hash, form: formOf(s), ...entryOf(s, root) };
   if (s.flat?.(root)) return { hash, form: formOf(s), flat: true, entries: [{ id: '', name: '', ...entryOf(s, root) }] };
-  return { hash, form: formOf(s), flat: false, entries: root.items.map((p) => ({ id: keyName(p), name: keyName(p), ...entryOf(s, p.value) })) };
+  return { hash, form: formOf(s), blank: entryOf(s, null).fields, flat: false, entries: root.items.map((p) => ({ id: keyName(p), name: keyName(p), ...entryOf(s, p.value) })) };
 }
 
 /** Sets an entry's fields in `map`, where they changed; returns the warnings. */

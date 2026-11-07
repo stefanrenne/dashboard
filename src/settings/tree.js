@@ -8,6 +8,7 @@
 //   leaf.read(pair)                 the leaf's own fields for the page, or null when it is no leaf
 //   leaf.write(doc, pair, item, at) sets the page's fields; returns warnings
 //   leaf.create(doc, name)          a new entry's node
+//   leaf.blank()                    a new entry's fields, for the page
 // `nested`: whether a group may hold groups.
 
 import YAML from 'yaml';
@@ -41,7 +42,7 @@ function walk(doc, leaf, nested) {
 /** The tree of `file`: { hash, items: [group | include | other] }. */
 export function readTree(configDir, file, leaf, { nested = false } = {}) {
   const { doc, hash } = openYaml(configDir, file, { shape: 'seq' });
-  return { hash, items: walk(doc, leaf, nested).items };
+  return { hash, items: walk(doc, leaf, nested).items, blank: leaf.blank() };
 }
 
 function checkName(name, at) {

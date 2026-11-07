@@ -57,6 +57,7 @@ const service = (schemaFor) => ({
     return { fields: fieldsOf(pair.value), widgets: serviceWidgets(pair.value, schemaFor), other: Object.keys(o).filter((k) => !KNOWN.has(k)) };
   },
   create: (doc, name) => doc.createNode({ [name]: {} }),
+  blank: () => ({ fields: fieldsOf(null), widgets: [], other: [] }),
   write(doc, pair, it, at) {
     // `- Name:` without any field stays so; a field makes it a map
     const filled = Object.values(it.fields ?? {}).some((v) => v !== '' && v !== false) || (Array.isArray(it.widgets) && it.widgets.length > 0);

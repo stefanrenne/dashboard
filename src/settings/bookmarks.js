@@ -23,6 +23,7 @@ const bookmark = {
     return { fields: Object.fromEntries(FIELDS.map((k) => [k, o[k] === undefined || o[k] === null ? '' : String(o[k])])), other: Object.keys(o).filter((k) => !FIELDS.includes(k)) };
   },
   create: (doc, name) => doc.createNode({ [name]: [{}] }),
+  blank: () => ({ fields: Object.fromEntries(FIELDS.map((k) => [k, ''])), other: [] }),
   write(doc, pair, it, at) {
     if (!bodyOf(pair.value)) pair.value = doc.createNode([{}]);
     const body = bodyOf(pair.value);
