@@ -9,9 +9,49 @@ import { openYaml } from './yaml.js';
 import { GROUP_STYLES, MAX_COLUMNS_IN_GROUP, TRISTATE as TRI } from '../config/schema.js';
 
 const FILE = 'settings.yaml';
-// [key, default] of a group's own settings, as the page has them
-const KEYS = [['style', ''], ['columns', ''], ['header', true], ['initiallyCollapsed', ''], ['useEqualHeights', ''], ['iconsOnly', ''], ['icon', ''], ['tab', '']];
-const TRISTATES = new Set(['initiallyCollapsed', 'useEqualHeights', 'iconsOnly']);
+// The kinds of a group's settings: read (the file's value as the page has it), check (the page's
+// value: null or what is wrong), clean (the page's value as saved) and file (what the file gets;
+// undefined leaves the key out).
+const KIND = {
+  style: {
+    read: (x) => (GROUP_STYLES.includes(x) ? x : ''),
+    check: (v) => (['', ...GROUP_STYLES].includes(v ?? '') ? null : `${GROUP_STYLES.join(', ')} or empty`),
+    clean: (v) => v ?? '',
+    file: (v) => (v === '' ? undefined : v),
+  },
+  columns: {
+    read: (x) => (x !== null && x !== undefined && x !== '' && Number.isInteger(Number(x)) ? String(Number(x)) : ''),
+    check: (v) => {
+      const c = String(v ?? '').trim();
+      return c === '' || (Number.isInteger(Number(c)) && Number(c) >= 1 && Number(c) <= MAX_COLUMNS_IN_GROUP) ? null : `a whole number from 1 to ${MAX_COLUMNS_IN_GROUP}, or empty`;
+    },
+    clean: (v) => String(v ?? '').trim(),
+    file: (v) => (v === '' ? undefined : Number(v)),
+  },
+  // on unless set to false
+  on: {
+    read: (x) => x !== false,
+    check: (v) => (typeof (v ?? true) === 'boolean' ? null : 'true or false'),
+    clean: (v) => v ?? true,
+    file: (v) => (v === false ? false : undefined),
+  },
+  tristate: {
+    read: (x) => (typeof x === 'boolean' ? String(x) : ''),
+    check: (v) => (TRI.includes(v ?? '') ? null : 'empty, true or false'),
+    clean: (v) => v ?? '',
+    file: (v) => (v === '' ? undefined : v === 'true'),
+  },
+  text: {
+    read: (x) => (typeof x === 'string' ? x : ''),
+    check: (v) => (typeof (v ?? '') === 'string' && (v ?? '').length <= 200 ? null : 'text of at most 200 characters'),
+    clean: (v) => (v ?? '').trim(),
+    file: (v) => (v === '' ? undefined : v),
+  },
+};
+// a group's own settings and their kind; a nested group has no tab
+const KEYS = { style: 'style', columns: 'columns', header: 'on', initiallyCollapsed: 'tristate', useEqualHeights: 'tristate', iconsOnly: 'tristate', icon: 'text', tab: 'text' };
+const keysOf = (nested) => Object.keys(KEYS).filter((k) => !(nested && k === 'tab'));
+const kind = (key) => KIND[KEYS[key]];
 const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 
@@ -25,19 +65,7 @@ function entriesOf(raw) {
 
 function formOf(v, nested = false) {
   const o = isMap(v) ? v : {};
-  const tri = (x) => (typeof x === 'boolean' ? String(x) : '');
-  const out = {
-    style: GROUP_STYLES.includes(o.style) ? o.style : '',
-    columns: Number.isInteger(Number(o.columns)) && o.columns !== null && o.columns !== undefined && o.columns !== '' ? String(Number(o.columns)) : '',
-    header: o.header !== false,
-    initiallyCollapsed: tri(o.initiallyCollapsed),
-    useEqualHeights: tri(o.useEqualHeights),
-    iconsOnly: tri(o.iconsOnly),
-    icon: typeof o.icon === 'string' ? o.icon : '',
-    tab: typeof o.tab === 'string' ? o.tab : '',
-  };
-  if (nested) delete out.tab;
-  return out;
+  return Object.fromEntries(keysOf(nested).map((k) => [k, kind(k).read(o[k])]));
 }
 
 /**
@@ -74,12 +102,10 @@ export function readLayout(configDir, groups) {
 
 function checkGroup(g, at, nested) {
   if (!isMap(g) || typeof g.name !== 'string' || !g.name) return `${at}: expected a group with a name`;
-  if (!['', ...GROUP_STYLES].includes(g.style ?? '')) return `${at}.style: row, column or empty`;
-  const cols = String(g.columns ?? '').trim();
-  if (cols !== '' && !(Number.isInteger(Number(cols)) && Number(cols) >= 1 && Number(cols) <= MAX_COLUMNS_IN_GROUP)) return `${at}.columns: a whole number from 1 to ${MAX_COLUMNS_IN_GROUP}, or empty`;
-  if (typeof (g.header ?? true) !== 'boolean') return `${at}.header: true or false`;
-  for (const k of TRISTATES) if (!TRI.includes(g[k] ?? '')) return `${at}.${k}: empty, true or false`;
-  for (const k of nested ? ['icon'] : ['icon', 'tab']) if (typeof (g[k] ?? '') !== 'string' || (g[k] ?? '').length > 200) return `${at}.${k}: text of at most 200 characters`;
+  for (const k of keysOf(nested)) {
+    const wrong = kind(k).check(g[k]);
+    if (wrong) return `${at}.${k}: ${wrong}`;
+  }
   return null;
 }
 
@@ -95,28 +121,16 @@ export function checkLayout(input) {
       const nestedError = checkGroup(n, `layout[${i}].nested[${j}]`, true);
       if (nestedError) return { error: nestedError };
     }
-    const clean = (x, isNested) => ({
-      name: x.name, style: x.style ?? '', columns: String(x.columns ?? '').trim(), header: x.header ?? true,
-      initiallyCollapsed: x.initiallyCollapsed ?? '', useEqualHeights: x.useEqualHeights ?? '', iconsOnly: x.iconsOnly ?? '',
-      icon: (x.icon ?? '').trim(), ...(isNested ? {} : { tab: (x.tab ?? '').trim() }),
-    });
+    const clean = (x, isNested) => ({ name: x.name, ...Object.fromEntries(keysOf(isNested).map((k) => [k, kind(k).clean(x[k])])) });
     out.push({ ...clean(g, false), remove: g.remove === true, nested: nested.map((n) => clean(n, true)) });
   }
   return { groups: out };
 }
 
-/** The value a key gets in the file, or undefined to leave it out. */
-function fileValue(key, v) {
-  if (key === 'header') return v === false ? false : undefined;
-  if (TRISTATES.has(key)) return v === '' ? undefined : v === 'true';
-  if (key === 'columns') return v === '' ? undefined : Number(v);
-  return v === '' ? undefined : v;
-}
-
 function applyKeys(doc, map, g, keys) {
-  for (const [key] of keys) {
+  for (const key of keys) {
     if (!(key in g)) continue;
-    const value = fileValue(key, g[key]);
+    const value = kind(key).file(g[key]);
     const current = map.get(key);
     if (value === undefined) {
       if (map.has(key)) map.delete(key);
@@ -124,7 +138,7 @@ function applyKeys(doc, map, g, keys) {
   }
 }
 
-const hasSettings = (g, keys) => keys.some(([key]) => key in g && fileValue(key, g[key]) !== undefined);
+const hasSettings = (g, keys) => keys.some((key) => key in g && kind(key).file(g[key]) !== undefined);
 
 /**
  * Writes the page's layout into settings.yaml. `groups` comes from checkLayout, `known` is what
@@ -160,8 +174,8 @@ export function writeLayout(configDir, groups, known, hash) {
     return entry.pair.value;
   };
 
-  const ownKeys = KEYS;
-  const nestedKeys = KEYS.filter(([k]) => k !== 'tab');
+  const ownKeys = keysOf(false);
+  const nestedKeys = keysOf(true);
   const order = groups.map((g) => g.name);
   const reordered = order.join('\u0000') !== known.groups.map((g) => g.name).filter((n) => order.includes(n)).join('\u0000');
 

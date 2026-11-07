@@ -42,7 +42,11 @@ export const TRISTATE = ['', 'true', 'false'];
 // a group's own `columns:` in settings.yaml layout
 export const MAX_COLUMNS_IN_GROUP = 12;
 
+// the shortest a duration setting may be (a shorter one is raised to it, with a warning)
+export const MIN_DURATIONS = { loginRemember: '1m', discoveryInterval: '5s', pluginUpdateInterval: '1m' };
+
 export const DEFAULTS = {
+  kubernetesMode: 'disabled',
   title: 'Homelab',
   language: 'en',
   theme: 'auto',

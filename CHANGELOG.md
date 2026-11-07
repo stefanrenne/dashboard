@@ -13,6 +13,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - Settings page: General, Groups and Widgets saved over a settings.yaml changed since the page was
   opened (in another tab, the text editor or by hand); such a save is now refused, as the other
   forms already did.
+- Settings page: a duration below its minimum (Discovery interval under 5s, Remember login or the
+  plugin update check under 1m) is refused with that minimum; before, it was saved and then raised
+  with a warning when the dashboard loaded it.
+- Settings page, Kubernetes: a kubernetes.yaml without `mode:` showed another mode than the one the
+  dashboard uses, and saving any field wrote that mode into the file.
 - After an import on the settings page, the Services, Header widgets, Bookmarks and server forms
   still showed the files from before, and a save there was refused as a conflict.
 - A "Saved" on the settings page no longer stays on when another section is opened.

@@ -76,3 +76,11 @@ test('kubernetes.yaml: one map of fields', () => {
   const r = readServers(dir, 'kubernetes.yaml');
   assert.throws(() => writeServers(dir, 'kubernetes.yaml', { fields: { mode: 'nope' } }, r.hash), (err) => err.status === 400);
 });
+
+test('kubernetes.yaml without a mode: the form shows it as the dashboard reads it, and a save of another field leaves it out', () => {
+  const dir = setup({ 'kubernetes.yaml': 'context: lab\n' });
+  const read = readServers(dir, 'kubernetes.yaml');
+  assert.equal(read.fields.mode, loadConfig(dir).kubernetes.mode);
+  writeServers(dir, 'kubernetes.yaml', { fields: { ...read.fields, context: 'home' } }, read.hash);
+  assert.equal(file(dir, 'kubernetes.yaml'), 'context: home\n');
+});

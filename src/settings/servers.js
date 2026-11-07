@@ -6,7 +6,7 @@
 
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
-import { KUBERNETES_MODES, TRISTATE } from '../config/schema.js';
+import { KUBERNETES_MODES, TRISTATE, DEFAULTS } from '../config/schema.js';
 import { shownSecret, secretFromPage, refuseToken, isHidden } from './secrets.js';
 import { openYaml, entries, keyName, rename, setItems } from './yaml.js';
 
@@ -32,7 +32,7 @@ const SPECS = {
   'kubernetes.yaml': {
     named: false,
     fields: [
-      field('mode', 'enum', { values: KUBERNETES_MODES }), field('kubeconfig', 'string'), field('context', 'string'),
+      field('mode', 'enum', { values: KUBERNETES_MODES, default: DEFAULTS.kubernetesMode }), field('kubeconfig', 'string'), field('context', 'string'),
       field('ingress', 'tristate'), field('traefik', 'tristate'), field('gateway', 'tristate'),
     ],
   },
@@ -56,7 +56,7 @@ function entryOf(s, map) {
     if (f.type === 'boolean') fields[f.name] = typeof v === 'boolean' ? v : f.default;
     else if (f.type === 'tristate') fields[f.name] = typeof v === 'boolean' ? String(v) : '';
     else if (f.type === 'secret') fields[f.name] = shownSecret(v);
-    else fields[f.name] = v === undefined || v === null ? (f.type === 'enum' ? f.values[0] : '') : String(v);
+    else fields[f.name] = v === undefined || v === null ? (f.type === 'enum' ? f.default ?? f.values[0] : '') : String(v);
   }
   const own = new Set(s.fields.map((f) => f.at[0]));
   return {

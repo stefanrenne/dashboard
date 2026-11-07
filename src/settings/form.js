@@ -8,7 +8,7 @@ import { openYaml } from './yaml.js';
 import {
   LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
   TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
-  HTTP_URL, BACKGROUND_MAX, TRISTATE,
+  HTTP_URL, BACKGROUND_MAX, TRISTATE, MIN_DURATIONS,
 } from '../config/schema.js';
 
 const optional = (values) => ['', ...values];
@@ -63,13 +63,13 @@ export const FIELDS = {
   pwaShortcuts: { type: 'list', at: ['pwa', 'shortcuts'], keys: ['name', 'url', 'description'], required: ['name', 'url'] },
   allowedHosts: { type: 'hosts', special: true },
   login: { type: 'boolean', default: false, special: true },
-  loginRemember: { type: 'duration', at: ['login', 'remember'], default: DEFAULTS.loginRemember, special: true },
+  loginRemember: { type: 'duration', at: ['login', 'remember'], default: DEFAULTS.loginRemember, min: MIN_DURATIONS.loginRemember, special: true },
   actionsRemember: { type: 'duration', at: ['actions', 'remember'], default: DEFAULTS.actionsRemember, special: true },
   hideVersion: { type: 'boolean', default: false },
   disableUpdateCheck: { type: 'boolean', default: false },
   disableIndexing: { type: 'boolean', default: false },
-  pluginUpdateInterval: { type: 'duration', off: true, default: DEFAULTS.pluginUpdateInterval },
-  discoveryInterval: { type: 'duration', at: ['discovery', 'interval'], default: DEFAULTS.discoveryInterval },
+  pluginUpdateInterval: { type: 'duration', off: true, default: DEFAULTS.pluginUpdateInterval, min: MIN_DURATIONS.pluginUpdateInterval },
+  discoveryInterval: { type: 'duration', at: ['discovery', 'interval'], default: DEFAULTS.discoveryInterval, min: MIN_DURATIONS.discoveryInterval },
   logpath: { type: 'string', default: '' },
 };
 /** FIELDS as the page builds its form from them: { type, values, min, max, keys } by name. */
@@ -142,11 +142,13 @@ function checkValue(key, def, v) {
   if (def.type === 'duration') {
     const text = String(v).trim();
     if (def.off && ['off', 'false', '0'].includes(text)) return { value: 'off' };
+    let ms;
     try {
-      if (text !== '0') parseDuration(text);
+      ms = text === '0' ? 0 : parseDuration(text);
     } catch (err) {
-      return { error: `${key}: ${err.message} (such as 15m, 7d${def.off ? ' or off' : ' or 0'})` };
+      return { error: `${key}: ${err.message} (such as 15m, 7d${def.off ? ' or off' : def.min ? '' : ' or 0'})` };
     }
+    if (def.min && ms < parseDuration(def.min)) return { error: `${key}: at least ${def.min}${def.off ? ', or off' : ''}` };
     return { value: text };
   }
   if (def.type === 'list') {

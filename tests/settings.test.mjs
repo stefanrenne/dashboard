@@ -128,3 +128,12 @@ pluginUpdateInterval: false
     assert.ok(checkSettings(bad).error, JSON.stringify(bad));
   }
 });
+
+test('durations: the form refuses what the dashboard would raise when it loads', () => {
+  assert.match(checkSettings({ discoveryInterval: '1s' }).error, /discoveryInterval: at least 5s/);
+  assert.match(checkSettings({ loginRemember: '0' }).error, /loginRemember: at least 1m/);
+  assert.match(checkSettings({ pluginUpdateInterval: '10s' }).error, /pluginUpdateInterval: at least 1m, or off/);
+  assert.equal(checkSettings({ pluginUpdateInterval: 'off' }).error, undefined);
+  assert.equal(checkSettings({ actionsRemember: '0' }).error, undefined, '0: ask every time');
+  assert.equal(checkSettings({ discoveryInterval: '5s' }).error, undefined);
+});

@@ -11,7 +11,7 @@ import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
-import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
+import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, MIN_DURATIONS, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
 
 
 const DEFAULT_SETTINGS = {
@@ -102,7 +102,7 @@ function loginSetting(value, file, ctx) {
     return off;
   }
   for (const key of Object.keys(value)) if (key !== 'remember') ctx.warn(file, `login.${key}`, 'unknown key, ignored');
-  return { required: true, rememberMs: durationSetting(value.remember, { file, at: 'login.remember', fallback: DEFAULTS.loginRemember, min: '1m' }, ctx) };
+  return { required: true, rememberMs: durationSetting(value.remember, { file, at: 'login.remember', fallback: DEFAULTS.loginRemember, min: MIN_DURATIONS.loginRemember }, ctx) };
 }
 
 /** One file's text → its value with includes and variables resolved; undefined when it does not parse. */
@@ -201,7 +201,7 @@ function normalizeSettings(raw, ctx) {
   }
   const settings = { ...DEFAULT_SETTINGS, ...raw };
   settings.discovery = { ...DEFAULT_SETTINGS.discovery, ...(isPlainObject(raw.discovery) ? raw.discovery : {}) };
-  settings.discoveryMs = durationSetting(settings.discovery.interval, { file, at: 'discovery.interval', fallback: DEFAULTS.discoveryInterval, min: '5s' }, ctx);
+  settings.discoveryMs = durationSetting(settings.discovery.interval, { file, at: 'discovery.interval', fallback: DEFAULTS.discoveryInterval, min: MIN_DURATIONS.discoveryInterval }, ctx);
   if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
   for (const [key, values] of SETTING_CHOICES) {
     if (settings[key] === undefined || values.includes(settings[key])) continue;
@@ -223,7 +223,7 @@ function normalizeSettings(raw, ctx) {
     delete settings.base;
   } else if (settings.base && !settings.base.endsWith('/')) settings.base += '/';
   settings.pwa = normalizePwa(settings.pwa, file, ctx);
-  settings.pluginUpdateMs = durationSetting(settings.pluginUpdateInterval, { file, at: 'pluginUpdateInterval', fallback: DEFAULTS.pluginUpdateInterval, off: true, min: '1m' }, ctx);
+  settings.pluginUpdateMs = durationSetting(settings.pluginUpdateInterval, { file, at: 'pluginUpdateInterval', fallback: DEFAULTS.pluginUpdateInterval, off: true, min: MIN_DURATIONS.pluginUpdateInterval }, ctx);
   settings.actionRememberMs = actionRememberMs(settings.actions, file, ctx);
   delete settings.actions;
   settings.allowedHosts = allowedHostsSetting(settings.allowedHosts, file, ctx);
@@ -571,13 +571,14 @@ function normalizeProxmox(raw, ctx) {
 
 function normalizeKubernetes(raw, ctx, configDir = '.') {
   const file = 'kubernetes.yaml';
-  if (raw === undefined || raw === null) return { mode: 'disabled' };
+  const mode = DEFAULTS.kubernetesMode;
+  if (raw === undefined || raw === null) return { mode };
   // default: a kubeconfig, as in homepage ($KUBECONFIG, ~/.kube/config, or `kubeconfig:`)
-  if (!isPlainObject(raw) || !KUBERNETES_MODES.includes(raw.mode ?? 'disabled')) {
+  if (!isPlainObject(raw) || !KUBERNETES_MODES.includes(raw.mode ?? mode)) {
     ctx.error(file, 'mode', 'expected "mode: cluster" (in the cluster), "mode: default" (a kubeconfig) or "mode: disabled"');
-    return { mode: 'disabled' };
+    return { mode };
   }
-  const out = { mode: raw.mode ?? 'disabled', ...allowVariables(raw.allowVariables, file, 'allowVariables', ctx) };
+  const out = { mode: raw.mode ?? mode, ...allowVariables(raw.allowVariables, file, 'allowVariables', ctx) };
   if (raw.kubeconfig) out.kubeconfig = path.resolve(configDir, String(raw.kubeconfig));
   if (raw.context) out.context = String(raw.context);
   // what discovery lists, as in homepage: Ingresses (default on), Traefik IngressRoutes, Gateway API HTTPRoutes
