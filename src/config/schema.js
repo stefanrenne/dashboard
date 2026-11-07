@@ -59,6 +59,10 @@ export const SERVICE_FIELDS = {
   app: 'text', namespace: 'text', podSelector: 'text', external: 'flag',
 };
 
+// settings.yaml's security: kept as it is when homepage's settings.yaml is imported, and the
+// admin password changes only with the current one (never through a file on the settings page)
+export const SECURITY_KEYS = ['adminPassword', 'login', 'allowedHosts', 'actions'];
+
 export const MIN_PASSWORD = 8;
 // scrypt:N:r:p:salt:hash, as src/hash-password.mjs prints (no $, which Docker Compose would read)
 export const SCRYPT_HASH = /^scrypt:(\d+):(\d+):(\d+):([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)$/;

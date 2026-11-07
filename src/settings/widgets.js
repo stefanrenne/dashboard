@@ -4,8 +4,8 @@
 
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
-import { hasPlaceholder } from '../config/vars.js';
-import { shownSecret, secretFromPage, refuseToken, isHidden } from './secrets.js';
+import { hasPlaceholder, substitute } from '../config/vars.js';
+import { shownSecret, secretFromPage, refuseToken, isHidden, TOKEN } from './secrets.js';
 import { openYaml, entries, single, keyName, rename, setItems } from './yaml.js';
 
 // the option types a form field edits; list and object options stay in the file as they are
@@ -164,4 +164,23 @@ export function writeHeader(configDir, list, hash, opts = {}, schemaFor = () => 
   });
   setItems(doc.contents, items);
   return file.save({ opts, warnings });
+}
+
+/**
+ * A widget's options from its form, for a test run: hidden values (tokens) back to the values
+ * `known` (secretsOf) has for them, numbers and switches as their type, variables filled in from
+ * `env`. Returns { options, secrets } (the values to keep out of the answer).
+ */
+export function optionsForTest(type, given, { known, schemaFor, env }) {
+  const schema = schemaFor(type) ?? {};
+  const raw = {};
+  for (const [k, v] of Object.entries(given && typeof given === 'object' ? given : {})) {
+    if (typeof v !== 'string' || v.trim() === '') continue;
+    let value = v.replace(TOKEN, (token) => String(known.get(token)?.value ?? token));
+    if (schema[k]?.type === 'number' && Number.isFinite(Number(value))) value = Number(value);
+    else if (schema[k]?.type === 'boolean') value = value === 'true';
+    raw[k] = value;
+  }
+  const filled = substitute(raw, { env });
+  return { options: filled.value, secrets: [...[...known.values()].map((x) => String(x.value)), ...filled.secrets] };
 }

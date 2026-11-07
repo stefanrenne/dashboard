@@ -1,10 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import { ActionGate, COOKIE, checkPassword, hashPassword } from '../src/actionauth.js';
 import { cookieValue, isInternal } from '../src/http.js';
-import { tmpDir, silentLog } from './helpers.mjs';
+import { silentLog } from './helpers.mjs';
 
 /** A request as http gives it: headers and the socket's address. */
 const req = (headers = {}, remoteAddress = '192.168.1.20') => ({ headers, socket: { remoteAddress } });

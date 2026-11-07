@@ -3,48 +3,34 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import YAML from 'yaml';
 import { loadConfig } from './config/load.js';
 import { watchConfig } from './config/watch.js';
 import { loadRegistry } from './plugins/loader.js';
 import { syncPlugins, withDefaultPlugins, pluginUpdates, defaultPluginsFor } from './plugins/installer.js';
-import { WidgetRuntime } from './plugins/runtime.js';
+import { WidgetRuntime, describeError, tryWidget } from './plugins/runtime.js';
 import { WidgetSandbox } from './plugins/sandbox.js';
 import { Discovery, mergeDiscovered } from './discovery/index.js';
 import { withMountedSocket, dockerGet, DEFAULT_SOCKET } from './discovery/docker.js';
-import { buildState, resolveIcon } from './layout.js';
+import { buildState } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
-import { describeError } from './plugins/runtime.js';
 import { ActionGate, hashPassword, checkPassword, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
-import { Passkeys, rpContext } from './passkeys.js';
-import { readSettings, checkSettings, writeSettings, writeAdminPassword } from './settings/form.js';
-import { readLayout, checkLayout, writeLayout } from './settings/layout.js';
-import { readPlugins, checkPlugins, writePlugins } from './settings/plugins.js';
-import { readServices, writeServices } from './settings/services.js';
-import { widgetCatalog, readHeader, writeHeader } from './settings/widgets.js';
-import { secretsOf } from './settings/secrets.js';
-import { readBookmarks, writeBookmarks } from './settings/bookmarks.js';
-import { readServers, writeServers, SPECS as SERVER_FILES } from './settings/servers.js';
-import { testKubernetes, testProxmox } from './settings/tests.js';
-import { substitute } from './config/vars.js';
-import { checkConfigText, parseDocument, documentText, editableFiles, editableFile, configPath, ConfigEditError, readConfigFile, writeConfigFile, listHistory, readHistory } from './config/edit.js';
-import { maskConfigText, unmaskConfigText } from './settings/secrets.js';
-import { parseConfigYaml } from './config/include.js';
+import { Passkeys } from './passkeys.js';
 import { Onboarding, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML } from './onboarding.js';
 import { LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES, CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
 import { validateOptions } from './plugins/options.js';
-import { send, sendFile, readJson, BODY_LIMIT, isLocal, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress } from './http.js';
+import { send, sendFile, readJson, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress } from './http.js';
+import { settingsRoutes } from './settings/routes.js';
+import { homepageDryRun } from './homepage.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
 export const EVENT_STREAMS = { max: 500, perAddress: 50 };
-import { safeJoin, realInside, scrub } from './util.js';
+import { safeJoin, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -290,6 +276,8 @@ export async function createApp({
 
 
 
+  const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, timeoutMs, defaultPlugins, gate, passkeys, sessions, state, reload });
+
   async function handler(req, res) {
     const hosts = hostsNow();
     if (!hostAllowed(req.headers.host, hosts)) {
@@ -339,7 +327,7 @@ export async function createApp({
         return send(res, 401, { ok: false, needsLogin: true, error: 'log in first' });
       }
       if (p === '/api/passkey' || p.startsWith('/api/passkey/')) return await passkeyRoute(req, res, method, p);
-      if (p === '/settings' || p === '/settings.js' || p === '/api/settings' || p.startsWith('/api/settings/')) return await settingsRoute(req, res, method, p, { loggedIn, login });
+      if (p === '/settings' || p === '/settings.js' || p === '/api/settings' || p.startsWith('/api/settings/')) return await settingsRoute(req, res, { method, path: p, query: url.searchParams, loggedIn });
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
         const custom = CUSTOM_FILES.filter((f) => fs.existsSync(path.join(configDir, f)));
@@ -424,362 +412,6 @@ export async function createApp({
       log.error(`${req.method} ${p}: ${err.stack ?? err}`);
       return send(res, 500, { error: 'internal error' });
     }
-  }
-
-  /**
-   * The settings page and its API: the admin password opens it (a login counts, and the
-   * browser stays unlocked as for a press); without one yet, only the local network, which must
-   * set one first. A new admin password always needs the current one.
-   */
-  /**
-   * The config files on the settings page: GET /files (the list), GET /files/<file> (its text,
-   * secrets as tokens), POST /files/<file> { text, hash } (save), GET /files/<file>/history/<id>
-   * (an earlier version, masked too). Access is checked by settingsRoute.
-   */
-  async function filesRoute(res, method, route, body, headers) {
-    const schemaFor = (type) => state.registry?.get(type)?.manifest?.options ?? null;
-    const known = () => [...(state.config?.secrets ?? [])];
-    // the path is decoded already: an included file's name has slashes (/files/groups/media.yaml)
-    const [, file = '', sub, id] = /^\/files(?:\/(.+?))?(?:\/(history)\/([^/]+))?$/.exec(route) ?? [];
-    try {
-      // an included file is masked by the rules of the config file it ends up in
-      const where = file ? editableFile(configDir, file) ?? file : null;
-      const masked = (text) => maskConfigText(where, text, schemaFor, known());
-      if (file) configPath(configDir, file);
-      if (method === 'GET' && !file) {
-        const files = editableFiles(configDir).map((e) => {
-          const read = readConfigFile(configDir, e.file);
-          return { file: e.file, root: e.root, from: e.from, at: e.at, exists: read.exists, hash: read.hash, size: read.text.length };
-        });
-        return send(res, 200, { ok: true, files }, 'application/json', headers);
-      }
-      if (method === 'GET' && file && !sub) {
-        const read = readConfigFile(configDir, file);
-        const out = masked(read.text);
-        return send(res, 200, { ok: true, file, exists: read.exists, hash: read.hash, text: out.text, secrets: out.secrets, history: listHistory(configDir, file) }, 'application/json', headers);
-      }
-      if (method === 'GET' && file && sub === 'history' && id) {
-        return send(res, 200, { ok: true, file, id, text: masked(readHistory(configDir, file, id)).text }, 'application/json', headers);
-      }
-      if (method === 'POST' && file && !sub) {
-        if (typeof body?.text !== 'string' || typeof body?.hash !== 'string') return send(res, 400, { ok: false, error: 'expected { text, hash }' });
-        const current = readConfigFile(configDir, file);
-        if (body.hash !== current.hash) throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409);
-        if (where.root === 'settings.yaml' && /^adminPassword(\.|\[|$)/.test(where.at)) throw new ConfigEditError(`${file}: the admin password is changed under Security, with the current one`, 400);
-        const { text, warnings: secretWarnings } = unmaskConfigText(where, body.text, current.text, schemaFor);
-        if (file === 'settings.yaml') {
-          const hashOf = (t) => {
-            try {
-              return parseConfigYaml(t)?.adminPassword ?? null;
-            } catch {
-              return undefined;
-            }
-          };
-          const after = hashOf(text);
-          if (after !== undefined && after !== hashOf(current.text)) throw new ConfigEditError('settings.yaml: the admin password is changed under Security, with the current one', 400);
-        }
-        const out = writeConfigFile(configDir, file, text, { hash: body.hash, opts: { env } });
-        if (out.changed) {
-          log.info(`settings: ${file} saved from the settings page`);
-          // custom.css / custom.js: the open pages load them again
-          await reload();
-        }
-        return send(res, 200, { ok: true, file, hash: out.hash, changed: out.changed, warnings: [...secretWarnings, ...out.warnings] }, 'application/json', headers);
-      }
-    } catch (err) {
-      if (!(err instanceof ConfigEditError)) throw err;
-      return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors, warnings: err.warnings } : {}) }, 'application/json', headers);
-    }
-    return send(res, 404, { error: 'not found' });
-  }
-
-  async function settingsRoute(req, res, method, p, { loggedIn, login }) {
-    if (method === 'GET' && p === '/settings') return sendFile(res, path.join(publicDir, 'settings.html'));
-    if (method === 'GET' && p === '/settings.js') return sendFile(res, path.join(publicDir, 'settings.js'));
-    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
-    const route = p.slice('/api/settings'.length);
-    const noPassword = !gate.password;
-    const access = async () => {
-      if (noPassword) return isLocal(req) ? { ok: true, headers: {} } : { ok: false, status: 403, body: { ok: false, needsSetup: true, error: 'no admin password yet: set one from the local network first' } };
-      return gate.check(req, 'password', { what: 'the settings', loggedIn });
-    };
-    const allowed = await access();
-    if (!allowed.ok) return send(res, allowed.status, allowed.body);
-    // without an admin password, setting one comes first: nothing else is saved
-    if (noPassword && method === 'POST' && route !== '/password') return send(res, 403, { ok: false, needsSetup: true, error: 'set an admin password first' });
-    const headers = { ...SECURITY_HEADERS, ...allowed.headers };
-    const rp = rpContext(req);
-    // the groups the dashboard has now, discovered ones included, for the layout section
-    const groupInfo = () => ({
-      services: (state.layout?.groups ?? []).map((g) => ({ name: g.name, nested: (g.groups ?? []).map((n) => n.name) })),
-      bookmarks: (state.layout?.bookmarks ?? []).map((g) => g.name),
-    });
-    const answer = () => ({ ok: true, ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
-      plugins: { ...readPlugins(configDir, defaultPlugins), errors: state.pluginResult.errors ?? [], warnings: state.pluginResult.warnings ?? [], packages: state.pluginResult.packages ?? [] }, noPassword: !gate.password, loggedIn,
-      passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] } });
-    if (method === 'GET' && route === '') return send(res, 200, answer(), 'application/json', headers);
-    if (method === 'POST' && route === '/unlock') return send(res, 200, { ok: true }, 'application/json', headers);
-    let body;
-    try {
-      body = method === 'POST' ? await readJson(req, route.startsWith('/files/') || ['/services', '/bookmarks', '/header', '/import', '/import/check'].includes(route) ? BODY_LIMIT : 64 * 1024) : null;
-    } catch (err) {
-      return send(res, err.status ?? 400, { ok: false, error: err.message });
-    }
-    if (method === 'POST' && route === '') {
-      const checked = checkSettings(body?.values);
-      if (checked.error) return send(res, 400, { ok: false, error: checked.error });
-      try {
-        writeSettings(configDir, checked.values);
-      } catch (err) {
-        return send(res, 409, { ok: false, error: err.message });
-      }
-      log.info(`settings: ${Object.keys(checked.values).join(', ')} saved from the settings page`);
-      await reload();
-      return send(res, 200, answer(), 'application/json', headers);
-    }
-    if (route === '/files' || route.startsWith('/files/')) return filesRoute(res, method, route, body, headers);
-    const schemaOf = (type) => state.registry?.get(type)?.manifest?.options ?? null;
-    if (method === 'POST' && route === '/widget-test') {
-      // a widget from the form, tried as the dashboard would run it: hidden values and variables filled in
-      const known = secretsOf(body?.file === 'widgets.yaml' ? 'widgets.yaml' : 'services.yaml', readConfigFile(configDir, body?.file === 'widgets.yaml' ? 'widgets.yaml' : 'services.yaml').text, schemaOf);
-      const raw = Object.fromEntries(Object.entries(body?.options && typeof body.options === 'object' ? body.options : {})
-        .filter(([, v]) => typeof v === 'string' && v.trim() !== '')
-        .map(([k, v]) => [k, v.replace(/__SECRET_[0-9a-f]{10}__/g, (tk) => String(known.get(tk)?.value ?? tk))]));
-      const schema = schemaOf(body?.type) ?? {};
-      for (const [k, d] of Object.entries(schema)) if (k in raw && d.type === 'number' && Number.isFinite(Number(raw[k]))) raw[k] = Number(raw[k]);
-      for (const [k, d] of Object.entries(schema)) if (k in raw && d.type === 'boolean') raw[k] = raw[k] === 'true';
-      const filled = substitute(raw, { env });
-      const out = await testWidget(body?.type, filled.value);
-      const secrets = [...[...known.values()].map((x) => String(x.value)), ...filled.secrets];
-      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), secrets) }, 'application/json', headers);
-    }
-    const serverFile = /^\/servers\/([a-z]+\.yaml)$/.exec(route)?.[1];
-    if (serverFile && SERVER_FILES[serverFile]) {
-      try {
-        if (method === 'POST') {
-          const out = writeServers(configDir, serverFile, body, body?.hash, { env });
-          if (out.changed) {
-            log.info(`settings: ${serverFile} saved from its form`);
-            await reload();
-          }
-          return send(res, 200, { ok: true, ...readServers(configDir, serverFile), warnings: out.warnings ?? [] }, 'application/json', headers);
-        }
-        return send(res, 200, { ok: true, ...readServers(configDir, serverFile) }, 'application/json', headers);
-      } catch (err) {
-        if (!(err instanceof ConfigEditError)) throw err;
-        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
-      }
-    }
-    if (method === 'POST' && (route === '/import/check' || route === '/import')) {
-      // homepage's files from the settings page: checked as the wizard does, then written all or none
-      const given = Object.fromEntries(Object.entries(body?.files && typeof body.files === 'object' ? body.files : {}).filter(([k, v]) => HOMEPAGE_FILES.includes(k) && typeof v === 'string'));
-      if (!Object.keys(given).length) return send(res, 400, { ok: false, error: `none of ${HOMEPAGE_FILES.join(', ')}` }, 'application/json', headers);
-      // this dashboard's admin password, login and allowed hosts stay: an import does not undo the security
-      if (given['settings.yaml'] !== undefined) {
-        try {
-          const doc = parseDocument(given['settings.yaml'], 'settings.yaml');
-          const mine = parseDocument(readConfigFile(configDir, 'settings.yaml').text, 'settings.yaml');
-          if (doc.contents === null) doc.contents = doc.createNode({});
-          if (YAML.isMap(doc.contents) && YAML.isMap(mine.contents)) {
-            for (const key of ['adminPassword', 'login', 'allowedHosts', 'actions']) {
-              if (mine.contents.has(key)) doc.contents.set(key, mine.contents.get(key, true));
-              else doc.contents.delete(key);
-            }
-          }
-          given['settings.yaml'] = documentText(doc);
-        } catch (err) {
-          return send(res, 400, { ok: false, error: err.message }, 'application/json', headers);
-        }
-      }
-      if (route === '/import/check') {
-        const dry = homepageDryRun(given);
-        return send(res, 200, { ...dry, replaces: Object.keys(given).filter((k) => readConfigFile(configDir, k).exists) }, 'application/json', headers);
-      }
-      const problems = Object.entries(given).flatMap(([name, text]) => checkConfigText(configDir, name, text, { env }).errors);
-      if (problems.length) return send(res, 400, { ok: false, error: 'not imported: fix these first', errors: problems }, 'application/json', headers);
-      for (const [name, text] of Object.entries(given)) writeConfigFile(configDir, name, text, { opts: { env } });
-      log.info(`settings: imported homepage's ${Object.keys(given).join(', ')}`);
-      await reload();
-      return send(res, 200, { ok: true, files: Object.keys(given) }, 'application/json', headers);
-    }
-    if (method === 'GET' && route === '/icon') {
-      // the address an icon name stands for, for the preview on the page
-      const name = String(new URL(req.url, 'http://x').searchParams.get('name') ?? '').trim().slice(0, 300);
-      return send(res, 200, { ok: true, name, url: name ? resolveIcon(name) : null }, 'application/json', headers);
-    }
-    if (method === 'GET' && route === '/icons') {
-      // suggestions for the icon fields: the files in config/icons and the icons already in use
-      const local = [];
-      const dir = path.join(configDir, 'icons');
-      const walk = (rel, depth) => {
-        let names = [];
-        try {
-          names = fs.readdirSync(path.join(dir, rel), { withFileTypes: true });
-        } catch {
-          return;
-        }
-        for (const e of names) {
-          if (local.length >= 500) return;
-          const r = rel ? `${rel}/${e.name}` : e.name;
-          if (e.isDirectory() && depth < 2 && !e.name.startsWith('.')) walk(r, depth + 1);
-          else if (e.isFile() && /\.(svg|png|webp|jpe?g|gif|ico)$/i.test(e.name)) local.push(`/icons/${r}`);
-        }
-      };
-      walk('', 0);
-      const used = new Set();
-      const add = (v) => { if (typeof v === 'string' && v.trim()) used.add(v.trim()); };
-      const groups = (list) => (list ?? []).forEach((g) => { g.services?.forEach((x) => add(x.icon)); groups(g.groups); });
-      groups(state.config?.services);
-      (state.config?.bookmarks ?? []).forEach((g) => g.bookmarks.forEach((b) => add(b.icon)));
-      Object.values(state.config?.settings?.layout ?? {}).forEach((l) => add(l?.icon));
-      return send(res, 200, { ok: true, local: local.sort(), used: [...used].sort() }, 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/kubernetes-test') {
-      const out = await testKubernetes(state.config?.kubernetes, { configDir, env });
-      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), [...(state.config?.secrets ?? [])]) }, 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/proxmox-test') {
-      const node = state.config?.proxmox?.[typeof body?.name === 'string' ? body.name : ''];
-      if (!node) return send(res, 404, { ok: false, error: 'no such node in proxmox.yaml; save it first' }, 'application/json', headers);
-      const out = await testProxmox(node);
-      return send(res, 200, out.ok ? out : { ok: false, error: scrub(String(out.error), [node.secret, node.token, ...(state.config?.secrets ?? [])]) }, 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/docker-test') {
-      // a saved server, as the dashboard uses it (the mounted socket included)
-      const servers = (state.config?.docker ?? []).filter((x) => x.name === body?.name);
-      if (!servers.length) return send(res, 404, { ok: false, error: 'no such server in docker.yaml; save it first' }, 'application/json', headers);
-      const [result] = await checkDocker({ servers, get: dockerGet });
-      return send(res, 200, result, 'application/json', headers);
-    }
-    if (route === '/bookmarks') {
-      try {
-        if (method === 'POST') {
-          const out = writeBookmarks(configDir, body?.items, body?.hash, { env });
-          if (out.changed) {
-            log.info('settings: bookmarks.yaml saved from the bookmarks form');
-            await reload();
-          }
-          return send(res, 200, { ok: true, ...readBookmarks(configDir), warnings: out.warnings ?? [] }, 'application/json', headers);
-        }
-        return send(res, 200, { ok: true, ...readBookmarks(configDir) }, 'application/json', headers);
-      } catch (err) {
-        if (!(err instanceof ConfigEditError)) throw err;
-        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
-      }
-    }
-    if (route === '/header') {
-      try {
-        if (method === 'POST') {
-          const out = writeHeader(configDir, body?.widgets, body?.hash, { env }, schemaOf);
-          if (out.changed) {
-            log.info('settings: widgets.yaml saved from the header widgets form');
-            await reload();
-          }
-          return send(res, 200, { ok: true, ...readHeader(configDir, schemaOf), catalog: widgetCatalog(state.registry), warnings: out.warnings ?? [] }, 'application/json', headers);
-        }
-        return send(res, 200, { ok: true, ...readHeader(configDir, schemaOf), catalog: widgetCatalog(state.registry) }, 'application/json', headers);
-      } catch (err) {
-        if (!(err instanceof ConfigEditError)) throw err;
-        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
-      }
-    }
-    if (route === '/services') {
-      // the services the dashboard found by itself: shown, not edited (their labels are the source)
-      const discovered = () => (state.layout?.groups ?? []).flatMap(function all(g, _, __, parent = '') {
-        const name = parent ? `${parent} › ${g.name}` : g.name;
-        return [...g.services.filter((x) => x.discovered).map((x) => ({ group: name, name: x.name, origin: x.discovered })), ...(g.groups ?? []).flatMap((n) => all(n, 0, 0, name))];
-      });
-      try {
-        if (method === 'POST') {
-          const out = writeServices(configDir, body?.items, body?.hash, { env }, schemaOf);
-          if (out.changed) {
-            log.info('settings: services.yaml saved from the services form');
-            await reload();
-          }
-          return send(res, 200, { ok: true, ...readServices(configDir, schemaOf), widgets: widgetCatalog(state.registry), discovered: discovered(), warnings: out.warnings ?? [] }, 'application/json', headers);
-        }
-        return send(res, 200, { ok: true, ...readServices(configDir, schemaOf), widgets: widgetCatalog(state.registry), discovered: discovered() }, 'application/json', headers);
-      } catch (err) {
-        if (!(err instanceof ConfigEditError)) throw err;
-        return send(res, err.status, { ok: false, error: err.message, ...(err.errors ? { errors: err.errors } : {}) }, 'application/json', headers);
-      }
-    }
-    if (method === 'POST' && route === '/plugins') {
-      const checked = checkPlugins(body?.entries);
-      if (checked.error) return send(res, 400, { ok: false, error: checked.error });
-      try {
-        writePlugins(configDir, checked.entries);
-      } catch (err) {
-        return send(res, 409, { ok: false, error: err.message });
-      }
-      log.info('settings: the plugins saved from the settings page');
-      await reload();
-      return send(res, 200, answer(), 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/layout') {
-      const checked = checkLayout(body?.groups);
-      if (checked.error) return send(res, 400, { ok: false, error: checked.error });
-      try {
-        writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo()));
-      } catch (err) {
-        return send(res, 409, { ok: false, error: err.message });
-      }
-      log.info('settings: the layout saved from the settings page');
-      await reload();
-      return send(res, 200, answer(), 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/passkeys/options') {
-      const options = passkeys.registerOptions(req, state.config.settings.title);
-      if (!options) return send(res, 400, { ok: false, error: 'passkeys need the dashboard over https, by its host name' });
-      return send(res, 200, { ok: true, publicKey: options }, 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/passkeys') {
-      let out;
-      try {
-        out = passkeys.register(req, body);
-      } catch (err) {
-        return send(res, 409, { ok: false, error: `cannot write the passkeys (${err.code ?? err.message})` });
-      }
-      if (!out.ok) return send(res, 400, out);
-      log.info(`settings: a passkey added (${out.passkey.name}, for ${rp.rpId})`);
-      return send(res, 200, answer(), 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/passkeys/remove') {
-      try {
-        if (!passkeys.remove(body?.id)) return send(res, 404, { ok: false, error: 'no such passkey' });
-      } catch (err) {
-        return send(res, 409, { ok: false, error: `cannot write the passkeys (${err.code ?? err.message})` });
-      }
-      log.info('settings: a passkey removed');
-      return send(res, 200, answer(), 'application/json', headers);
-    }
-    if (method === 'POST' && route === '/password') {
-      if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) return send(res, 400, { ok: false, error: `at least ${MIN_PASSWORD} characters` });
-      if (gate.password) {
-        // the current password, every time: also when logged in or unlocked
-        const address = clientAddress(req);
-        const retryAfter = gate.limiter.waiting(address);
-        if (retryAfter) return send(res, 429, { ok: false, retryAfter, error: 'too many wrong passwords' });
-        if (!(await checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''))) {
-          gate.limiter.failed(address);
-          log.warn(`wrong current admin password from ${address} on the settings page`);
-          return send(res, 401, { ok: false, wrongPassword: true, error: 'the current password is not right' });
-        }
-        gate.limiter.succeeded(address);
-      }
-      try {
-        writeAdminPassword(configDir, hashPassword(body.next));
-      } catch (err) {
-        return send(res, 409, { ok: false, error: err.message });
-      }
-      log.info('settings: a new admin password; every login session ends');
-      await reload();
-      // the sessions of the old password end; this browser keeps going with one of the new
-      const login2 = state.config.settings.login;
-      const renewed = login2?.required && gate.password ? { 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login2.rememberMs) } : {};
-      return send(res, 200, answer(), 'application/json', { ...SECURITY_HEADERS, ...renewed });
-    }
-    return send(res, 404, { error: 'not found' });
   }
 
   /**
@@ -895,8 +527,8 @@ export async function createApp({
       // what the environment sets already: those win over what the wizard writes
       return send(res, 200, { host: hostName(req.headers.host) });
     }
-    if (method === 'POST' && route === 'test') return send(res, 200, await testWidget(body?.type, body?.options));
-    if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files));
+    if (method === 'POST' && route === 'test') return send(res, 200, await tryWidget({ registry: state.registry, log, timeoutMs, configDir: path.resolve(configDir) }, body?.type, body?.options));
+    if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files, { registry: state.registry, env }));
     if (method === 'POST' && route === 'finish') {
       const files = setupFiles(body ?? {});
       if (files.error) return send(res, 400, { ok: false, error: files.error });
@@ -929,44 +561,6 @@ export async function createApp({
   }
 
   /** One run of a widget with the options the wizard has, to show that they work. */
-  async function testWidget(type, raw) {
-    const widget = typeof type === 'string' ? state.registry.get(type) : null;
-    if (!widget?.server) return { ok: false, error: `unknown widget "${String(type).slice(0, 40)}"` };
-    const { options, errors } = validateOptions(widget.manifest.options, raw && typeof raw === 'object' ? raw : {}, new Set());
-    if (errors.length) return { ok: false, error: errors.join('; ') };
-    const secretValues = Object.entries(widget.manifest.options).filter(([k, d]) => d.secret && typeof options[k] === 'string' && options[k]).map(([k]) => options[k]);
-    // a runtime of its own, in this process: the dashboard's instances and their worker stay as they are
-    const rt = new WidgetRuntime({ registry: state.registry, log, timeoutMs, configDir: path.resolve(configDir) });
-    rt.setInstances(new Map([['setup-test', { type: widget.manifest.id, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs: 1000, fields: null, highlight: null, errors: [] }]]), state.registry, secretValues);
-    const r = await rt.get('setup-test');
-    if (!r.ok) return { ok: false, error: r.error };
-    return { ok: true, blocks: (r.data?.blocks ?? []).slice(0, 4).map((b) => ({ label: b.label, value: b.value, unit: b.unit ?? null })) };
-  }
-
-  /** homepage's files loaded as the dashboard would, without writing them: what carries over. */
-  function homepageDryRun(files) {
-    const given = Object.fromEntries(Object.entries(files && typeof files === 'object' ? files : {}).filter(([k, v]) => HOMEPAGE_FILES.includes(k) && typeof v === 'string'));
-    if (!Object.keys(given).length) return { ok: false, error: `none of ${HOMEPAGE_FILES.join(', ')}` };
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dash-import-'));
-    try {
-      for (const [name, text] of Object.entries(given)) fs.writeFileSync(path.join(dir, name), text);
-      const config = loadConfig(dir, { env });
-      const { layout } = buildState({ config, registry: state.registry, groups: mergeDiscovered(config.services, []).groups, secrets: config.secrets });
-      const services = [];
-      const walk = (groups) => {
-        for (const g of groups) {
-          for (const s of g.services ?? []) services.push({ group: g.name, name: s.name, widgets: s.widgets.map((w) => w.type), unknown: s.widgets.filter((w) => !w.known).map((w) => w.type) });
-          walk(g.groups ?? []);
-        }
-      };
-      walk(layout.groups);
-      const scrubbed = (list) => list.map((m) => `${m.file}${m.path ? ` ${m.path}` : ''}: ${m.message}`);
-      return { ok: true, files: Object.keys(given), services, bookmarks: layout.bookmarks.reduce((n, g) => n + g.bookmarks.length, 0), header: layout.header.length, errors: scrubbed(layout.messages.errors), warnings: scrubbed(layout.messages.warnings) };
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }
-
   /**
    * The files the wizard writes: settings, services, header widgets and bookmarks from its
    * steps, homepage's files as they are in their place, and the commented docker.yaml and
