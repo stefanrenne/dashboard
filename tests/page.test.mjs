@@ -68,3 +68,9 @@ test('renderIndex: settings.base as the first tag in the head', () => {
   const injected = out.slice(out.indexOf('<base'), out.indexOf('</head>'));
   assert.ok(injected.startsWith('<base href="https://lab.example.com/dashboard/">\n<link rel="manifest"'));
 });
+
+test('common.js: the texts the pages share, in every language', async () => {
+  const { readI18n } = await import('../scripts/i18n.mjs');
+  const { checkLanguages } = await import('./helpers.mjs');
+  checkLanguages(assert, readI18n('public/common.js'));
+});

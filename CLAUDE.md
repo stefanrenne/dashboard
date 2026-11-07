@@ -143,8 +143,9 @@ Usage limits are shared with the owner: keep a task's context small.
 - Everything is **English**: code comments, log lines, Markdown docs, this file. Only UI texts in
   `I18N` (and widget `i18n.json`) are translated.
 - The UI is multilingual (en, nl, fr, de, es, ca, he, hr, hu, it, nb-NO, pt, ru, sv, vi, zh-Hans,
-  zh-Hant; homepage's set plus nl): all page texts live in `I18N` in `index.html` and go through
-  `translate()`. A new text gets a key in **every** language; a test checks this (the collection checks
+  zh-Hant; homepage's set plus nl): each page's texts live in its `I18N` (`index.html`, `setup.js`,
+  `settings.js`, `login.js`), the ones the setup wizard and settings page share in `SHARED_I18N`
+  (`common.js`). A new text gets a key in **every** language; a test checks this (the collection checks
   its widgets' `i18n.json`). Hebrew is right-to-left: use logical CSS properties
   (`inset-inline-end`, `padding-inline-start`), not left/right.
 - Config errors and warnings always name the file and a path into it (`services.yaml › [0].Network[1].Router`).

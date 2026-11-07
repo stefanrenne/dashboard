@@ -13,13 +13,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const FILES = ['public/index.html', 'public/setup.js', 'public/login.js', 'public/settings.js'];
+export const FILES = ['public/index.html', 'public/common.js', 'public/setup.js', 'public/login.js', 'public/settings.js'];
 
-const block = (src) => /const I18N = (\{[\s\S]*?\n\});/.exec(src);
+const block = (src) => /const (?:SHARED_)?I18N = (\{[\s\S]*?\n\});/.exec(src);
 
 export function readI18n(file) {
   const m = block(fs.readFileSync(path.join(ROOT, file), 'utf8'));
-  if (!m) throw new Error(`${file}: no const I18N`);
+  if (!m) throw new Error(`${file}: no const I18N or SHARED_I18N`);
   return new Function(`return ${m[1]}`)();
 }
 
