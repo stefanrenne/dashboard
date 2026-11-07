@@ -284,7 +284,7 @@ test('Discovery substitutes the variables allowVariables lists and records them 
       { group: 'G', name: 'T', def: { widget: { type: 'x', key: '{{DASHBOARD_VAR_OTHER}}' } }, weight: 0 },
     ],
   });
-  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true, allowVariables: ['HOMEPAGE_VAR_K'] }], kubernetes: { mode: 'disabled' } });
+  await d.configure({ settings: { discoveryMs: 3_600_000 }, docker: [{ name: 'l', discover: true, allowVariables: ['HOMEPAGE_VAR_K'] }], kubernetes: { mode: 'disabled' } });
   d.stop();
   assert.deepEqual(d.found.map((s) => s.name), ['S']);
   assert.equal(d.found[0].def.widget.key, 'k-123');
@@ -292,10 +292,10 @@ test('Discovery substitutes the variables allowVariables lists and records them 
   assert.match(d.errors[0].message, /"T" is left out: its labels use \{\{DASHBOARD_VAR_OTHER\}\}/);
   assert.equal(d.errors[0].path, 'l.allowVariables');
   // true: every variable; nothing set: none
-  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true, allowVariables: true }], kubernetes: { mode: 'disabled' } });
+  await d.configure({ settings: { discoveryMs: 3_600_000 }, docker: [{ name: 'l', discover: true, allowVariables: true }], kubernetes: { mode: 'disabled' } });
   d.stop();
   assert.equal(d.found.length, 2);
-  await d.configure({ settings: { discovery: { interval: '1h' } }, docker: [{ name: 'l', discover: true }], kubernetes: { mode: 'disabled' } });
+  await d.configure({ settings: { discoveryMs: 3_600_000 }, docker: [{ name: 'l', discover: true }], kubernetes: { mode: 'disabled' } });
   d.stop();
   assert.equal(d.found.length, 0);
 });
@@ -342,7 +342,7 @@ test('Discovery: errors per source, onChange only when something changed', async
     },
     kubernetes: async () => [],
   });
-  const config = { settings: { discovery: { interval: '1h' } }, docker: [{ name: 'local', discover: true }], kubernetes: { mode: 'disabled' } };
+  const config = { settings: { discoveryMs: 3_600_000 }, docker: [{ name: 'local', discover: true }], kubernetes: { mode: 'disabled' } };
   await d.configure(config);
   assert.equal(d.errors[0].message, 'discovery: socket missing');
   fail = false;
@@ -392,7 +392,7 @@ test('Discovery passes settings.instanceName to the sources', async () => {
     docker: async (server) => { seen.push(['docker', server.instanceName]); return []; },
     kubernetes: async (opts) => { seen.push(['kubernetes', opts.instanceName]); return []; },
   });
-  await d.configure({ settings: { instanceName: 'public', discovery: { interval: '1h' } }, docker: [{ name: 'local', socket: '/x', discover: true }], kubernetes: { mode: 'cluster' } });
+  await d.configure({ settings: { instanceName: 'public', discoveryMs: 3_600_000 }, docker: [{ name: 'local', socket: '/x', discover: true }], kubernetes: { mode: 'cluster' } });
   d.stop();
   assert.deepEqual(seen, [['docker', 'public'], ['kubernetes', 'public']]);
 });

@@ -33,7 +33,7 @@ const SMALL = 64 * 1024;
 /**
  * The settings routes for the app: (req, res, { method, path, query, loggedIn }) → whether it
  * answered. `app` gives what they use of the running dashboard: configDir, env, log, publicDir,
- * timeoutMs, defaultPlugins, gate, passkeys, sessions, state (config, layout, registry,
+ * runtime (tryWidget), defaultPlugins, gate, passkeys, sessions, state (config, layout, registry,
  * pluginResult) and reload().
  */
 export function settingsRoutes(app) {
@@ -204,7 +204,7 @@ export function settingsRoutes(app) {
     ['POST', '/widget-test', async ({ body }) => {
       const file = body?.file === 'widgets.yaml' ? 'widgets.yaml' : 'services.yaml';
       const { options, secrets } = optionsForTest(body?.type, body?.options, { known: secretsOf(file, readConfigFile(configDir, file).text, schemaFor), schemaFor, env });
-      const out = await tryWidget({ registry: state.registry, log, timeoutMs: app.timeoutMs, configDir: path.resolve(configDir) }, body?.type, options);
+      const out = await tryWidget(app.runtime, body?.type, options);
       return out.ok ? out : { ok: false, error: scrub(out.error, secrets) };
     }],
     ['POST', '/docker-test', async ({ body }) => {

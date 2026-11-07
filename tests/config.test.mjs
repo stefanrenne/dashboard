@@ -366,3 +366,16 @@ test('pluginUpdateInterval: every hour by default, a duration, false to turn off
   assert.equal(bad.settings.pluginUpdateMs, 3_600_000);
   assert.match(bad.warnings[0].message, /invalid duration "soon".*using 1h/);
 });
+
+test('discovery.interval: 30s by default, a duration, at least 5s; a bad one keeps discovery running', () => {
+  const ms = (yaml) => loadConfig(configDir({ 'settings.yaml': yaml }));
+  assert.equal(ms('title: x\n').settings.discoveryMs, 30_000);
+  assert.equal(ms('discovery: { interval: 2m }\n').settings.discoveryMs, 120_000);
+  const fast = ms('discovery: { interval: 1s }\n');
+  assert.equal(fast.settings.discoveryMs, 5_000);
+  assert.match(fast.warnings[0].message, /at least 5s/);
+  assert.equal(ms("discovery: { interval: '0' }\n").settings.discoveryMs, 30_000);
+  const bad = ms('discovery: { interval: soon }\n');
+  assert.equal(bad.settings.discoveryMs, 30_000);
+  assert.match(bad.warnings[0].message, /invalid duration "soon".*using 30s/);
+});

@@ -4,7 +4,6 @@ import { discoverDocker } from './docker.js';
 import { discoverKubernetes, kubernetesOn } from './kubernetes.js';
 import { normalizeService } from '../config/load.js';
 import { substitute, variablesIn } from '../config/vars.js';
-import { parseDuration } from '../util.js';
 
 export class Discovery {
   constructor({ log = console, onChange = () => {}, docker = discoverDocker, kubernetes = discoverKubernetes, env = process.env } = {}) {
@@ -22,7 +21,7 @@ export class Discovery {
   async configure(config) {
     this.stop();
     this.config = config;
-    this.intervalMs = parseDuration(config.settings.discovery?.interval, 30_000);
+    this.intervalMs = config.settings.discoveryMs;
     await this.poll();
     if (this.#enabled()) this.timer = setInterval(() => this.poll().catch((err) => this.log.warn(`discovery: ${err.message}`)), this.intervalMs).unref();
   }

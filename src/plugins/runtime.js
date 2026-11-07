@@ -392,19 +392,23 @@ function actionResult(data, secrets = []) {
 
 
 /**
- * Runs one widget once with `raw` options, as a test (the setup wizard, the settings page), in a
- * runtime of its own in this process: the dashboard's instances and their worker stay as they
- * are. { ok, blocks (the first four) } or { ok: false, error }.
+ * Runs one widget of `runtime`'s registry once with `raw` options, as a test (the setup wizard,
+ * the settings page): in a runtime of its own, so the dashboard's instances stay as they are, but
+ * with the same sandbox (an installed widget runs in the worker, with its limits).
+ * { ok, blocks (the first four) } or { ok: false, error }.
  */
-export async function tryWidget({ registry, log, timeoutMs, configDir }, type, raw) {
-  const widget = typeof type === 'string' ? registry.get(type) : null;
+export async function tryWidget(runtime, type, raw) {
+  const widget = typeof type === 'string' ? runtime.registry.get(type) : null;
   if (!widget?.server) return { ok: false, error: `unknown widget "${String(type).slice(0, 40)}"` };
   const { options, errors } = validateOptions(widget.manifest.options, raw && typeof raw === 'object' ? raw : {}, new Set());
   if (errors.length) return { ok: false, error: errors.join('; ') };
   const secretValues = Object.entries(widget.manifest.options).filter(([k, d]) => d.secret && typeof options[k] === 'string' && options[k]).map(([k]) => options[k]);
-  const rt = new WidgetRuntime({ registry, log, timeoutMs, configDir });
-  rt.setInstances(new Map([['try', { type: widget.manifest.id, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs: 1000, fields: null, highlight: null, errors: [] }]]), registry, secretValues);
-  const r = await rt.get('try');
+  const rt = new WidgetRuntime({ registry: runtime.registry, log: runtime.log, timeoutMs: runtime.timeoutMs, configDir: runtime.configDir, sandbox: runtime.sandbox });
+  // set, not setInstances: that would tell the worker to drop the dashboard's own instances
+  const id = `try-${crypto.randomUUID()}`;
+  rt.instances = new Map([[id, { type: widget.manifest.id, apiVersion: widget.manifest.apiVersion, options, secretValues, refreshMs: 1000, fields: null, highlight: null, errors: [] }]]);
+  rt.secrets = secretValues;
+  const r = await rt.get(id);
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, blocks: (r.data?.blocks ?? []).slice(0, 4).map((b) => ({ label: b.label, value: b.value, unit: b.unit ?? null })) };
 }

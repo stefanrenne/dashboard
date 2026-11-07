@@ -18,8 +18,8 @@ import { scanContainers, settingsYaml, securityYaml, servicesYaml, parseDockerAd
 
 /**
  * The wizard's routes for the app: (req, res, { method, path }). `app` gives what they use:
- * configDir, env, log, publicDir, exampleDir (the config.example folder), timeoutMs, version,
- * dockerSocket, onboarding (wizard.js), state (config, registry) and reload().
+ * configDir, env, log, publicDir, exampleDir (the config.example folder), version,
+ * dockerSocket, onboarding (wizard.js), state (config, registry), reload() and runtime (tryWidget).
  */
 export function onboardingRoutes(app) {
   const { onboarding, state } = app;
@@ -134,7 +134,7 @@ export function onboardingRoutes(app) {
     }
     // the name the wizard was opened by, and whether it is a name the dashboard would need to allow
     if (method === 'GET' && route === 'status') return send(res, 200, { host: hostName(req.headers.host), isAddress: hostIsAddress(req.headers.host), minPassword: MIN_PASSWORD });
-    if (method === 'POST' && route === 'test') return send(res, 200, await tryWidget({ registry: state.registry, log: app.log, timeoutMs: app.timeoutMs, configDir: path.resolve(app.configDir) }, body?.type, body?.options));
+    if (method === 'POST' && route === 'test') return send(res, 200, await tryWidget(app.runtime, body?.type, body?.options));
     if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files, { registry: state.registry, env: app.env }));
     if (method === 'POST' && route === 'finish') {
       const files = setupFiles(body ?? {});

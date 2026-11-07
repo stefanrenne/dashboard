@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWidget } from '../src/plugins/loader.js';
-import { WidgetRuntime } from '../src/plugins/runtime.js';
+import { WidgetRuntime, tryWidget } from '../src/plugins/runtime.js';
 import { WidgetSandbox } from '../src/plugins/sandbox.js';
 import { tmpDir, writeWidget, serve } from './helpers.mjs';
 
@@ -105,6 +105,25 @@ test('sandbox: fetch gets ctx.configDir in the worker too, as in the process', a
   const { sandbox, get } = await setup('cfg', 'export default { async fetch(ctx) { return { blocks: [{ label: "dir", value: ctx.configDir }] }; } };', { configDir: '/config' });
   try {
     assert.equal((await get()).data.blocks[0].value, '/config');
+  } finally {
+    sandbox.close();
+  }
+});
+
+test('sandbox: a widget test (wizard, settings page) runs an installed widget in the worker too, and leaves the instances alone', async () => {
+  const { runtime, sandbox, get } = await setup('tried', `
+    import { isMainThread } from 'node:worker_threads';
+    export default { async fetch(ctx) {
+      const n = (ctx.cache.get('n') ?? 0) + 1;
+      ctx.cache.set('n', n);
+      return { blocks: [{ label: 'main', value: String(isMainThread) }, { label: 'n', value: n }] };
+    } };`);
+  try {
+    assert.equal((await get()).data.blocks[1].value, 1);
+    const out = await tryWidget(runtime, 'tried', {});
+    assert.deepEqual(out, { ok: true, blocks: [{ label: 'main', value: 'false', unit: null }, { label: 'n', value: 1, unit: null }] });
+    runtime.cache.clear();
+    assert.equal((await get()).data.blocks[1].value, 2, 'the instance keeps its ctx.cache');
   } finally {
     sandbox.close();
   }

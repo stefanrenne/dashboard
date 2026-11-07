@@ -201,6 +201,7 @@ function normalizeSettings(raw, ctx) {
   }
   const settings = { ...DEFAULT_SETTINGS, ...raw };
   settings.discovery = { ...DEFAULT_SETTINGS.discovery, ...(isPlainObject(raw.discovery) ? raw.discovery : {}) };
+  settings.discoveryMs = durationSetting(settings.discovery.interval, { file, at: 'discovery.interval', fallback: DEFAULTS.discoveryInterval, min: '5s' }, ctx);
   if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
   for (const [key, values] of SETTING_CHOICES) {
     if (settings[key] === undefined || values.includes(settings[key])) continue;

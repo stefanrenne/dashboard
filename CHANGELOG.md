@@ -17,6 +17,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - A `target: hidden-iframe` webhook without an admin password now gets the same warning as an action
   widget: anyone who can open the page can run it.
 - A failed check for plugin updates is logged; before, it was silent.
+- The widget test in the setup wizard and on the settings page ran an installed widget in the
+  dashboard's own process; it now runs in the widget worker, with its time and memory limits.
+- settings.yaml `discovery.interval`: a value that is no duration (such as `0`) stopped discovery
+  and the page's rebuild; it now gets a warning and 30s, and at least 5s is used.
 
 ## [0.24.1] - 2026-11-06
 
