@@ -40,7 +40,7 @@ function setPath(root, parts, value) {
 }
 
 /** The labels under `prefix`, with this instance's labels applied and other instances' left out. */
-function ownLabels(labels, prefix, instanceName) {
+export function ownLabels(labels, prefix, instanceName) {
   const plain = {};
   const mine = {};
   const instance = prefix + 'instance.';

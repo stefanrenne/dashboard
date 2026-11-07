@@ -3,7 +3,7 @@
 
 import http from 'node:http';
 import https from 'node:https';
-import { serviceFromLabels } from './labels.js';
+import { serviceFromLabels, ownLabels } from './labels.js';
 import { k8sConnection, k8sHeaders, k8sApiUrl, K8S_SA_DIR } from './kubeconfig.js';
 import { getJson } from '../http.js';
 
@@ -34,12 +34,12 @@ export function servicesFromResources(list, instanceName = null, hrefOf = () => 
     const svc = serviceFromLabels(labels, prefix, instanceName);
     svc.group ??= res.metadata.namespace ?? 'Kubernetes';
     // as in homepage: the app's pods get a status label (app defaults to the resource's name)
-    const own = (key) => ann[`${prefix}instance.${instanceName}.${key}`] ?? ann[prefix + key];
-    if (String(own('external')).toLowerCase() === 'true') svc.def.external = true;
+    const own = ownLabels(ann, prefix, instanceName);
+    if (String(own.external).toLowerCase() === 'true') svc.def.external = true;
     else {
-      svc.def.app = own('app') || res.metadata.name;
+      svc.def.app = own.app || res.metadata.name;
       if (res.metadata.namespace) svc.def.namespace = res.metadata.namespace;
-      if (own('pod-selector') !== undefined) svc.def.podSelector = own('pod-selector');
+      if (own['pod-selector'] !== undefined) svc.def.podSelector = own['pod-selector'];
     }
     if (!svc.def.href) {
       const href = hrefOf(res);

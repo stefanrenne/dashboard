@@ -15,11 +15,14 @@ import { secureRequest, hostName } from './http.js';
 import { writeAtomic } from './util.js';
 
 export const PASSKEYS_FILE = '.passkeys.json';
-export { PASSKEY_HEADER } from './actionauth.js';
 export const CHALLENGE_MS = 5 * 60 * 1000;
 export const TOKEN_MS = 2 * 60 * 1000;
-// ES256, Ed25519, RS256: what node:crypto verifies with a SPKI key
-export const ALGORITHMS = { '-7': 'sha256', '-8': null, '-257': 'sha256' };
+// the COSE algorithms a passkey may use: the key type it must have and the hash its signature takes
+const ALGORITHMS = {
+  '-7': { keyType: 'ec', hash: 'sha256' }, // ES256
+  '-8': { keyType: 'ed25519', hash: null }, // EdDSA
+  '-257': { keyType: 'rsa', hash: 'sha256' }, // RS256
+};
 const MAX_PASSKEYS = 50;
 const MAX_PENDING = 1000;
 const FLAG_UP = 0x01;
@@ -135,7 +138,7 @@ export class Passkeys {
     }
     try {
       const key = crypto.createPublicKey({ key: spki, format: 'der', type: 'spki' });
-      if (alg === '-8' ? key.asymmetricKeyType !== 'ed25519' : alg === '-7' ? key.asymmetricKeyType !== 'ec' : key.asymmetricKeyType !== 'rsa') throw new Error('type');
+      if (key.asymmetricKeyType !== ALGORITHMS[alg].keyType) throw new Error('type');
     } catch {
       return { ok: false, error: 'the passkey has a key this dashboard cannot read' };
     }
@@ -183,7 +186,7 @@ export class Passkeys {
     let valid = false;
     try {
       const key = crypto.createPublicKey({ key: Buffer.from(passkey.publicKey, 'base64'), format: 'der', type: 'spki' });
-      valid = crypto.verify(ALGORITHMS[String(passkey.alg)], Buffer.concat([authData, sha256(clientData)]), key, signature);
+      valid = crypto.verify(ALGORITHMS[String(passkey.alg)].hash, Buffer.concat([authData, sha256(clientData)]), key, signature);
     } catch {
       valid = false;
     }
