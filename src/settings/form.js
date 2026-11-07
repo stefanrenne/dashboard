@@ -3,12 +3,12 @@
 // admin password's hash is ever written, and changing it needs the current one.
 
 import YAML from 'yaml';
-import { parseDuration } from './util.js';
-import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
+import { parseDuration } from '../util.js';
+import { openYaml } from './yaml.js';
 import {
   LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
   TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
-} from './config/schema.js';
+} from '../config/schema.js';
 
 const optional = (values) => ['', ...values];
 
@@ -76,17 +76,6 @@ const FILE = 'settings.yaml';
 const pathOf = (key) => FIELDS[key].at ?? [key];
 const getIn = (obj, at) => at.reduce((o, k) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? o[k] : undefined), obj);
 
-function readDoc(configDir) {
-  const doc = parseDocument(readConfigFile(configDir, FILE).text, FILE);
-  if (doc.contents === null) doc.contents = doc.createNode({});
-  if (!YAML.isMap(doc.contents)) throw new Error('settings.yaml: expected a map');
-  return { doc };
-}
-
-// the fields are checked by checkSettings; the previous version is kept in the history
-function writeDoc(configDir, doc) {
-  writeConfigFile(configDir, FILE, documentText(doc), { check: false });
-}
 
 /** A field's value as the form shows it, from the file's value `v`. */
 function formValue(def, v) {
@@ -104,7 +93,7 @@ function formValue(def, v) {
 
 /** The page's fields as settings.yaml has them now, and the other keys it leaves alone. */
 export function readSettings(configDir) {
-  const { doc } = readDoc(configDir);
+  const { doc } = openYaml(configDir, FILE, { shape: 'map' });
   const raw = doc.toJS() ?? {};
   const values = {};
   for (const [key, def] of Object.entries(FIELDS)) values[key] = formValue(def, getIn(raw, pathOf(key)));
@@ -212,11 +201,11 @@ function fileValue(doc, def, v) {
 
 /** Writes the page's values into settings.yaml: set where they differ from the default, left out where not. */
 export function writeSettings(configDir, values) {
-  const { doc } = readDoc(configDir);
+  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+  const { doc } = yaml;
   // only what changed: the form sends every field, and a key it did not touch stays as written
   const before = readSettings(configDir).values;
   const changed = (key) => key in values && JSON.stringify(before[key]) !== JSON.stringify(values[key]);
-  if (!Object.keys(values).some(changed)) return;
   for (const [key, v] of Object.entries(values)) {
     const def = FIELDS[key];
     if (def.special || !changed(key)) continue;
@@ -248,7 +237,7 @@ export function writeSettings(configDir, values) {
     else doc.set('actions', doc.createNode({ remember: values.actionsRemember }));
   }
   writeBackground(doc, Object.fromEntries(BACKGROUND.filter(changed).map((k) => [k, values[k]])));
-  writeDoc(configDir, doc);
+  return yaml.save();
 }
 
 // background: a text (homepage's short form) while only the image is set, else a map
@@ -277,7 +266,7 @@ function writeBackground(doc, values) {
 
 /** Writes a new admin password's hash into settings.yaml. */
 export function writeAdminPassword(configDir, hash) {
-  const { doc } = readDoc(configDir);
-  doc.set('adminPassword', hash);
-  writeDoc(configDir, doc);
+  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+  yaml.doc.set('adminPassword', hash);
+  return yaml.save();
 }

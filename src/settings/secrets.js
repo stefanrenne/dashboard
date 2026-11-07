@@ -14,14 +14,43 @@
 
 import crypto from 'node:crypto';
 import YAML from 'yaml';
-import { ConfigEditError } from './edit.js';
-import { hasPlaceholder } from './vars.js';
+import { ConfigEditError } from '../config/edit.js';
+import { hasPlaceholder } from '../config/vars.js';
 
 const KEY = crypto.randomBytes(32); // per process: a token means nothing outside this server
 export const TOKEN = /__SECRET_([0-9a-f]{10})__/g;
 const HAS_TOKEN = /__SECRET_[0-9a-f]{10}__/;
 
 export const tokenFor = (value) => `__SECRET_${crypto.createHmac('sha256', KEY).update(String(value)).digest('hex').slice(0, 10)}__`;
+const SECRET_WRITTEN = 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file';
+
+// ---------------------------------------------------------------- one secret value, for the form editors
+
+/** A secret option as a form shows it: '' for none, a placeholder as written, else its token. */
+export function shownSecret(value) {
+  if (value === undefined || value === null || value === '') return '';
+  return hasPlaceholder(String(value)) ? String(value) : tokenFor(value);
+}
+
+/** Refuses a token in a value that is no secret: it would end up in the file as the token. */
+export function refuseToken(text, at) {
+  if (HAS_TOKEN.test(text)) throw new ConfigEditError(`${at}: a hidden value of another option; type the secret again`, 400);
+}
+
+/** Whether a form value is a hidden secret (its token), for the page's "hidden" hint. */
+export const isHidden = (text) => typeof text === 'string' && /^__SECRET_[0-9a-f]{10}__$/.test(text);
+
+/**
+ * A secret option the page sent back, against `current` (the file's value): { keep: true } when it
+ * is the token it was shown as; a token of another value is refused; anything else is the new value,
+ * with a warning when a secret is written into the file itself. `at` names it in messages.
+ */
+export function secretFromPage(text, current, { file, at }) {
+  if (current !== undefined && current !== null && current !== '' && text === tokenFor(current)) return { keep: true };
+  refuseToken(text, at);
+  const warnings = text && !hasPlaceholder(text) && String(current ?? '') !== text ? [{ file, path: at, message: SECRET_WRITTEN }] : [];
+  return { value: text, warnings };
+}
 const keyOf = (pair) => (YAML.isScalar(pair.key) ? String(pair.key.value) : null);
 const join = (p, k) => (typeof k === 'number' ? `${p}[${k}]` : p ? `${p}.${k}` : String(k));
 
@@ -155,6 +184,6 @@ export function unmaskConfigText(file, newText, currentText, schemaFor = () => n
   const before = new Set([...known.values()].map((s) => String(s.value)));
   const warnings = [...secretsOf(file, text, schemaFor).values()]
     .filter((s) => !before.has(String(s.value)))
-    .map((s) => ({ file: whereOf(file).file, path: s.path, message: 'a secret written into the file itself: a {{DASHBOARD_VAR_*}} variable keeps it out of the file' }));
+    .map((s) => ({ file: whereOf(file).file, path: s.path, message: SECRET_WRITTEN }));
   return { text, warnings };
 }

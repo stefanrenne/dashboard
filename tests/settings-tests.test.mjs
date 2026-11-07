@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { testKubernetes, testProxmox } from '../src/settings-tests.js';
+import { testKubernetes, testProxmox } from '../src/settings/tests.js';
 import { serve } from './helpers.mjs';
 
 test('testProxmox: the version with the API token; a refused token, a wrong URL, no answer', async () => {

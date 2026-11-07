@@ -5,8 +5,8 @@
 // stay as they are. Entries for groups that no longer exist are shown, to be removed.
 
 import YAML from 'yaml';
-import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
-import { GROUP_STYLES } from './config/schema.js';
+import { openYaml } from './yaml.js';
+import { GROUP_STYLES } from '../config/schema.js';
 
 const FILE = 'settings.yaml';
 const TRI = ['', 'true', 'false'];
@@ -15,12 +15,6 @@ const KEYS = [['style', ''], ['columns', ''], ['header', true], ['initiallyColla
 const TRISTATES = new Set(['initiallyCollapsed', 'useEqualHeights', 'iconsOnly']);
 const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
-function readDoc(configDir) {
-  const doc = parseDocument(readConfigFile(configDir, FILE).text, FILE);
-  if (doc.contents === null) doc.contents = doc.createNode({});
-  if (!YAML.isMap(doc.contents)) throw new Error('settings.yaml: expected a map');
-  return doc;
-}
 
 /** The layout block's entries in their order: [[name, value]], for the map and the list form. */
 function entriesOf(raw) {
@@ -55,7 +49,7 @@ function formOf(v, nested = false) {
  * page's order: the layout block's, then the groups it does not name.
  */
 export function readLayout(configDir, groups) {
-  const raw = readDoc(configDir).toJS()?.layout;
+  const raw = openYaml(configDir, FILE, { shape: 'map' }).doc.toJS()?.layout;
   const entries = entriesOf(raw);
   const byName = new Map(entries);
   const known = new Map([
@@ -140,7 +134,8 @@ const hasSettings = (g, keys) => keys.some(([key]) => key in g && fileValue(key,
  * readLayout returns now (for the order the page started from).
  */
 export function writeLayout(configDir, groups, known) {
-  const doc = readDoc(configDir);
+  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+  const { doc } = yaml;
   let node = doc.get('layout', true);
   if (!YAML.isMap(node) && !YAML.isSeq(node)) {
     node = doc.createNode({});
@@ -201,6 +196,5 @@ export function writeLayout(configDir, groups, known) {
     node.items = [...ranked, ...node.items.filter((item) => !ranked.includes(item))];
   }
   if (node.items.length === 0) doc.delete('layout');
-  const text = documentText(doc);
-  if (text !== documentText(readDoc(configDir))) writeConfigFile(configDir, FILE, text, { check: false });
+  return yaml.save();
 }

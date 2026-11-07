@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readLayout, checkLayout, writeLayout } from '../src/settings-layout.js';
+import { readLayout, checkLayout, writeLayout } from '../src/settings/layout.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 

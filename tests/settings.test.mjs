@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readSettings, checkSettings, writeSettings, writeAdminPassword } from '../src/settings.js';
+import { readSettings, checkSettings, writeSettings, writeAdminPassword } from '../src/settings/form.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 

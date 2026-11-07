@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { maskConfigText, unmaskConfigText, secretsOf } from '../src/config/mask.js';
+import { maskConfigText, unmaskConfigText, secretsOf } from '../src/settings/secrets.js';
 
 const schemaFor = (type) => (type === 'counter' ? { url: { type: 'url' }, key: { type: 'string', secret: true }, pin: { type: 'number', secret: true } } : null);
 const TOKEN = /__SECRET_[0-9a-f]{10}__/g;

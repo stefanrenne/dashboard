@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readServers, writeServers } from '../src/settings-servers.js';
+import { readServers, writeServers } from '../src/settings/servers.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 

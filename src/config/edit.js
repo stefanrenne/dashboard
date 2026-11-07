@@ -149,24 +149,20 @@ export function readHistory(configDir, file, id) {
 
 /**
  * Writes `text` into `file`. `hash` (from readConfigFile) refuses the save with 409 when the file
- * changed since; `check: false` skips the check (only for writes the server composes itself).
+ * changed since. The new text is checked first (checkConfigText): a save that adds errors is refused.
  * Returns { hash, warnings, changed }; throws ConfigEditError (with `errors` for a refused check).
  */
-export function writeConfigFile(configDir, file, text, { hash, check = true, opts = {} } = {}) {
+export function writeConfigFile(configDir, file, text, { hash, opts = {} } = {}) {
   const full = configPath(configDir, file);
   if (typeof text !== 'string') throw new ConfigEditError(`${file}: expected the file's text`);
   const current = readConfigFile(configDir, file);
   if (hash !== undefined && hash !== current.hash) {
     throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409, { hash: current.hash });
   }
-  let warnings = [];
-  if (check) {
-    const result = checkConfigText(configDir, file, text, opts);
-    if (result.errors.length) {
-      const first = result.errors[0];
-      throw new ConfigEditError(`${first.file}${first.path ? ` › ${first.path}` : ''}: ${first.message}`, 400, { errors: result.errors, warnings: result.warnings });
-    }
-    warnings = result.warnings;
+  const { errors, warnings } = checkConfigText(configDir, file, text, opts);
+  if (errors.length) {
+    const first = errors[0];
+    throw new ConfigEditError(`${first.file}${first.path ? ` › ${first.path}` : ''}: ${first.message}`, 400, { errors, warnings });
   }
   if (current.exists && current.text === text) return { hash: current.hash, warnings, changed: false };
   if (current.exists) keepHistory(configDir, file, current.text);

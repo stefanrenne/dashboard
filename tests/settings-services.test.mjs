@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readServices, writeServices, widgetCatalog } from '../src/settings-services.js';
+import { readServices, writeServices } from '../src/settings/services.js';
+import { widgetCatalog } from '../src/settings/widgets.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 
@@ -174,7 +175,7 @@ test('widgets: edits keep comments, the secret behind its token, the form widget
 });
 
 test('header widgets (widgets.yaml): read by their schema, edited, added, reordered, removed; comments kept', async () => {
-  const { readHeader, writeHeader } = await import('../src/settings-services.js');
+  const { readHeader, writeHeader } = await import('../src/settings/widgets.js');
   const HEADER = { datetime: { format: { type: 'enum', values: ['short', 'long'] } }, counter: SCHEMA.counter };
   const header = (type) => HEADER[type] ?? null;
   const dir = tmpDir('dash-header-');

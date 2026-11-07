@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readPlugins, checkPlugins, writePlugins } from '../src/settings-plugins.js';
+import { readPlugins, checkPlugins, writePlugins } from '../src/settings/plugins.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 

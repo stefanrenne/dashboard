@@ -6,19 +6,13 @@
 // removed and reordered.
 
 import YAML from 'yaml';
-import { readConfigFile, parseDocument, documentText, writeConfigFile } from './config/edit.js';
-import { parseSource, readLock, withDefaultPlugins } from './plugins/installer.js';
+import { openYaml } from './yaml.js';
+import { parseSource, readLock, withDefaultPlugins } from '../plugins/installer.js';
 
 const FILE = 'settings.yaml';
 const KINDS = ['git', 'npm', 'path'];
 const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
-function readDoc(configDir) {
-  const doc = parseDocument(readConfigFile(configDir, FILE).text, FILE);
-  if (doc.contents === null) doc.contents = doc.createNode({});
-  if (!YAML.isMap(doc.contents)) throw new Error('settings.yaml: expected a map');
-  return doc;
-}
 
 /** An entry as the page shows it: { kind, value, subdir, only: 'a, b' }. */
 function formOf(entry) {
@@ -54,7 +48,7 @@ const pinOf = (lock, entry) => {
  * defaults: [{ source, replaced, pin }] }. `defaults` are the dashboard's default plugins.
  */
 export function readPlugins(configDir, defaults) {
-  const raw = readDoc(configDir).toJS()?.plugins;
+  const raw = openYaml(configDir, FILE, { shape: 'map' }).doc.toJS()?.plugins;
   const list = Array.isArray(raw) ? raw : [];
   const lock = readLock(configDir);
   const entries = list.map((entry, index) => {
@@ -96,8 +90,8 @@ export function checkPlugins(input) {
 
 /** Writes the page's list into settings.yaml; nothing when it is the same. */
 export function writePlugins(configDir, entries) {
-  const doc = readDoc(configDir);
-  const before = documentText(doc);
+  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+  const { doc } = yaml;
   const current = doc.get('plugins', true);
   const old = YAML.isSeq(current) ? current.items : [];
   const items = entries.map((form) => {
@@ -115,6 +109,5 @@ export function writePlugins(configDir, entries) {
     current.items = items;
     current.flow = items.length === 0 ? true : current.flow && items.every((i) => i.flow);
   } else doc.set('plugins', doc.createNode(items.length ? items : [], { flow: items.length === 0 }));
-  const text = documentText(doc);
-  if (text !== before) writeConfigFile(configDir, FILE, text, { check: false });
+  return yaml.save();
 }

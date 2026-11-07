@@ -4,8 +4,8 @@
 
 import http from 'node:http';
 import https from 'node:https';
-import { k8sGet, discoverKubernetes } from './discovery/kubernetes.js';
-import { k8sConnection } from './discovery/kubeconfig.js';
+import { k8sGet, discoverKubernetes } from '../discovery/kubernetes.js';
+import { k8sConnection } from '../discovery/kubeconfig.js';
 
 /** { ok, version, services } or { ok: false, error } for kubernetes.yaml's config. */
 export async function testKubernetes(config, { configDir, env, connection = null, timeoutMs = 5000 } = {}) {

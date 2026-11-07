@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readBookmarks, writeBookmarks } from '../src/settings-bookmarks.js';
+import { readBookmarks, writeBookmarks } from '../src/settings/bookmarks.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 
