@@ -4,13 +4,13 @@
 
 import http from 'node:http';
 import https from 'node:https';
-import { k8sGet, discoverKubernetes } from '../discovery/kubernetes.js';
+import { k8sGet, discoverKubernetes, kubernetesOn } from '../discovery/kubernetes.js';
 import { k8sConnection } from '../discovery/kubeconfig.js';
 import { getJson } from '../http.js';
 
 /** { ok, version, services } or { ok: false, error } for kubernetes.yaml's config. */
 export async function testKubernetes(config, { configDir, env, connection = null, timeoutMs = 5000 } = {}) {
-  if (!['cluster', 'default'].includes(config?.mode)) return { ok: false, error: 'discovery is off (mode: disabled)' };
+  if (!kubernetesOn(config)) return { ok: false, error: 'discovery is off (mode: disabled)' };
   try {
     const conn = connection ?? k8sConnection(config, { configDir, env });
     const version = await k8sGet('/version', { connection: conn, timeoutMs });

@@ -143,3 +143,6 @@ export async function discoverKubernetes(opts = {}) {
   }
   return out;
 }
+
+/** Whether kubernetes.yaml turns discovery on (in the cluster, or with a kubeconfig). */
+export const kubernetesOn = (config) => ['cluster', 'default'].includes(config?.mode);

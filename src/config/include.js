@@ -35,6 +35,20 @@ export function parseConfigYaml(text) {
 const join = (p, key) => (typeof key === 'number' ? `${p}[${key}]` : p ? `${p}.${key}` : String(key));
 
 /**
+ * The file an include in `from` names: { name (relative to the config folder), full } or
+ * { error }. Paths are relative to the including file, end in .yaml or .yml and stay inside the
+ * config folder (checked on the resolved path).
+ */
+function includeTarget(configDir, from, inc) {
+  if (!inc.file) return { error: 'expected a file name' };
+  if (path.isAbsolute(inc.file)) return { error: 'use a path relative to this file, inside the config folder' };
+  if (!/\.ya?ml$/i.test(inc.file)) return { error: 'only .yaml and .yml files can be included' };
+  const full = safeJoin(configDir, path.join(path.dirname(from), inc.file));
+  if (!full) return { error: 'outside the config folder' };
+  return { name: path.relative(path.resolve(configDir), full).split(path.sep).join('/'), full };
+}
+
+/**
  * Replaces the includes in `value`, parsed from `file` (relative to `configDir`).
  * `errors` collects { file, path, message }. Returns the resolved value.
  */
@@ -44,13 +58,8 @@ export function resolveIncludes(value, { configDir, file, errors, stack = [file]
       errors.push({ file, path: at, message: `!include ${inc.file}: ${message}` });
       return undefined;
     };
-    if (!inc.file) return fail('expected a file name');
-    if (path.isAbsolute(inc.file)) return fail('use a path relative to this file, inside the config folder');
-    if (!/\.ya?ml$/i.test(inc.file)) return fail('only .yaml and .yml files can be included');
-    const rel = path.join(path.dirname(file), inc.file);
-    const full = safeJoin(configDir, rel);
-    if (!full) return fail('outside the config folder');
-    const name = path.relative(path.resolve(configDir), full).split(path.sep).join('/');
+    const { name, full, error } = includeTarget(configDir, file, inc);
+    if (error) return fail(error);
     if (stack.includes(name)) return fail(`includes itself (${[...stack, name].join(' → ')})`);
     if (stack.length > MAX_DEPTH) return fail(`more than ${MAX_DEPTH} includes deep`);
     let text = overrides[name];
@@ -91,12 +100,6 @@ export function resolveIncludes(value, { configDir, file, errors, stack = [file]
   return walk(value, '');
 }
 
-/** The file an include marker names, relative to the config folder; null when it is not allowed. */
-function includedName(configDir, from, inc) {
-  if (!inc.file || path.isAbsolute(inc.file) || !/\.ya?ml$/i.test(inc.file)) return null;
-  const full = safeJoin(configDir, path.join(path.dirname(from), inc.file));
-  return full ? path.relative(path.resolve(configDir), full).split(path.sep).join('/') : null;
-}
 
 /**
  * Every file the config files include, directly or not: [{ file, root, from, at }], where `root`
@@ -108,8 +111,8 @@ export function listIncludes(configDir, roots) {
   const out = [];
   const visit = (root, from, value, at, stack) => {
     if (value instanceof Include) {
-      const name = includedName(configDir, from, value);
-      if (!name || stack.includes(name) || stack.length > MAX_DEPTH) return;
+      const { name, error } = includeTarget(configDir, from, value);
+      if (error || stack.includes(name) || stack.length > MAX_DEPTH) return;
       let parsed;
       try {
         parsed = parseConfigYaml(fs.readFileSync(path.join(configDir, name), 'utf8'));

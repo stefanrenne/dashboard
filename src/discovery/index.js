@@ -1,7 +1,7 @@
 // Polls the discovery sources and merges what they find into the YAML services.
 
 import { discoverDocker } from './docker.js';
-import { discoverKubernetes } from './kubernetes.js';
+import { discoverKubernetes, kubernetesOn } from './kubernetes.js';
 import { normalizeService } from '../config/load.js';
 import { substitute, variablesIn } from '../config/vars.js';
 import { parseDuration } from '../util.js';
@@ -25,11 +25,11 @@ export class Discovery {
     this.config = config;
     this.intervalMs = parseDuration(config.settings.discovery?.interval, 30_000);
     await this.poll();
-    if (this.#enabled()) this.timer = setInterval(() => this.poll().catch(() => {}), this.intervalMs).unref();
+    if (this.#enabled()) this.timer = setInterval(() => this.poll().catch((err) => this.log.warn(`discovery: ${err.message}`)), this.intervalMs).unref();
   }
 
   #enabled() {
-    return this.config.docker.some((s) => s.discover) || ['cluster', 'default'].includes(this.config.kubernetes.mode);
+    return this.config.docker.some((s) => s.discover) || kubernetesOn(this.config.kubernetes);
   }
 
   async poll() {
@@ -44,7 +44,7 @@ export class Discovery {
         errors.push({ file: 'docker.yaml', path: server.implicit ? `${server.name} (the mounted ${server.socket})` : server.name, message: `discovery: ${err.message}` });
       }
     }
-    if (['cluster', 'default'].includes(this.config.kubernetes.mode)) {
+    if (kubernetesOn(this.config.kubernetes)) {
       try {
         const source = { file: 'kubernetes.yaml', path: 'allowVariables', allow: this.config.kubernetes.allowVariables };
         found.push(...(await this.sources.kubernetes({ config: this.config.kubernetes, instanceName: this.config.settings?.instanceName ?? null })).map((s) => ({ ...s, origin: 'kubernetes', source })));

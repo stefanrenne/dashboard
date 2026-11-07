@@ -124,14 +124,15 @@ function parseFile(dir, file, text, opts, out) {
   return sub.value;
 }
 
+// each file's normalizer: (raw, ctx, configDir) → its part of the config
 const NORMALIZE = {
-  settings: (raw, ctx) => normalizeSettings(raw, ctx),
-  services: (raw, ctx) => normalizeServices(raw, ctx),
-  widgets: (raw, ctx) => normalizeHeaderWidgets(raw, ctx),
-  bookmarks: (raw, ctx) => normalizeBookmarks(raw, ctx),
-  docker: (raw, ctx, dir) => normalizeDocker(raw, ctx, dir),
-  kubernetes: (raw, ctx, dir) => normalizeKubernetes(raw, ctx, dir),
-  proxmox: (raw, ctx) => normalizeProxmox(raw, ctx),
+  settings: normalizeSettings,
+  services: normalizeServices,
+  widgets: normalizeHeaderWidgets,
+  bookmarks: normalizeBookmarks,
+  docker: normalizeDocker,
+  kubernetes: normalizeKubernetes,
+  proxmox: normalizeProxmox,
 };
 
 function collector() {
@@ -193,7 +194,7 @@ function singleKeyEntries(list, file, p, ctx) {
   return out;
 }
 
-export function normalizeSettings(raw, ctx) {
+function normalizeSettings(raw, ctx) {
   const file = 'settings.yaml';
   if (raw === undefined || raw === null) raw = {};
   if (!isPlainObject(raw)) {
@@ -374,7 +375,7 @@ function normalizePwa(raw, file, ctx) {
   return { icons: list('icons', ['src'], ['type', 'sizes', 'purpose']), shortcuts: list('shortcuts', ['name', 'url'], ['description']) };
 }
 
-export function normalizeServices(raw, ctx) {
+function normalizeServices(raw, ctx) {
   const file = 'services.yaml';
   return singleKeyEntries(raw, file, '', ctx).map(([name, list, gi]) => normalizeGroup(name, list, file, `[${gi}].${name}`, ctx));
 }
@@ -446,7 +447,7 @@ export function normalizeService(name, def, file, p, ctx) {
   return service;
 }
 
-export function normalizeHeaderWidgets(raw, ctx) {
+function normalizeHeaderWidgets(raw, ctx) {
   const file = 'widgets.yaml';
   return singleKeyEntries(raw, file, '', ctx).map(([type, options, i]) => {
     if (options !== null && options !== undefined && !isPlainObject(options)) {
@@ -457,7 +458,7 @@ export function normalizeHeaderWidgets(raw, ctx) {
   });
 }
 
-export function normalizeBookmarks(raw, ctx) {
+function normalizeBookmarks(raw, ctx) {
   const file = 'bookmarks.yaml';
   const groups = [];
   for (const [groupName, list, gi] of singleKeyEntries(raw, file, '', ctx)) {
@@ -499,7 +500,7 @@ function allowVariables(raw, file, p, ctx) {
   return names.length ? { allowVariables: names } : {};
 }
 
-export function normalizeDocker(raw, ctx, configDir = '.') {
+function normalizeDocker(raw, ctx, configDir = '.') {
   const file = 'docker.yaml';
   if (raw === undefined || raw === null) return [];
   if (!isPlainObject(raw)) {
@@ -557,7 +558,7 @@ function dockerTls(raw, p, ctx, configDir) {
  * homepage's proxmox.yaml: a map of node name to { url, token, secret }, or one flat
  * { url, token, secret } for every node (its older form, kept under the name "").
  */
-export function normalizeProxmox(raw, ctx) {
+function normalizeProxmox(raw, ctx) {
   const file = 'proxmox.yaml';
   if (raw === undefined || raw === null) return {};
   if (!isPlainObject(raw)) {
@@ -577,7 +578,7 @@ export function normalizeProxmox(raw, ctx) {
   return out;
 }
 
-export function normalizeKubernetes(raw, ctx, configDir = '.') {
+function normalizeKubernetes(raw, ctx, configDir = '.') {
   const file = 'kubernetes.yaml';
   if (raw === undefined || raw === null) return { mode: 'disabled' };
   // default: a kubeconfig, as in homepage ($KUBECONFIG, ~/.kube/config, or `kubeconfig:`)
