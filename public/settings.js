@@ -102,12 +102,25 @@ async function load() {
   }
   if (out.needsPassword) return askPassword(out.retryAfter ? t('wait', { seconds: out.retryAfter }) : '');
   if (out.needsSetup) return show(el('section', { class: 'panel' }, el('p', { class: 'warn', text: t('setupRemote') })));
+  takeAnswer(out);
+  render();
+}
+
+/** The settings answer as the page edits it. */
+function takeAnswer(out) {
   state.data = out;
   state.values = copy(out.values);
   state.layoutGroups = copy(out.layout?.groups ?? []);
   state.pluginEntries = copy(out.plugins?.entries ?? []);
   applyTheme(state.values);
-  render();
+}
+
+/** After a write: every form and file is read again. */
+async function reread() {
+  state.files = null;
+  state.forms = {};
+  const fresh = await api('').catch(() => null);
+  if (fresh?.ok) takeAnswer(fresh);
 }
 
 // ---------------------------------------------------------------- the form
@@ -485,7 +498,8 @@ async function saveForm(file, path, body) {
   render();
 }
 
-const messageItem = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
+const messageText = (m) => `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}`;
+const messageItem = (m) => el('li', { text: messageText(m) });
 function messages({ problems, remarks }) {
   return [
     problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...problems.map(messageItem))) : null,
@@ -879,18 +893,9 @@ async function doImport() {
   if (out.ok) {
     state.imp = { status: t('importDone', { files: out.files.join(', ') }), statusClass: 'ok' };
     state.file = {};
-    state.files = null;
-    Object.assign(state, { svc: null, hdr: null, bm: null, srv: {} });
-    const fresh = await api('').catch(() => null);
-    if (fresh?.ok) {
-      state.data = fresh;
-      state.values = copy(fresh.values);
-      state.layoutGroups = copy(fresh.layout?.groups ?? []);
-      state.pluginEntries = copy(fresh.plugins?.entries ?? []);
-      applyTheme(state.values);
-    }
+    await reread();
   } else {
-    imp.status = `${t('failed', { error: out.error })}${(out.errors ?? []).length ? ` — ${out.errors.map((m) => `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}`).join('; ')}` : ''}`;
+    imp.status = `${t('failed', { error: out.error })}${(out.errors ?? []).length ? ` — ${out.errors.map(messageText).join('; ')}` : ''}`;
     imp.statusClass = 'error';
   }
   render();
@@ -1020,7 +1025,6 @@ function fileSection({ file: root }) {
   const area = el('textarea', { id: 'file-text', class: 'code', rows: '24', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', wrap: 'off', 'aria-label': name,
     oninput: (e) => { f.draft = e.target.value; } });
   area.value = f.draft;
-  const message = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
   const history = f.history ?? [];
   const versions = history.length ? el('div', { class: 'row' },
     el('label', { for: 'file-version' }, t('fileHistory'),
@@ -1038,8 +1042,7 @@ function fileSection({ file: root }) {
       name === 'custom.js' ? el('p', { class: 'warn', role: 'note', text: t('fileCustomJs') }) : name === 'custom.css' ? el('p', { class: 'muted', text: t('fileCustomCss') }) : null,
       area,
       f.secrets?.length ? el('p', { class: 'hint muted', text: t('fileSecrets') }) : null,
-      f.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...f.problems.map(message))) : null,
-      f.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...f.remarks.map(message))) : null,
+      messages(f),
       f.conflict ? el('p', { class: 'error' }, t('fileConflict'), ' ', el('button', { type: 'button', class: 'link', text: t('fileReload'), onclick: () => loadFile(name) })) : null,
       versions),
     el('div', { class: 'saved' },
@@ -1084,18 +1087,7 @@ async function saveFile(name) {
     f.statusClass = 'ok';
     f.remarks = out.warnings ?? [];
     await loadFile(name, true);
-    state.files = null;
-    state.forms = {};
-    if (state.section === 'advanced' || name === 'settings.yaml' || out.changed) {
-      const fresh = await api('').catch(() => null);
-      if (fresh?.ok) {
-        state.data = fresh;
-        state.values = copy(fresh.values);
-        state.layoutGroups = copy(fresh.layout?.groups ?? []);
-        state.pluginEntries = copy(fresh.plugins?.entries ?? []);
-        applyTheme(state.values);
-      }
-    }
+    await reread();
   } else {
     f.status = t('failed', { error: out.error });
     f.statusClass = 'error';

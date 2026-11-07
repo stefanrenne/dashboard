@@ -544,9 +544,17 @@ test('settings page: Advanced imports homepage files after a check', async () =>
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
     'POST /api/settings/import/check': { ok: true, files: ['services.yaml'], services: [{ name: 'Plex' }], bookmarks: 0, header: 0, errors: [], warnings: [], replaces: ['services.yaml'] },
     'POST /api/settings/import': { ok: true, files: ['services.yaml'] },
-  }, () => {}, 'http://dash.lan/settings#advanced');
+    'GET /api/settings/bookmarks': { ok: true, hash: 'h1', items: [], blank: { fields: { href: '', abbr: '', icon: '', description: '' }, other: [] } },
+  }, () => {}, 'http://dash.lan/settings#bookmarks');
   await tick();
   await tick();
+  const goTo = async (section) => {
+    w.location.hash = section;
+    w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+    await tick();
+    await tick();
+  };
+  await goTo('advanced');
   const input = doc.getElementById('import-files');
   Object.defineProperty(input, 'files', { value: [{ name: 'services.yaml', text: async () => '- Media: []\n' }, { name: 'notes.txt', text: async () => 'x' }] });
   input.dispatchEvent(new w.Event('change'));
@@ -557,6 +565,9 @@ test('settings page: Advanced imports homepage files after a check', async () =>
   await tick();
   assert.match(doc.getElementById('panel').textContent, /Geïmporteerd: services\.yaml\./);
   assert.ok([...doc.querySelectorAll('.saved button')].some((b) => b.textContent === 'Downloaden'));
+  // an imported file is read again by its form, so a save there is not refused as changed
+  await goTo('bookmarks');
+  assert.equal(calls.filter((c) => c.p === '/api/settings/bookmarks').length, 2);
 });
 
 test('settings page: connection tests for a Proxmox node and Kubernetes', async () => {

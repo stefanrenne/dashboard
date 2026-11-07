@@ -7,6 +7,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Fixed
 - Import on the settings page ignored homepage files named `.yml`; they count as `.yaml`, as in the
   setup wizard.
+- After an import on the settings page, the Services, Header widgets, Bookmarks and server forms
+  still showed the files from before, and a save there was refused as a conflict.
 - A "Saved" on the settings page no longer stays on when another section is opened.
 - An installed widget's `fetch` got `ctx.configDir` as null in the widget worker (only its
   `action` got the config folder); both get it now, as built-in widgets always did.
