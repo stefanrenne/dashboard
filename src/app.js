@@ -155,7 +155,7 @@ export async function createApp({
     if (ms === pluginEvery) return;
     pluginEvery = ms;
     clearInterval(pluginTimer);
-    pluginTimer = ms > 0 ? setInterval(() => checkPluginUpdates().catch(() => {}), ms).unref() : null;
+    pluginTimer = ms > 0 ? setInterval(() => checkPluginUpdates().catch((err) => log.warn(`plugins: the update check failed: ${err.message}`)), ms).unref() : null;
   }
   async function checkPluginUpdates() {
     if (!state.config) return [];

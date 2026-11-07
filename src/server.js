@@ -45,6 +45,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     app.close();
     server.close(() => process.exit(0));
+    // an open keep-alive connection holds close() back; docker stop would wait 10 s and kill it
     setTimeout(() => process.exit(0), 2000).unref();
   });
 }
