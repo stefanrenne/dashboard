@@ -42,6 +42,9 @@ export function frameOrigin(value) {
   }
 }
 
+/** A connection's ca/cert/key as the tlsCa/tlsCert/tlsKey options of the docker and kubernetes widgets. */
+const tlsOptions = ({ ca, cert, key }) => Object.fromEntries(Object.entries({ tlsCa: ca, tlsCert: cert, tlsKey: key }).filter(([, v]) => v));
+
 export function buildState({ config, registry, groups, extraErrors = [], extraWarnings = [], secrets: knownSecrets = config.secrets, actionsProtected = false }) {
   // every value under settings.providers is a secret, also when written there literally
   const providers = isPlainObject(config.settings.providers) ? config.settings.providers : {};
@@ -92,21 +95,30 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
    * proxmox.yaml (by node), kubernetes from the kubeconfig of kubernetes.yaml `mode: default`.
    * Options in the entry win; every filled-in value is a secret option or the url.
    */
+  // proxmox.yaml's node, or homepage's one entry for every node (saved under '')
+  const proxmoxFor = (node) => config.proxmox?.[String(node)] ?? config.proxmox?.[''];
+  // the kubeconfig of kubernetes.yaml `mode: default`, read once per build; a problem is said once
+  let kube;
+  const kubeConnection = () => {
+    if (kube === undefined) {
+      try {
+        kube = k8sConnection(config.kubernetes);
+      } catch (err) {
+        kube = null;
+        errors.push({ file: 'kubernetes.yaml', path: 'mode', message: err.message });
+      }
+    }
+    return kube;
+  };
   function withConnection(type, rawOptions, where) {
     const options = withReferences(rawOptions, where);
     if (options.url) return options;
-    if (type === 'proxmoxvm' && options.node) {
-      const found = config.proxmox?.[String(options.node)] ?? config.proxmox?.[''];
-      return found ? { ...found, ...options } : options;
-    }
+    if (type === 'proxmoxvm' && options.node) return { ...proxmoxFor(options.node), ...options };
     if ((type === 'kubernetes' || type === 'kubernetes-pods') && config.kubernetes?.mode === 'default') {
-      try {
-        const c = k8sConnection(config.kubernetes);
-        const filled = { url: c.url, token: c.token, username: c.username, password: c.password, tlsCa: c.ca, tlsCert: c.cert, tlsKey: c.key, insecure: c.insecure };
-        return { ...Object.fromEntries(Object.entries(filled).filter(([, v]) => v !== undefined)), ...options };
-      } catch (err) {
-        errors.push({ file: 'kubernetes.yaml', path: 'mode', message: err.message });
-      }
+      const c = kubeConnection();
+      if (!c) return options;
+      const filled = { url: c.url, token: c.token, username: c.username, password: c.password, ...tlsOptions(c), insecure: c.insecure };
+      return { ...Object.fromEntries(Object.entries(filled).filter(([, v]) => v !== undefined)), ...options };
     }
     return options;
   }
@@ -260,8 +272,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     if (service.container) {
       const server =
         config.docker.find((s) => s.name === service.server) ?? (config.docker.length === 1 ? config.docker[0] : null);
-      const tls = server?.tls ? Object.fromEntries(Object.entries({ tlsCa: server.tls.ca, tlsCert: server.tls.cert, tlsKey: server.tls.key }).filter(([, v]) => v)) : {};
-      const conn = server?.url ? { url: server.url, ...tls } : server?.socket ? { socket: server.socket } : {};
+      const conn = server?.url ? { url: server.url, ...tlsOptions(server.tls ?? {}) } : server?.socket ? { socket: server.socket } : {};
       if (server?.swarm) conn.swarm = true;
       out.push({ kind: 'container', ...addInstance(id('container'), 'docker', { container: service.container, ...conn }, where) });
     }
@@ -280,7 +291,7 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   /** proxmox.yaml's connection for a node: its own entry, else the flat one for every node. */
   const proxmoxNode = (node, where) => {
-    const found = config.proxmox?.[node] ?? config.proxmox?.[''];
+    const found = proxmoxFor(node);
     if (!found) errors.push({ ...where, message: `proxmoxNode "${node}" is not in proxmox.yaml` });
     return found ?? {};
   };
