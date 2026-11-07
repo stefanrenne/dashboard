@@ -6,6 +6,7 @@ import http from 'node:http';
 import https from 'node:https';
 import { k8sGet, discoverKubernetes } from '../discovery/kubernetes.js';
 import { k8sConnection } from '../discovery/kubeconfig.js';
+import { getJson } from '../http.js';
 
 /** { ok, version, services } or { ok: false, error } for kubernetes.yaml's config. */
 export async function testKubernetes(config, { configDir, env, connection = null, timeoutMs = 5000 } = {}) {
@@ -21,36 +22,19 @@ export async function testKubernetes(config, { configDir, env, connection = null
 }
 
 /** { ok, version } or { ok: false, error } for one proxmox.yaml node { url, token, secret, insecure }. */
-export function testProxmox(node, { timeoutMs = 5000 } = {}) {
-  return new Promise((resolve) => {
-    let url;
-    try {
-      url = new URL(`${String(node.url).replace(/\/+$/, '')}/api2/json/version`);
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('expected an http(s) URL');
-    } catch (err) {
-      resolve({ ok: false, error: `url: ${err.message}` });
-      return;
-    }
-    const secure = url.protocol === 'https:';
-    const req = (secure ? https : http).request(url, {
-      headers: { authorization: `PVEAPIToken=${node.token}=${node.secret}`, accept: 'application/json' },
-      timeout: timeoutMs,
-      ...(secure && node.insecure ? { rejectUnauthorized: false } : {}),
-    }, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        if (res.statusCode === 401) return resolve({ ok: false, error: 'the token or its secret is not accepted (401)' });
-        if (res.statusCode !== 200) return resolve({ ok: false, error: `Proxmox answered ${res.statusCode}` });
-        try {
-          resolve({ ok: true, version: JSON.parse(Buffer.concat(chunks).toString())?.data?.version ?? null });
-        } catch {
-          resolve({ ok: false, error: 'not a Proxmox API answer' });
-        }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error(`no answer within ${timeoutMs} ms`)));
-    req.on('error', (err) => resolve({ ok: false, error: /self.signed|certificate/i.test(err.message) ? `${err.message} (tick "Accept a self-signed certificate")` : err.message }));
-    req.end();
-  });
+export async function testProxmox(node, { timeoutMs = 5000 } = {}) {
+  let url;
+  try {
+    url = new URL(`${String(node.url).replace(/\/+$/, '')}/api2/json/version`);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('expected an http(s) URL');
+  } catch (err) {
+    return { ok: false, error: `url: ${err.message}` };
+  }
+  try {
+    const out = await getJson({ url, headers: { authorization: `PVEAPIToken=${node.token}=${node.secret}` }, tls: node.insecure ? { rejectUnauthorized: false } : {}, timeoutMs, name: 'Proxmox' });
+    return { ok: true, version: out?.data?.version ?? null };
+  } catch (err) {
+    if (err.status === 401) return { ok: false, error: 'the token or its secret is not accepted (401)' };
+    return { ok: false, error: /self.signed|certificate/i.test(err.message) ? `${err.message} (tick "Accept a self-signed certificate")` : err.message };
+  }
 }

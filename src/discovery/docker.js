@@ -3,9 +3,8 @@
 // setup carries over. Only GET calls on the Docker API (hard rule 9).
 
 import fs from 'node:fs';
-import http from 'node:http';
-import https from 'node:https';
 import { serviceFromLabels } from './labels.js';
+import { getJson } from '../http.js';
 
 export const DEFAULT_SOCKET = '/var/run/docker.sock';
 export const LABEL_PREFIX = 'dashboard.';
@@ -21,29 +20,9 @@ export function withMountedSocket(servers, socket = DEFAULT_SOCKET, exists = fs.
 }
 
 export function dockerGet(server, path, { timeoutMs = 5000 } = {}) {
-  return new Promise((resolve, reject) => {
-    const target = server.url ? new URL(path, server.url) : null;
-    const options = target
-      ? { method: 'GET', timeout: timeoutMs, ...(server.tls ?? {}) }
-      : { method: 'GET', socketPath: server.socket || DEFAULT_SOCKET, path, headers: { host: 'localhost' }, timeout: timeoutMs };
-    const lib = target?.protocol === 'https:' ? https : http;
-    const req = (target ? lib.request(target, options) : lib.request(options)).on('response', (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        const body = Buffer.concat(chunks).toString();
-        if (res.statusCode !== 200) return reject(new Error(`Docker API ${path} answered ${res.statusCode}`));
-        try {
-          resolve(JSON.parse(body));
-        } catch (err) {
-          reject(err);
-        }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error(`Docker API timed out after ${timeoutMs} ms`)));
-    req.on('error', reject);
-    req.end();
-  });
+  return server.url
+    ? getJson({ url: new URL(path, server.url), tls: server.tls ?? {}, timeoutMs, name: 'Docker API' })
+    : getJson({ socketPath: server.socket || DEFAULT_SOCKET, path, timeoutMs, name: 'Docker API' });
 }
 
 /** Pure mapping from `GET /containers/json` output to discovered services. */

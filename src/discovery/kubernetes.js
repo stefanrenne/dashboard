@@ -5,35 +5,19 @@ import http from 'node:http';
 import https from 'node:https';
 import { serviceFromLabels } from './labels.js';
 import { k8sConnection, k8sHeaders, k8sApiUrl, K8S_SA_DIR } from './kubeconfig.js';
+import { getJson } from '../http.js';
 
 export { k8sApiUrl, K8S_SA_DIR };
 export const ANNOTATION_PREFIX = 'getdashboard.dev/';
 export const HOMEPAGE_PREFIX = 'gethomepage.dev/';
 
 /** GET on the Kubernetes API with a connection from k8sConnection(). */
-export function k8sGet(path, { connection, timeoutMs = 5000 } = {}) {
-  const conn = connection ?? k8sConnection();
+/** GETs `path` from the Kubernetes API of `connection` (kubeconfig.js k8sConnection). */
+export function k8sGet(path, { connection: conn, timeoutMs = 5000 }) {
   // joined, not resolved: an API server can sit under a path (Rancher's /k8s/clusters/<id>)
   const url = new URL(`${conn.url.replace(/\/+$/, '')}${path}`);
-  const secure = url.protocol === 'https:';
-  const tls = secure ? { ca: conn.ca, cert: conn.cert, key: conn.key, ...(conn.insecure ? { rejectUnauthorized: false } : {}) } : {};
-  return new Promise((resolve, reject) => {
-    const req = (secure ? https : http).request(url, { headers: { ...k8sHeaders(conn), accept: 'application/json' }, timeout: timeoutMs, ...tls }, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        if (res.statusCode !== 200) return reject(new Error(`Kubernetes API ${path} answered ${res.statusCode}`));
-        try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString()));
-        } catch (err) {
-          reject(err);
-        }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error(`Kubernetes API timed out after ${timeoutMs} ms`)));
-    req.on('error', reject);
-    req.end();
-  });
+  const tls = { ca: conn.ca, cert: conn.cert, key: conn.key, ...(conn.insecure ? { rejectUnauthorized: false } : {}) };
+  return getJson({ url, headers: k8sHeaders(conn), tls, timeoutMs, name: 'Kubernetes API' });
 }
 
 /**

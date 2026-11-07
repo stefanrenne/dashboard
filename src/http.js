@@ -2,6 +2,8 @@
 // what a request tells about its client (address, local network, https, cookies).
 
 import crypto from 'node:crypto';
+import http from 'node:http';
+import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import { realInside } from './util.js';
@@ -195,3 +197,37 @@ code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.7
 </body></html>`;
 }
 
+
+// ---------------------------------------------------------------- JSON from other servers
+
+/**
+ * GETs JSON from `url` (a URL or string), or from `path` over the unix socket `socketPath`.
+ * `tls`: ca/cert/key/rejectUnauthorized for https. `name` starts the error messages ("Docker API").
+ * Throws an Error with `status` when the answer is not 200, and on a timeout or broken JSON.
+ */
+export function getJson({ url = null, socketPath = null, path: route = '/', headers = {}, tls = {}, timeoutMs = 5000, name = 'the server' }) {
+  return new Promise((resolve, reject) => {
+    const target = url ? new URL(url) : null;
+    const lib = target?.protocol === 'https:' ? https : http;
+    const options = { method: 'GET', timeout: timeoutMs, headers: { accept: 'application/json', ...headers } };
+    const req = target
+      ? lib.request(target, { ...options, ...(target.protocol === 'https:' ? tls : {}) })
+      : lib.request({ ...options, socketPath, path: route, headers: { host: 'localhost', ...options.headers } });
+    const where = target ? target.pathname : route;
+    req.on('response', (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        if (res.statusCode !== 200) return reject(Object.assign(new Error(`${name} ${where} answered ${res.statusCode}`), { status: res.statusCode }));
+        try {
+          resolve(JSON.parse(Buffer.concat(chunks).toString() || 'null'));
+        } catch {
+          reject(new Error(`${name} ${where}: not JSON`));
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error(`${name} timed out after ${timeoutMs} ms`)));
+    req.on('error', reject);
+    req.end();
+  });
+}
