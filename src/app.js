@@ -79,7 +79,7 @@ export async function createApp({
   // installed widgets run in a worker thread (src/plugins/sandbox.js) unless DASHBOARD_WIDGET_ISOLATION=off
   const sandbox = env.DASHBOARD_WIDGET_ISOLATION === 'off' ? null : new WidgetSandbox({ log, env, memoryMb: Number(env.DASHBOARD_WIDGET_MEMORY_MB) > 0 ? Number(env.DASHBOARD_WIDGET_MEMORY_MB) : undefined });
   const runtime = new WidgetRuntime({ registry: new Map(), log, timeoutMs, sandbox, configDir: path.resolve(configDir) });
-  const state = { config: null, registry: new Map(), pluginResult: { errors: [], warnings: [] }, registryErrors: [], layout: null, actions: new Map(), frames: [] };
+  const state = { config: null, registry: new Map(), pluginResult: { errors: [], warnings: [] }, registryErrors: [], layout: null, actions: new Map(), frames: [], loginOn: false, hostsNoted: false, anyHostNoted: false };
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
   const discovery = new Discovery({ log, env, onChange: () => state.config && rebuild(), ...discoveryOptions });
   let chain = Promise.resolve();
@@ -100,6 +100,7 @@ export async function createApp({
   function rebuild() {
     gate.password = state.config.settings.adminPassword ?? null;
     const merged = mergeDiscovered(state.config.services, discovery.found);
+    const secrets = new Set([...state.config.secrets, ...discovery.secrets]);
     const pluginMessages = (list) =>
       list.map((e) => ({ file: 'settings.yaml', path: `plugins: ${e.source}`, message: e.message }));
     const { instances, layout, actions, frames } = buildState({
@@ -108,27 +109,28 @@ export async function createApp({
       groups: merged.groups,
       extraErrors: [...pluginMessages(state.pluginResult.errors), ...pluginMessages(state.registryErrors), ...discovery.errors],
       extraWarnings: [...pluginMessages(state.pluginResult.warnings), ...merged.warnings],
-      secrets: new Set([...state.config.secrets, ...discovery.secrets]),
+      secrets,
       actionsProtected: gate.protected,
     });
-    runtime.setInstances(instances, state.registry, new Set([...state.config.secrets, ...discovery.secrets]));
+    runtime.setInstances(instances, state.registry, secrets);
     gate.rememberMs = state.config.settings.actionRememberMs;
     state.actions = actions;
     state.frames = frames;
     // the version is shown unless hideVersion: true, as in homepage
     const showVersion = state.config.settings.hideVersion !== true;
-    if (showVersion && !state.config.settings.disableUpdateCheck) updates.start();
+    const checkUpdates = showVersion && !state.config.settings.disableUpdateCheck;
+    if (checkUpdates) updates.start();
     else updates.stop();
-    const latest = showVersion && !state.config.settings.disableUpdateCheck ? updates.latest : null;
+    const latest = checkUpdates ? updates.latest : null;
     const update = latest && isNewer(latest.version, VERSION) ? latest : null;
     // the installed plugins (name and version) next to the version, behind the same setting
     const plugins = showVersion ? state.pluginResult.packages ?? [] : [];
     // the login page needs an admin password; without one the page stays open, and says so
-    const loginOn = Boolean(state.config.settings.login?.required && gate.password);
+    state.loginOn = Boolean(state.config.settings.login?.required && gate.password);
     const messages = state.config.settings.login?.required && !gate.password
       ? { ...layout.messages, warnings: [...layout.messages.warnings, { file: 'settings.yaml', path: 'login', message: 'needs an admin password (set one on the settings page); the page opens without a login now' }] }
       : layout.messages;
-    state.layout = { ...layout, settings: { ...layout.settings, login: loginOn }, messages, version: VERSION, versionUrl: showVersion ? versionUrl(VERSION) : null, showVersion, update, plugins };
+    state.layout = { ...layout, settings: { ...layout.settings, login: state.loginOn }, messages, version: VERSION, versionUrl: showVersion ? versionUrl(VERSION) : null, showVersion, update, plugins };
     const hosts = hostsNow();
     if (hosts?.length === 0 && !state.hostsNoted) {
       state.hostsNoted = true;
@@ -269,7 +271,7 @@ export async function createApp({
       }
       // settings.yaml `login`: the admin password opens the page; a session is checked on the server
       const login = state.config?.settings.login;
-      const loginOn = Boolean(login?.required && gate.password);
+      const { loginOn } = state;
       let loggedIn = false;
       if (loginOn) {
         const s = gate.password.broken ? { ok: false, headers: {} } : sessions.check(req, passwordFingerprint(gate.password), login.rememberMs);
