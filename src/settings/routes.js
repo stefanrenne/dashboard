@@ -53,13 +53,13 @@ export function settingsRoutes(app) {
     return [...g.services.filter((x) => x.discovered).map((x) => ({ group: name, name: x.name, origin: x.discovered })), ...(g.groups ?? []).flatMap((n) => all(n, 0, 0, name))];
   });
   // the main answer: settings.yaml's fields and what the General, Security, Groups and Widgets sections show
-  const answer = (req, loggedIn) => {
+  const answer = (req) => {
     const rp = rpContext(req);
     const r = state.pluginResult;
     return {
       ok: true, schema: schemaForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
       plugins: { ...readPlugins(configDir, app.defaultPlugins), errors: r.errors ?? [], warnings: r.warnings ?? [], packages: r.packages ?? [] },
-      noPassword: !gate.password, loggedIn,
+      noPassword: !gate.password,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] },
     };
   };
@@ -74,15 +74,15 @@ export function settingsRoutes(app) {
 
   // [method, path (a string, or a RegExp whose groups are passed on), handler(ctx, ...groups), body limit]
   const ROUTES = [
-    ['GET', '', ({ req, loggedIn }) => answer(req, loggedIn)],
+    ['GET', '', ({ req }) => answer(req)],
     ['POST', '/unlock', () => ({ ok: true })],
-    ['POST', '', async ({ req, body, loggedIn }) => {
+    ['POST', '', async ({ req, body }) => {
       const checked = checkSettings(body?.values);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
       await saved(writeSettings(configDir, checked.values), Object.keys(checked.values).join(', '));
-      return answer(req, loggedIn);
+      return answer(req);
     }],
-    ['POST', '/password', async ({ req, res, body, loggedIn }) => {
+    ['POST', '/password', async ({ req, res, body }) => {
       if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) throw new ConfigEditError(`at least ${MIN_PASSWORD} characters`, 400);
       if (gate.password) {
         // the current password, every time: also when logged in or unlocked
@@ -96,35 +96,35 @@ export function settingsRoutes(app) {
       // the sessions of the old password end; this browser keeps going with one of the new
       const login = state.config.settings.login;
       const renewed = login?.required && gate.password ? { 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) } : {};
-      return { body: answer(req, loggedIn), headers: { ...SECURITY_HEADERS, ...renewed } };
+      return { body: answer(req), headers: { ...SECURITY_HEADERS, ...renewed } };
     }],
     ['POST', '/passkeys/options', ({ req }) => {
       const options = passkeys.registerOptions(req, state.config.settings.title);
       if (!options) throw new ConfigEditError('passkeys need the dashboard over https, by its host name', 400);
       return { ok: true, publicKey: options };
     }],
-    ['POST', '/passkeys', ({ req, body, loggedIn }) => {
+    ['POST', '/passkeys', ({ req, body }) => {
       const out = passkeys.register(req, body);
       if (!out.ok) return { status: 400, body: out };
       log.info(`settings: a passkey added (${out.passkey.name}, for ${rpContext(req).rpId})`);
-      return answer(req, loggedIn);
+      return answer(req);
     }],
-    ['POST', '/passkeys/remove', ({ req, body, loggedIn }) => {
+    ['POST', '/passkeys/remove', ({ req, body }) => {
       if (!passkeys.remove(body?.id)) throw new ConfigEditError('no such passkey', 404);
       log.info('settings: a passkey removed');
-      return answer(req, loggedIn);
+      return answer(req);
     }],
-    ['POST', '/layout', async ({ req, body, loggedIn }) => {
+    ['POST', '/layout', async ({ req, body }) => {
       const checked = checkLayout(body?.groups);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
       await saved(writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo())), 'the layout');
-      return answer(req, loggedIn);
+      return answer(req);
     }],
-    ['POST', '/plugins', async ({ req, body, loggedIn }) => {
+    ['POST', '/plugins', async ({ req, body }) => {
       const checked = checkPlugins(body?.entries);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
       await saved(writePlugins(configDir, checked.entries), 'the plugins');
-      return answer(req, loggedIn);
+      return answer(req);
     }],
 
     // the forms of the other config files: GET reads, POST saves and answers as a read
@@ -257,7 +257,7 @@ export function settingsRoutes(app) {
     const headers = { ...SECURITY_HEADERS, ...allowed.headers };
     try {
       const body = method === 'POST' ? await readJson(req, found.limit ?? SMALL) : null;
-      const out = await found.handler({ req, res, body, query, loggedIn }, ...found.groups);
+      const out = await found.handler({ req, res, body, query }, ...found.groups);
       if (out && typeof out.status === 'number' && 'body' in out) return send(res, out.status, out.body, 'application/json', { ...headers, ...out.headers });
       if (out && out.headers && 'body' in out) return send(res, 200, out.body, 'application/json', { ...headers, ...out.headers });
       return send(res, 200, out, 'application/json', headers);

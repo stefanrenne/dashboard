@@ -53,7 +53,8 @@ export function fakeCtx(options, overrides = {}) {
 
 // The page's languages. English and Dutch are written with every change; the others may miss a
 // text (it falls back to English) and are filled in a pass of their own (npm run i18n-missing).
-export const LANGUAGES = ['en', 'nl', 'fr', 'de', 'es', 'ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant'];
+import { LANGUAGES } from '../src/config/schema.js';
+export { LANGUAGES };
 export const COMPLETE_LANGUAGES = ['en', 'nl'];
 
 /**

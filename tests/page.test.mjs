@@ -38,6 +38,10 @@ test('the colours settings.yaml takes are the palettes the pages have, and the m
   const common = fs.readFileSync(path.resolve('public/common.js'), 'utf8');
   const palettes = new Function(`${/const PALETTES = \{[\s\S]*?\n\};/.exec(common)[0]} return PALETTES;`)();
   assert.deepEqual(Object.keys(palettes).sort(), [...COLORS].sort());
+  const { LANGUAGES } = await import('../src/config/schema.js');
+  const names = new Function(`${/const LANGUAGE_NAMES = \{[\s\S]*?\n\};/.exec(common)[0]} return LANGUAGE_NAMES;`)();
+  assert.deepEqual(Object.keys(names), LANGUAGES, 'common.js names every language settings.yaml takes');
+  assert.deepEqual(Object.keys(SHADE_800).sort(), [...COLORS].sort());
   assert.equal(SHADE_800.emerald, palettes.emerald.split(' ')[8]);
 });
 

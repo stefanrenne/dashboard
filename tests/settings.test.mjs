@@ -23,7 +23,7 @@ adminPassword: "scrypt:1:2:3:YQ==:Yg=="
 test("readSettings: the page's fields with their defaults, and the other keys it leaves alone", () => {
   const dir = tmpDir('dash-set-');
   fs.writeFileSync(path.join(dir, 'settings.yaml'), SETTINGS);
-  const { values, other, hasPassword } = readSettings(dir);
+  const { values, other } = readSettings(dir);
   assert.deepEqual(values, {
     title: 'Lab', description: '', favicon: '', startUrl: '', base: '', instanceName: '', language: 'nl', theme: 'auto', color: 'emerald', showTitle: true,
     headerStyle: 'boxed', target: '_blank', statusStyle: '', cardStyle: '', blockStyle: '', font: '', iconStyle: 'gradient', bookmarksStyle: '', cardBlur: '',
@@ -35,7 +35,6 @@ test("readSettings: the page's fields with their defaults, and the other keys it
     pluginUpdateInterval: '1h', discoveryInterval: '30s', logpath: '',
   });
   assert.deepEqual(other, ['layout', 'plugins', 'providers']);
-  assert.equal(hasPassword, true);
   assert.equal(readSettings(tmpDir('dash-set-')).values.title, 'Homelab', 'no file yet');
 });
 

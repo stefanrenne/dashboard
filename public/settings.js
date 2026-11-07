@@ -671,7 +671,7 @@ function widgetEditor(list, catalog, file, prefix) {
   const add = el('select', { id: `${prefix}-add`, 'aria-label': t('wAdd'), onchange: (e) => {
     if (!e.target.value) return;
     const s = byId.get(e.target.value)?.options ?? {};
-    const w = { id: null, type: e.target.value, options: Object.fromEntries(Object.keys(s).filter((k) => ['string', 'url', 'icon', 'enum', 'number', 'boolean'].includes(s[k].type)).map((k) => [k, ''])), rest: [] };
+    const w = { id: null, type: e.target.value, options: Object.fromEntries(Object.keys(s).map((k) => [k, ''])), rest: [] };
     list.push(w);
     render();
     document.getElementById(`${prefix}-w${kid(w)}-type`)?.focus();

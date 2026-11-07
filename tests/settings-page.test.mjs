@@ -50,7 +50,7 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
 // the form of a server file as the server sends it
 const serverForm = (file) => SPECS[file].fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), values: VALUES, other: ['layout', 'plugins'], noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });
@@ -117,7 +117,7 @@ test('settings page: asks for the admin password, then shows settings.yaml and s
 });
 
 test('settings page: no admin password yet, setting one comes first', async () => {
-  const { doc } = await page({ 'GET /api/settings': data({ noPassword: true, hasPassword: false }) });
+  const { doc } = await page({ 'GET /api/settings': data({ noPassword: true }) });
   assert.equal(doc.getElementById('pw-current'), null, 'no current password to ask');
   assert.ok(doc.getElementById('pw-next'));
   assert.equal(doc.getElementById('title'), null, 'nothing else before it');

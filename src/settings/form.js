@@ -104,7 +104,7 @@ export function readSettings(configDir) {
   values.login = login === true || (login !== null && typeof login === 'object');
   values.loginRemember = typeof login?.remember === 'string' || typeof login?.remember === 'number' ? String(login.remember) : DEFAULTS.loginRemember;
   const known = new Set([...Object.keys(FIELDS), ...Object.values(FIELDS).map((d) => d.at?.[0]).filter(Boolean), 'adminPassword']);
-  return { values, other: Object.keys(raw).filter((k) => !known.has(k)), hasPassword: typeof raw.adminPassword === 'string' && raw.adminPassword !== '' };
+  return { values, other: Object.keys(raw).filter((k) => !known.has(k)) };
 }
 
 function checkValue(key, def, v) {

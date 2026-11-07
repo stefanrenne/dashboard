@@ -34,6 +34,7 @@ const LANGUAGE_NAMES = {
   hu: 'Magyar', it: 'Italiano', 'nb-NO': 'Norsk bokmål', pt: 'Português', ru: 'Русский', sv: 'Svenska', vi: 'Tiếng Việt',
   'zh-Hans': '简体中文', 'zh-Hant': '繁體中文',
 };
+const RTL_LANGUAGES = ['he'];
 
 /** An element: attrs (class, text, on<event>, true for a bare attribute), then children (arrays flattened). */
 function el(tag, attrs, ...children) {
@@ -56,7 +57,7 @@ function translator(I18N, currentLang) {
 function applyLanguage(language, I18N) {
   const lang = I18N[language] ? language : 'en';
   document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.documentElement.dir = RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr';
   return lang;
 }
 

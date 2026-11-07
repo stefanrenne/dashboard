@@ -18,7 +18,7 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { ActionGate, checkPassword, passwordFingerprint } from './actionauth.js';
-import { SessionStore, OPEN_PATHS } from './login.js';
+import { SessionStore, OPEN_PATHS, SHARED_FILES } from './login.js';
 import { Passkeys } from './passkeys.js';
 import { Onboarding } from './onboarding/wizard.js';
 import { CUSTOM_FILES } from './config/schema.js';
@@ -33,7 +33,6 @@ import { safeJoin, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const SHARED_FILES = ['common.js', 'theme.css'];
 const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
  * The version: the VERSION file the Docker build writes (1.2.3, or develop-<sha> / main-<sha>), else DASHBOARD_VERSION,
