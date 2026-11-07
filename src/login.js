@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { cookie, cookieValue, randomToken } from './http.js';
+import { writeAtomic } from './util.js';
 
 export const SESSION_COOKIE = 'dash_session';
 export const SESSIONS_FILE = '.sessions.json';
@@ -37,9 +38,7 @@ export class SessionStore {
     const now = this.now();
     for (const [k, s] of this.sessions) if (s.expires <= now) this.sessions.delete(k);
     try {
-      const tmp = `${this.file}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({ sessions: Object.fromEntries(this.sessions) }), { mode: 0o600 });
-      fs.renameSync(tmp, this.file);
+      writeAtomic(this.file, JSON.stringify({ sessions: Object.fromEntries(this.sessions) }), { mode: 0o600 });
     } catch (err) {
       this.log.warn(`login sessions: cannot write ${this.file} (${err.code ?? err.message}); they last until a restart`);
     }

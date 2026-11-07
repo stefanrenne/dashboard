@@ -6,8 +6,9 @@ import { Readable } from 'node:stream';
 import { loadConfig } from '../src/config/load.js';
 import {
   Onboarding, MARKER, groupFor, imageRepository, matchWidget, newCode,
-  scanContainers, servicesYaml, settingsYaml, WIDGETS_YAML, BOOKMARKS_YAML, parseDockerAddress, checkDocker, dockerYaml,
-} from '../src/onboarding.js';
+  scanContainers, servicesYaml, settingsYaml, WIDGETS_YAML, BOOKMARKS_YAML, parseDockerAddress, dockerYaml,
+} from '../src/onboarding/wizard.js';
+import { checkDocker } from '../src/discovery/docker.js';
 import { isLocal, isPrivateAddress, readJson } from '../src/http.js';
 import { tmpDir, silentLog } from './helpers.mjs';
 

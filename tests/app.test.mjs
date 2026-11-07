@@ -433,7 +433,7 @@ test('the iframe widget: its origin, and only that, in frame-src', async () => {
 });
 
 test('allowedHosts: listed host names, loopback and IP addresses get an answer; unset, no other name; the variable is gone', async () => {
-  const { allowedHosts, hostAllowed, hostName } = await import('../src/app.js');
+  const { allowedHosts, hostAllowed, hostName } = await import('../src/http.js');
   assert.deepEqual(allowedHosts(undefined), [], 'unset: only loopback and IP addresses');
   assert.equal(allowedHosts(['a.lan', '*']), null, '* allows every host');
   assert.deepEqual(allowedHosts([' Dash.lan:3000 ']), ['dash.lan:3000']);

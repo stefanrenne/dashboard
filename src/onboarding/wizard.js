@@ -8,9 +8,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
-import { FailureLimiter } from './actionauth.js';
-import { isLocal, cookie, cookieValue, randomToken, clientAddress } from './http.js';
-import { LANGUAGES, COLORS } from './config/schema.js';
+import { FailureLimiter } from '../actionauth.js';
+import { isLocal, cookie, cookieValue, randomToken, clientAddress } from '../http.js';
+import { LANGUAGES, COLORS } from '../config/schema.js';
+import { writeAtomic } from '../util.js';
 
 export const MARKER = '.onboarding';
 export const COOKIE = 'dash_setup';
@@ -158,22 +159,6 @@ export function parseDockerAddress(address, name) {
   return { server: { name: id || host.replace(/[^\w-]/g, '-').slice(0, 40), url: `${protocol}://${host}:${port}`, discover: true, host, port, protocol } };
 }
 
-/**
- * Whether each Docker server answers: its version and number of containers, or the error, with
- * a hint for a socket the dashboard may not use.
- */
-export async function checkDocker({ servers, get }) {
-  return Promise.all(servers.map(async (s) => {
-    const target = s.socket ?? s.url;
-    try {
-      const version = await get(s, '/version');
-      const containers = await get(s, '/containers/json');
-      return { name: s.name, target, ok: true, version: version?.Version ?? null, containers: Array.isArray(containers) ? containers.length : 0 };
-    } catch (err) {
-      return { name: s.name, target, ok: false, error: err.message, permission: /EACCES|EPERM/.test(String(err.code ?? err.message)) };
-    }
-  }));
-}
 
 /** docker.yaml for the servers the wizard was given (and the mounted socket, which listing others would turn off). */
 export function dockerYaml(servers) {
@@ -187,28 +172,6 @@ export function dockerYaml(servers) {
   ].join('\n');
 }
 
-/** The widgets a service card can use, for the wizard's form: their options, without secrets' values. */
-export function widgetList(registry) {
-  const seen = new Set();
-  const out = [];
-  for (const w of registry.values()) {
-    if (seen.has(w.manifest.id) || !w.manifest.options?.url) continue;
-    seen.add(w.manifest.id);
-    out.push({
-      id: w.manifest.id,
-      name: w.manifest.name,
-      description: w.manifest.description ?? '',
-      aliases: w.manifest.aliases ?? [],
-      images: Array.isArray(w.manifest.images) ? w.manifest.images : [],
-      options: Object.fromEntries(Object.entries(w.manifest.options).map(([k, d]) => [k, {
-        type: d.type, required: Boolean(d.required), secret: Boolean(d.secret),
-        ...(d.default !== undefined ? { default: d.default } : {}),
-        ...(Array.isArray(d.values) ? { values: d.values } : {}),
-      }])),
-    });
-  }
-  return out.sort((a, b) => a.name.localeCompare(b.name));
-}
 
 const yamlValue = (v) => YAML.stringify(v, { lineWidth: 0 }).trimEnd();
 
@@ -341,12 +304,7 @@ export class Onboarding {
   finish(files) {
     const exists = Object.keys(files).filter((f) => fs.existsSync(path.join(this.configDir, f)));
     if (exists.length) return { ok: false, exists };
-    for (const [name, text] of Object.entries(files)) {
-      const target = path.join(this.configDir, name);
-      const tmp = `${target}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, text);
-      fs.renameSync(tmp, target);
-    }
+    for (const [name, text] of Object.entries(files)) writeAtomic(path.join(this.configDir, name), text);
     fs.rmSync(this.marker, { force: true });
     this.sessions.clear();
     this.log.info(`setup done: wrote ${Object.keys(files).join(', ')}`);

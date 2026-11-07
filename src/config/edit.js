@@ -19,7 +19,7 @@ import { checkConfigFile } from './load.js';
 import { CONFIG_FILES, CUSTOM_FILES } from './schema.js';
 import { listIncludes } from './include.js';
 import { PLUGINS_DIR } from './schema.js';
-import { scrub } from '../util.js';
+import { scrub, writeAtomic } from '../util.js';
 
 export const EDITABLE_FILES = CONFIG_FILES.map((name) => `${name}.yaml`);
 export const HISTORY_DIR = '.history';
@@ -166,8 +166,6 @@ export function writeConfigFile(configDir, file, text, { hash, opts = {} } = {})
   }
   if (current.exists && current.text === text) return { hash: current.hash, warnings, changed: false };
   if (current.exists) keepHistory(configDir, file, current.text);
-  const tmp = `${full}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, text);
-  fs.renameSync(tmp, full);
+  writeAtomic(full, text);
   return { hash: hashText(text), warnings, changed: true };
 }

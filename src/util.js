@@ -54,3 +54,10 @@ export function scrub(text, secrets = []) {
   for (const s of secrets) if (typeof s === 'string' && s.length >= MIN_SECRET_LENGTH) out = out.split(s).join('***');
   return out;
 }
+
+/** Writes `file` in one step: a temporary file next to it, then a rename (a reader never sees half of it). */
+export function writeAtomic(file, text, options = {}) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text, options);
+  fs.renameSync(tmp, file);
+}

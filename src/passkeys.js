@@ -11,7 +11,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { secureRequest } from './http.js';
+import { secureRequest, hostName } from './http.js';
+import { writeAtomic } from './util.js';
 
 export const PASSKEYS_FILE = '.passkeys.json';
 export { PASSKEY_HEADER } from './actionauth.js';
@@ -29,11 +30,7 @@ const unb64u = (text) => (typeof text === 'string' && /^[A-Za-z0-9_-]*$/.test(te
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest();
 
 /** The host name a request came in by, without the port (Host is checked against allowedHosts before). */
-function hostOf(req) {
-  const host = String(req.headers.host ?? '').trim().toLowerCase();
-  if (host.startsWith('[')) return host.slice(1, host.indexOf(']'));
-  return host.replace(/:\d+$/, '');
-}
+const hostOf = (req) => hostName(req.headers.host).replace(/^\[|\]$/g, '');
 
 /**
  * The WebAuthn relying party of a request: { rpId, origin }, or null when passkeys cannot work
@@ -69,9 +66,7 @@ export class Passkeys {
   }
 
   #save() {
-    const tmp = `${this.file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ userId: this.userId, passkeys: this.list }, null, 2), { mode: 0o600 });
-    fs.renameSync(tmp, this.file);
+    writeAtomic(this.file, JSON.stringify({ userId: this.userId, passkeys: this.list }, null, 2), { mode: 0o600 });
   }
 
   #challenge(purpose, rpId) {

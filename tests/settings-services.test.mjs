@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readServices, writeServices } from '../src/settings/services.js';
-import { widgetCatalog } from '../src/settings/widgets.js';
+import { widgetCatalog } from '../src/plugins/loader.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 

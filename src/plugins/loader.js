@@ -193,3 +193,26 @@ export async function loadRegistry({ builtinDir, external = [] }) {
   }
   return { widgets, errors };
 }
+
+/**
+ * The installed widgets for the setup wizard and the settings page's forms:
+ * [{ id, name, description, aliases, images, options: { name: { type, required, secret, default, values, description } } }],
+ * by name. `images` and `aliases` let the wizard match running containers to a widget.
+ */
+export function widgetCatalog(registry) {
+  const byId = new Map();
+  for (const w of registry.values()) {
+    const m = w.manifest;
+    if (!m?.id || byId.has(m.id)) continue;
+    byId.set(m.id, {
+      id: m.id, name: m.name ?? m.id, description: m.description ?? '',
+      aliases: m.aliases ?? [], images: Array.isArray(m.images) ? m.images : [],
+      options: Object.fromEntries(Object.entries(m.options ?? {}).map(([k, d]) => [k, {
+        type: d.type, required: Boolean(d.required), secret: Boolean(d.secret),
+        ...(d.default !== undefined ? { default: d.default } : {}), ...(Array.isArray(d.values) ? { values: d.values.map(String) } : {}),
+        ...(typeof d.description === 'string' ? { description: d.description } : {}),
+      }])),
+    });
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}

@@ -9,23 +9,22 @@ import { loadConfig } from './config/load.js';
 import { watchConfig } from './config/watch.js';
 import { loadRegistry } from './plugins/loader.js';
 import { syncPlugins, withDefaultPlugins, pluginUpdates, defaultPluginsFor } from './plugins/installer.js';
-import { WidgetRuntime, describeError, tryWidget } from './plugins/runtime.js';
+import { WidgetRuntime, describeError } from './plugins/runtime.js';
 import { WidgetSandbox } from './plugins/sandbox.js';
 import { Discovery, mergeDiscovered } from './discovery/index.js';
-import { withMountedSocket, dockerGet, DEFAULT_SOCKET } from './discovery/docker.js';
+import { withMountedSocket, DEFAULT_SOCKET } from './discovery/docker.js';
 import { buildState } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
-import { ActionGate, hashPassword, checkPassword, passwordFingerprint } from './actionauth.js';
+import { ActionGate, checkPassword, passwordFingerprint } from './actionauth.js';
 import { SessionStore, OPEN_PATHS } from './login.js';
 import { Passkeys } from './passkeys.js';
-import { Onboarding, scanContainers, widgetList, settingsYaml, securityYaml, servicesYaml, parseDockerAddress, checkDocker, dockerYaml, WIDGETS_YAML, BOOKMARKS_YAML } from './onboarding.js';
-import { LANGUAGES, THEMES, COLORS, HOMEPAGE_FILES, CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
-import { validateOptions } from './plugins/options.js';
-import { send, sendFile, readJson, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress } from './http.js';
+import { Onboarding } from './onboarding/wizard.js';
+import { CUSTOM_FILES } from './config/schema.js';
+import { send, sendFile, readJson, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
 import { settingsRoutes } from './settings/routes.js';
-import { homepageDryRun } from './homepage.js';
+import { onboardingRoutes } from './onboarding/routes.js';
 
 export const ACTION_TIMEOUT_MS = 30_000;
 // open /api/events streams, overall and per client address (behind a proxy: all of them)
@@ -52,49 +51,6 @@ export function readVersion(root = ROOT, env = process.env) {
 export const VERSION = readVersion();
 
 
-
-/**
- * settings.yaml `allowedHosts`: the host names the dashboard answers, against DNS rebinding. An
- * entry without a port allows every port. Loopback names and IP addresses are always answered: a
- * rebinding page always sends a host name of its own. None: only those ([]); `*`: every host (null).
- */
-export function allowedHosts(list) {
-  const own = (list ?? []).map((h) => String(h).trim().toLowerCase()).filter(Boolean);
-  return own.includes('*') ? null : own;
-}
-
-const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
-/** A Host header's name without its port: "dash.lan", "192.168.1.10", "[fd00::1]". */
-export function hostName(header) {
-  const host = String(header ?? '').trim().toLowerCase();
-  return host.startsWith('[') ? host.replace(/^(\[[^\]]*\]).*$/, '$1') : host.replace(/:\d*$/, '');
-}
-const isIp = (name) => /^\d{1,3}(\.\d{1,3}){3}$/.test(name) || /^\[[0-9a-f:.]+\]$/.test(name);
-export function hostAllowed(header, list) {
-  if (!list) return true;
-  const host = String(header ?? '').trim().toLowerCase();
-  const name = hostName(host);
-  return LOOPBACK.includes(name) || isIp(name) || list.includes(host) || list.includes(name);
-}
-
-const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-
-/** The page a refused host gets: what to set, with the name it was opened by. */
-export function hostRefusedPage(header, list) {
-  const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');
-  const all = list.length ? `[${list.join(', ')}, ${name}]` : `[${name}]`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Host not allowed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#0f172a}
-code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.75rem 1rem;overflow-x:auto}
-@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}code,pre{background:#1e293b}}</style></head><body>
-<h1>Host not allowed</h1>
-<p>This dashboard was opened as <code>${name}</code>, which is not one of its allowed hosts. It answers only
-<code>localhost</code>, IP addresses and the names you allow, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
-<p>Add it under Allowed hosts on the settings page (open the dashboard by its IP address to get there), or to <code>settings.yaml</code> in the config folder (the page follows once it is saved):</p>
-<pre>allowedHosts: ${all}</pre>
-<p><code>"*"</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
-</body></html>`;
-}
 
 /** The release (1.2.3) or commit (main-<sha>, develop-<sha>) page of this dashboard's version, or null. */
 export function versionUrl(version) {
@@ -276,6 +232,7 @@ export async function createApp({
 
 
 
+  const onboardingRoute = onboardingRoutes({ configDir, env, log, publicDir, exampleDir: path.join(ROOT, 'config.example'), timeoutMs, version: VERSION, dockerSocket: dockerSocket ?? DEFAULT_SOCKET, onboarding, state, reload });
   const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, timeoutMs, defaultPlugins, gate, passkeys, sessions, state, reload });
 
   async function handler(req, res) {
@@ -303,7 +260,7 @@ export async function createApp({
       if (!state.config && p !== '/api/health') {
         return send(res, 503, 'The dashboard could not load its configuration; see its log.', 'text/plain; charset=utf-8');
       }
-      if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, method, p);
+      if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, { method, path: p });
       // a first install: the wizard first (docker/start.sh wrote the marker into the empty config folder)
       if (method === 'GET' && (p === '/' || p === '/index.html') && onboarding.active) {
         res.writeHead(302, { location: 'setup', 'cache-control': 'no-store', ...SECURITY_HEADERS });
@@ -495,136 +452,6 @@ export async function createApp({
    * onboarding marker. Everything but the page and its state needs a visitor on the local
    * network or the code from the log; what writes also needs the X-Requested-With header.
    */
-  async function onboardingRoute(req, res, method, p) {
-    if (!onboarding.active) return send(res, 404, { error: 'not found' });
-    if (method === 'GET' && p === '/setup') return sendFile(res, path.join(publicDir, 'setup.html'));
-    if (method === 'GET' && p === '/setup.js') return sendFile(res, path.join(publicDir, 'setup.js'));
-    const route = p.slice('/api/onboarding/'.length);
-    if (method === 'GET' && route === 'state') return send(res, 200, { active: true, allowed: onboarding.allowed(req), version: VERSION });
-    if (method !== 'GET' && req.headers['x-requested-with'] !== 'dashboard') return send(res, 403, { error: 'missing X-Requested-With' });
-    let body = null;
-    if (method === 'POST') {
-      try {
-        body = await readJson(req);
-      } catch (err) {
-        return send(res, err.status ?? 400, { ok: false, error: err.message });
-      }
-    }
-    if (method === 'POST' && route === 'code') {
-      const out = onboarding.verify(req, body?.code);
-      return out.ok ? send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...out.headers }) : send(res, out.status, out.body);
-    }
-    if (!onboarding.allowed(req)) return send(res, 401, { ok: false, needsCode: true, error: 'the code from the log is needed' });
-    if (method === 'GET' && route === 'widgets') return send(res, 200, { widgets: widgetList(state.registry) });
-    if (route === 'docker' || route === 'containers') {
-      const { servers, errors } = wizardDocker(body?.docker);
-      if (route === 'docker') {
-        return send(res, 200, { socketMounted: fs.existsSync(dockerSocket ?? DEFAULT_SOCKET), servers: await checkDocker({ servers, get: dockerGet }), errors });
-      }
-      return send(res, 200, await scanContainers({ servers, widgets: widgetList(state.registry), host: hostName(req.headers.host), get: dockerGet }));
-    }
-    if (method === 'GET' && route === 'status') {
-      // what the environment sets already: those win over what the wizard writes
-      return send(res, 200, { host: hostName(req.headers.host) });
-    }
-    if (method === 'POST' && route === 'test') return send(res, 200, await tryWidget({ registry: state.registry, log, timeoutMs, configDir: path.resolve(configDir) }, body?.type, body?.options));
-    if (method === 'POST' && route === 'homepage') return send(res, 200, homepageDryRun(body?.files, { registry: state.registry, env }));
-    if (method === 'POST' && route === 'finish') {
-      const files = setupFiles(body ?? {});
-      if (files.error) return send(res, 400, { ok: false, error: files.error });
-      const out = onboarding.finish(files.files);
-      if (!out.ok) return send(res, 409, { ok: false, exists: out.exists, error: `already there: ${out.exists.join(', ')}` });
-      await reload();
-      return send(res, 200, out);
-    }
-    return send(res, 404, { error: 'not found' });
-  }
-
-  /**
-   * The Docker servers of the wizard: the ones the dashboard has (docker.yaml or the mounted
-   * socket) and the ones added in the wizard ([{ address, name? }]), each name once.
-   */
-  function wizardDocker(given) {
-    const servers = [...state.config.docker];
-    const added = [];
-    const errors = [];
-    for (const [i, g] of (Array.isArray(given) ? given : []).slice(0, 10).entries()) {
-      const out = parseDockerAddress(g?.address, g?.name);
-      if (out.error) errors.push(`docker[${i}]: ${out.error}`);
-      else if (servers.some((s) => s.name === out.server.name)) errors.push(`docker[${i}]: the name "${out.server.name}" is taken`);
-      else {
-        servers.push(out.server);
-        added.push(out.server);
-      }
-    }
-    return { servers, added, errors };
-  }
-
-  /** One run of a widget with the options the wizard has, to show that they work. */
-  /**
-   * The files the wizard writes: settings, services, header widgets and bookmarks from its
-   * steps, homepage's files as they are in their place, and the commented docker.yaml and
-   * kubernetes.yaml of the example config. { files } or { error }.
-   */
-  function setupFiles(body) {
-    const s = body.settings ?? {};
-    const sec = body.security ?? {};
-    // the admin password: required; only its hash is written
-    if (typeof sec.adminPassword !== 'string' || sec.adminPassword.length < MIN_PASSWORD) {
-      return { error: `security.adminPassword: at least ${MIN_PASSWORD} characters` };
-    }
-    const hosts = Array.isArray(sec.allowedHosts) ? sec.allowedHosts.map((h) => String(h).trim().toLowerCase()).filter(Boolean) : [];
-    if (hosts.some((h) => h !== '*' && !/^[a-z0-9.-]+(:\d{1,5})?$|^\[[0-9a-f:]+\](:\d{1,5})?$/.test(h)) || hosts.length > 20) return { error: 'security.allowedHosts: host names such as dash.lan' };
-    const security = { allowedHosts: [...new Set(hosts)], adminPassword: hashPassword(sec.adminPassword), login: sec.login === true };
-    const title = typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 100) : 'Homelab';
-    if (s.language !== undefined && !LANGUAGES.includes(s.language)) return { error: 'settings.language: not a known language' };
-    if (s.theme !== undefined && !THEMES.includes(s.theme)) return { error: 'settings.theme: auto, dark or light' };
-    if (s.color !== undefined && !COLORS.includes(s.color)) return { error: 'settings.color: not a known colour' };
-    const cards = [];
-    for (const [i, c] of (Array.isArray(body.services) ? body.services : []).entries()) {
-      const name = typeof c?.name === 'string' ? c.name.trim().slice(0, 100) : '';
-      if (!name) return { error: `services[${i}]: a name is needed` };
-      const card = { group: typeof c.group === 'string' && c.group.trim() ? c.group.trim().slice(0, 100) : 'Services', name };
-      for (const k of ['href', 'icon', 'description', 'container', 'server']) if (typeof c[k] === 'string' && c[k].trim()) card[k] = c[k].trim().slice(0, 500);
-      if (card.href && !/^https?:\/\//.test(card.href)) return { error: `${name}: the link must start with http:// or https://` };
-      if (c.widget?.type) {
-        const widget = state.registry.get(c.widget.type);
-        if (!widget) return { error: `${name}: unknown widget "${String(c.widget.type).slice(0, 40)}"` };
-        const { type, ...raw } = c.widget;
-        const { errors } = validateOptions(widget.manifest.options, raw, new Set());
-        if (errors.length) return { error: `${name}: ${errors.join('; ')}` };
-        const opts = Object.fromEntries(Object.entries(raw).filter(([k, v]) => k in widget.manifest.options && v !== '' && v !== null && v !== undefined));
-        card.widget = { type: widget.manifest.id, ...opts };
-      }
-      cards.push(card);
-    }
-    const files = {
-      'settings.yaml': settingsYaml({
-        title, language: s.language ?? 'en', theme: s.theme ?? 'auto', color: s.color ?? 'slate',
-        ...security,
-      }),
-      'services.yaml': servicesYaml(cards),
-      'widgets.yaml': WIDGETS_YAML,
-      'bookmarks.yaml': BOOKMARKS_YAML,
-    };
-    for (const name of ['docker.yaml', 'kubernetes.yaml']) {
-      try {
-        files[name] = fs.readFileSync(path.join(ROOT, 'config.example', name), 'utf8');
-      } catch {
-        // not in this install
-      }
-    }
-    // servers added in the wizard: docker.yaml lists them, with the mounted socket (listing any turns the implicit one off)
-    const docker = wizardDocker(body.docker);
-    if (docker.errors.length) return { error: docker.errors.join('; ') };
-    if (docker.added.length) files['docker.yaml'] = dockerYaml(docker.servers);
-    const homepage = body.homepage && typeof body.homepage === 'object' ? body.homepage : {};
-    for (const [name, text] of Object.entries(homepage)) if (HOMEPAGE_FILES.includes(name) && typeof text === 'string') files[name] = text;
-    // homepage's settings.yaml as it is, with the security the wizard set below it
-    if (typeof homepage['settings.yaml'] === 'string') files['settings.yaml'] = `${homepage['settings.yaml'].trimEnd()}\n\n${securityYaml(security)}`;
-    return { files };
-  }
-
   /** Calls a `target: hidden-iframe` URL (configured, never from the request) and reports the outcome. */
   async function runAction(action) {
     const secrets = [...(state.config?.secrets ?? [])];
@@ -660,3 +487,4 @@ export async function createApp({
     },
   };
 }
+

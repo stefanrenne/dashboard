@@ -12,24 +12,6 @@ import { openYaml, entries, single, keyName, rename, setItems } from './yaml.js'
 const EDITABLE_TYPES = new Set(['string', 'url', 'icon', 'enum', 'number', 'boolean']);
 const HEADER = 'widgets.yaml';
 
-/** Every installed widget with the options its form shows: [{ id, name, description, options }]. */
-export function widgetCatalog(registry) {
-  const byId = new Map();
-  for (const w of registry.values()) {
-    const m = w.manifest;
-    if (!m?.id || byId.has(m.id)) continue;
-    byId.set(m.id, {
-      id: m.id, name: m.name ?? m.id, description: m.description ?? '',
-      options: Object.fromEntries(Object.entries(m.options ?? {}).filter(([, d]) => EDITABLE_TYPES.has(d.type)).map(([k, d]) => [k, {
-        type: d.type, required: Boolean(d.required), secret: Boolean(d.secret),
-        ...(d.default !== undefined ? { default: d.default } : {}), ...(Array.isArray(d.values) ? { values: d.values.map(String) } : {}),
-        ...(typeof d.description === 'string' ? { description: d.description } : {}),
-      }])),
-    });
-  }
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
 /** A widget's options as its form has them: { type, options, hidden, rest }. */
 function widgetForm(map, type, schemaFor) {
   const o = YAML.isMap(map) ? map.toJSON() : {};

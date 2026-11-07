@@ -81,3 +81,20 @@ export async function discoverDocker(server) {
   const containers = await dockerGet(server, '/containers/json?all=1');
   return servicesFromContainers(containers, server);
 }
+
+/**
+ * Whether each Docker server answers: its version and number of containers, or the error, with
+ * a hint for a socket the dashboard may not use.
+ */
+export async function checkDocker({ servers, get }) {
+  return Promise.all(servers.map(async (s) => {
+    const target = s.socket ?? s.url;
+    try {
+      const version = await get(s, '/version');
+      const containers = await get(s, '/containers/json');
+      return { name: s.name, target, ok: true, version: version?.Version ?? null, containers: Array.isArray(containers) ? containers.length : 0 };
+    } catch (err) {
+      return { name: s.name, target, ok: false, error: err.message, permission: /EACCES|EPERM/.test(String(err.code ?? err.message)) };
+    }
+  }));
+}

@@ -149,3 +149,49 @@ export async function sendFile(res, file, { cache = 'no-cache', root = null } = 
     res.end(data);
   });
 }
+
+// ---------------------------------------------------------------- the Host header (allowedHosts)
+
+/**
+ * settings.yaml `allowedHosts`: the host names the dashboard answers, against DNS rebinding. An
+ * entry without a port allows every port. Loopback names and IP addresses are always answered: a
+ * rebinding page always sends a host name of its own. None: only those ([]); `*`: every host (null).
+ */
+export function allowedHosts(list) {
+  const own = (list ?? []).map((h) => String(h).trim().toLowerCase()).filter(Boolean);
+  return own.includes('*') ? null : own;
+}
+
+const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
+/** A Host header's name without its port: "dash.lan", "192.168.1.10", "[fd00::1]". */
+export function hostName(header) {
+  const host = String(header ?? '').trim().toLowerCase();
+  return host.startsWith('[') ? host.replace(/^(\[[^\]]*\]).*$/, '$1') : host.replace(/:\d*$/, '');
+}
+const isIp = (name) => /^\d{1,3}(\.\d{1,3}){3}$/.test(name) || /^\[[0-9a-f:.]+\]$/.test(name);
+export function hostAllowed(header, list) {
+  if (!list) return true;
+  const host = String(header ?? '').trim().toLowerCase();
+  const name = hostName(host);
+  return LOOPBACK.includes(name) || isIp(name) || list.includes(host) || list.includes(name);
+}
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+/** The page a refused host gets: what to set, with the name it was opened by. */
+export function hostRefusedPage(header, list) {
+  const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');
+  const all = list.length ? `[${list.join(', ')}, ${name}]` : `[${name}]`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Host not allowed</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#0f172a}
+code,pre{background:#f1f5f9;border-radius:4px;padding:.1rem .3rem}pre{padding:.75rem 1rem;overflow-x:auto}
+@media (prefers-color-scheme:dark){body{background:#0f172a;color:#e2e8f0}code,pre{background:#1e293b}}</style></head><body>
+<h1>Host not allowed</h1>
+<p>This dashboard was opened as <code>${name}</code>, which is not one of its allowed hosts. It answers only
+<code>localhost</code>, IP addresses and the names you allow, so that a web page cannot reach it under a name of its own (DNS rebinding).</p>
+<p>Add it under Allowed hosts on the settings page (open the dashboard by its IP address to get there), or to <code>settings.yaml</code> in the config folder (the page follows once it is saved):</p>
+<pre>allowedHosts: ${all}</pre>
+<p><code>"*"</code> allows every host. See <a href="https://getdashboard.dev/configuration/#allowed-hosts">Allowed hosts</a>.</p>
+</body></html>`;
+}
+
