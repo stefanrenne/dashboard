@@ -42,7 +42,6 @@ function frameOrigin(value) {
   }
 }
 
-/** A connection's ca/cert/key as the tlsCa/tlsCert/tlsKey options of the docker and kubernetes widgets. */
 const tlsOptions = ({ ca, cert, key }) => Object.fromEntries(Object.entries({ tlsCa: ca, tlsCert: cert, tlsKey: key }).filter(([, v]) => v));
 
 export function buildState({ config, registry, groups, extraErrors = [], extraWarnings = [], secrets: knownSecrets = config.secrets, actionsProtected = false }) {
@@ -97,7 +96,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
    */
   // proxmox.yaml's node, or homepage's one entry for every node (saved under '')
   const proxmoxFor = (node) => config.proxmox?.[String(node)] ?? config.proxmox?.[''];
-  // the kubeconfig of kubernetes.yaml `mode: default`, read once per build; a problem is said once
   let kube;
   const kubeConnection = () => {
     if (kube === undefined) {
@@ -128,7 +126,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     const type = widget?.id ?? requested; // an alias (homepage's customapi) becomes the widget's id
     usedTypes.add(type);
     if (!widget) {
-      // the service fields' widgets come with the widgets collection: say so when it is missing
       const message = CORE_WIDGETS.includes(type)
         ? `unknown widget type "${type}": it comes with the widgets collection (0.4.0 or newer), which is not installed`
         : `unknown widget type "${type}"`;
@@ -171,7 +168,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       refreshMs = widget.manifest.refreshMs;
     }
     refreshMs = Math.max(MIN_REFRESH_MS, refreshMs);
-    // No `fields` in the entry: the blocks the widget shows by default (widget.yaml defaultFields).
     const fields = Array.isArray(own.fields) ? own.fields.map(String) : widget.manifest.defaultFields ?? null;
     const hideErrors = own.hideErrors === true || own.hide_errors === true;
     const confirm = confirmFor(widget, options, own.confirm, where, type);
@@ -295,14 +291,12 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     return out;
   };
 
-  /** proxmox.yaml's connection for a node: its own entry, else the flat one for every node. */
   const proxmoxNode = (node, where) => {
     const found = proxmoxFor(node);
     if (!found) errors.push({ ...where, message: `proxmoxNode "${node}" is not in proxmox.yaml` });
     return found ?? {};
   };
 
-  // A group's own layout keys (nested groups' layouts left out), with its category icon resolved.
   const groupLayout = (own) => {
     const layout = Object.fromEntries(Object.entries(isPlainObject(own) ? own : {}).filter(([, v]) => !isPlainObject(v)));
     if (layout.icon !== undefined) layout.icon = resolveIcon(String(layout.icon));
@@ -448,7 +442,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   }
 
   const scrubbed = (list) =>
-    // `discovered` only steers confirm: (see confirmFor), it is no part of a message
     list.map(({ discovered, ...m }) => ({ ...m, message: scrub(m.message, secrets) }));
 
   // homepage's tabs: on when a layout group has `tab`, in the order of the layout block

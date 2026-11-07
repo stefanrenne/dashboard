@@ -1,6 +1,7 @@
-// The settings page (/settings, see src/settings.js): settings.yaml's look, security and other
-// switches, and the admin password. It opens with the admin password (a login counts); without
-// one yet, setting one comes first.
+// The settings page (/settings, see src/settings/form.js and routes.js): settings.yaml's look,
+// security, layout and widget packages, the config files as forms or as text, the admin password
+// and passkeys. It opens with the admin password (a login counts); without one yet, setting one
+// comes first.
 'use strict';
 
 // the texts; those the setup wizard has too are the same there
@@ -129,7 +130,6 @@ function number(key, min, max) {
 }
 const blurs = () => [['', t('blurOff')], ...state.data.schema.blurs.map((b) => [b, b])];
 
-/** A list of small maps (pwa icons, shortcuts): a row of inputs each, added and removed. */
 function listField(key, legend, help, columns) {
   const rows = state.values[key];
   const blank = () => Object.fromEntries(columns.map(([k]) => [k, '']));
@@ -149,7 +149,6 @@ const saveBar = () => statusBar(state, save);
 function render() {
   if (state.data.noPassword) return show(passwordSection());
   const section = SECTIONS.find((x) => x.id === state.section);
-  // a section with a form shows its file as text when asked
   if (section.form && state.mode[section.file] === 'text') return show(nav(), modeToggle(section.file), fileSection(section));
   return show(nav(), section.view(section));
 }
@@ -288,7 +287,6 @@ let uid = 0;
 const keyOf = new WeakMap();
 const kid = (o) => { if (!keyOf.has(o)) keyOf.set(o, ++uid); return keyOf.get(o); };
 
-/** Up and down (and Remove) for the entry at `i` of `list`; the moved entry's button keeps the focus. */
 function orderButtons(list, i, name, id, { remove = true } = {}) {
   const move = (by) => {
     const j = i + by;
@@ -467,14 +465,12 @@ function formOf(file, path) {
   return state.forms[file];
 }
 
-/** A form section: the switch to the text, then `body(data, form)` once the server answered. */
 function formSection(file, path, body) {
   const f = formOf(file, path);
   if (f.loading || f.error) return [modeToggle(file), el('section', { class: 'panel' }, el('p', { class: f.error ? 'error' : 'muted', text: f.error ?? t('fileLoading') }))];
   return [modeToggle(file), ...body(f.data, f)];
 }
 
-/** Saves a form: `body` to `path`; the answer is the form's new data (or why not). */
 async function saveForm(file, path, body) {
   const f = state.forms[file];
   Object.assign(f, { status: t('saving'), statusClass: 'muted', problems: [], remarks: [] });
@@ -490,7 +486,6 @@ async function saveForm(file, path, body) {
 }
 
 const messageItem = (m) => el('li', { text: `${m.file}${m.path ? ` › ${m.path}` : ''}: ${m.message}` });
-/** A save's problems (it was refused) and remarks (saved, with something to know). */
 function messages({ problems, remarks }) {
   return [
     problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...problems.map(messageItem))) : null,
@@ -498,7 +493,6 @@ function messages({ problems, remarks }) {
   ];
 }
 
-/** The bar at the bottom: the last save's status, other buttons, and Save. */
 function statusBar({ status, statusClass }, onSave, ...buttons) {
   return el('div', { class: 'saved' }, el('span', { class: statusClass ?? 'muted', role: 'status', text: status ?? '' }), ...buttons,
     el('button', { type: 'button', class: 'primary', text: t('save'), onclick: onSave }));
@@ -513,7 +507,6 @@ function modeToggle(root) {
   return el('div', { class: 'row mode' }, el('button', { type: 'button', text: text ? t('svcEditForm') : t('svcEditText'), onclick: () => { state.mode[root] = text ? 'form' : 'text'; render(); } }));
 }
 
-/** Every group in the tree, with its path for the move list: [{ group, label }]. */
 function allGroups(items, prefix = '') {
   return items.filter((x) => x.kind === 'group' && !x.include).flatMap((g) => [{ group: g, label: prefix + g.name }, ...allGroups(g.items, `${prefix}${g.name} › `)]);
 }
@@ -851,7 +844,6 @@ function importPanel() {
   const imp = state.imp ?? (state.imp = {});
   const input = el('input', { type: 'file', id: 'import-files', multiple: true, accept: '.yaml,.yml', onchange: async (e) => {
     const files = {};
-    // homepage's files by their name; .yml counts as .yaml
     for (const f of e.target.files ?? []) {
       const name = f.name.replace(/\.yml$/, '.yaml');
       if (state.data.schema.homepageFiles.includes(name)) files[name] = await f.text();
@@ -934,13 +926,11 @@ function loadIcons() {
 }
 const iconOptions = () => [...new Set([...(state.icons?.used ?? []), ...(state.icons?.local ?? [])])].map((v) => el('option', { value: v }));
 
-/** The <datalist> the icon fields share; nav() puts it on every section. */
 function iconList() {
   loadIcons();
   return el('datalist', { id: 'icon-list' }, ...iconOptions());
 }
 
-/** A text field for an icon name or address, with a preview of what it shows. */
 function iconInput(id, value, set, placeholder = 'plex.svg') {
   const preview = el('span', { class: 'icon-preview', 'aria-hidden': 'true' });
   const update = async (name) => {
@@ -1094,8 +1084,8 @@ async function saveFile(name) {
     f.statusClass = 'ok';
     f.remarks = out.warnings ?? [];
     await loadFile(name, true);
-    state.files = null; // an include added or removed changes the list
-    state.forms = {}; // the forms read the files again (an included file belongs to one of them)
+    state.files = null;
+    state.forms = {};
     if (state.section === 'advanced' || name === 'settings.yaml' || out.changed) {
       const fresh = await api('').catch(() => null);
       if (fresh?.ok) {

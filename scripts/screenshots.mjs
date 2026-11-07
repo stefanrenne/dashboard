@@ -32,7 +32,6 @@ const collection = path.resolve(process.env.DASHBOARD_COLLECTION_DIR ?? path.joi
 const { startMock } = await import(path.join(collection, 'scripts/mock-homelab.mjs'));
 const mock = await startMock();
 
-// the showcase with its widgets pointed at the mock
 const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hd-showcase-'));
 for (const file of fs.readdirSync(root + 'scripts/showcase')) {
   const text = fs.readFileSync(path.join(root, 'scripts/showcase', file), 'utf8');
@@ -88,7 +87,6 @@ for (const scheme of only === 'settings' ? [] : ['dark', 'light']) {
   await page.screenshot({ path: `${out}screenshot-${scheme}.png`, fullPage: true });
   await ctx.close();
 }
-// the settings page: three sections, the first screen of each
 if (only !== 'dashboard') {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
   const page = await ctx.newPage();
@@ -100,7 +98,6 @@ if (only !== 'dashboard') {
   for (const [section, ready, open] of [['general', '#title', null], ['services', '.card', '.card details'], ['layout', '.card', '.card details']]) {
     await page.goto(`${url}settings#${section}`);
     await page.waitForSelector(ready);
-    // the first card's settings open, to show the form
     if (open) await page.evaluate((sel) => { const d = document.querySelector(sel); if (d) { d.open = true; d.dispatchEvent(new Event('toggle')); } }, open);
     await page.evaluate(() => document.fonts.ready);
     await page.waitForLoadState('networkidle');

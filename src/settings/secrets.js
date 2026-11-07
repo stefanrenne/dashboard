@@ -121,7 +121,6 @@ function parse(text, file) {
   return doc;
 }
 
-/** Replaces source ranges, from the end: [{ start, end, text }]. */
 function splice(text, edits) {
   let out = text;
   for (const e of [...edits].sort((a, b) => b.start - a.start)) out = out.slice(0, e.start) + e.text + out.slice(e.end);

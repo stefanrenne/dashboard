@@ -1,9 +1,8 @@
 // The settings page's routes: /settings, /settings.js and /api/settings/*. The admin password opens
 // them (a login counts, and the browser stays unlocked as for a press); without one yet, only the
 // local network, which must set one first. Every route is a row of ROUTES; one wrapper does what
-// they all need: X-Requested-With on writes, the access check, reading the JSON body (up to the
-// row's limit), answering a ConfigEditError with its status, and logging and reloading after a
-// save that changed a file.
+// they all need: the access check, reading the JSON body (up to the row's limit) and answering a
+// ConfigEditError with its status. X-Requested-With on writes is checked in app.js.
 
 import path from 'node:path';
 import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
@@ -64,7 +63,6 @@ export function settingsRoutes(app) {
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] },
     };
   };
-  /** After a save: logs what changed and reloads, so the dashboard follows at once. */
   const saved = async (out, what) => {
     if (out?.changed === false) return;
     log.info(`settings: ${what} saved from the settings page`);
@@ -227,7 +225,6 @@ export function settingsRoutes(app) {
       return out.ok ? out : { ok: false, error: scrub(out.error, [node.secret, node.token, ...knownSecrets()]) };
     }],
     ['GET', '/icon', ({ query }) => {
-      // the address an icon name stands for, for the preview on the page
       const name = String(query.get('name') ?? '').trim().slice(0, 300);
       // the address, and whether the page draws it as a mask in the text colour (mdi-, si-)
       const url = name ? resolveIcon(name) : null;

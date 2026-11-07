@@ -4,7 +4,6 @@ import { isPlainObject } from '../util.js';
 
 const OPTION_TYPES = ['string', 'url', 'number', 'boolean', 'list', 'object', 'enum', 'icon'];
 
-/** Checks the schema itself; returns a list of problems. */
 export function checkSchema(schema) {
   const problems = [];
   if (schema === undefined) return problems;

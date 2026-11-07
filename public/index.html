@@ -730,7 +730,6 @@ function apiError(name, message) {
     el('div', null, el('span', { class: 'sr-only', text: translate('details') + ': ' }), message));
 }
 
-/** Renders a result the standard way: blocks, then rows. */
 function renderResult(container, instance, result, name) {
   const t = widgetT(instance.type);
   container.replaceChildren();
@@ -774,7 +773,6 @@ function renderResult(container, instance, result, name) {
   }
 }
 
-/** Creates the DOM for one widget instance and starts polling its data. */
 /** `onResult(result)`: told of every result, for a service's filter. */
 function mountWidget(instance, extraClass, name, onResult) {
   const box = el('div', { class: 'widget' + (extraClass ? ' ' + extraClass : '') });
@@ -831,7 +829,6 @@ const runningActions = new Set();
 // ---------------------------------------------------------------- action password (or passkey)
 let actionsUnlocked = false; // this browser holds an unlock (the server's cookie), as far as the page knows
 
-/** Asks the server whether this browser is unlocked; shows the lock button while it is. */
 async function refreshLockState() {
   let unlocked = false;
   if (layout?.settings?.actionsProtected) {
@@ -1041,7 +1038,6 @@ async function copyText(text) {
   return done;
 }
 
-/** The result of an action in a dialog: how it went, the exit code, and the output as text. */
 function showActionResult(title, out) {
   const data = out.ok ? out.data : null;
   const ok = data?.status === 'ok';
@@ -1114,11 +1110,9 @@ function stopPolling() {
  * A status label in the top-right corner of a card, like homepage: "78 ms" or "down" for
  * HTTP and ping checks, the container state ("healthy", "running") for Docker. Clicking a
  * container label shows the container's CPU, memory, RX and TX above the card's widgets, as in
- * homepage; the state block is left out there, the label shows it already.
- */
-/**
- * A status label in the card's corner. statusStyle (settings or service): none shows the
- * response time or container state, `dot` a coloured dot, `basic` UP or DOWN for checks.
+ * homepage; the state block is left out there, the label shows it already. statusStyle
+ * (settings or service): none shows the response time or container state, `dot` a coloured
+ * dot, `basic` UP or DOWN for checks.
  */
 function statusTag(status, card, style, showStats, onResult) {
   // container (docker), proxmox (proxmoxvm) and pods (kubernetes-pods) labels open CPU and memory on a click
@@ -1241,7 +1235,6 @@ function groupToggle(g, section, cardsId) {
 const hasServices = (g) => g.services.length > 0 || (g.groups ?? []).some(hasServices);
 let groupCount = 0;
 
-/** A group section: its title (h2, or h3 for a nested group), its cards and its nested groups. */
 /** The category icon of a group (layout.<group>.icon), or nothing. */
 const groupIcon = (layoutOf) => (layoutOf?.icon ? iconImage(layoutOf.icon, 'group-icon') : null);
 
@@ -1388,7 +1381,6 @@ function setShowFiltered(on) {
   document.getElementById('filtered-btn').setAttribute('aria-pressed', String(on));
 }
 
-/** Hides a group (and its parents) that has no card left to show, nor a nested group. */
 function updateFilteredGroups(card) {
   for (let section = card.closest('.group'); section; section = section.parentElement?.closest('.group')) {
     const own = [...section.querySelectorAll('.card')].filter((c) => c.closest('.group') === section);
@@ -1514,13 +1506,11 @@ let qlIndex = 0;
 let qlSuggestions = { query: '', list: [] };
 let qlSuggestTimer = null;
 
-/** showSearchSuggestions: quicklaunch's, else the search widget's. */
 function qlSuggestionsOn() {
   const widget = (layout?.header ?? []).find((w) => w.type === 'search')?.options ?? {};
   return (qlSettings.showSearchSuggestions ?? widget.showSearchSuggestions) === true && !qlSettings.hideInternetSearch;
 }
 
-/** Asks api/suggest (debounced) and redraws when the answer still fits what is typed. */
 function qlSuggest(query) {
   clearTimeout(qlSuggestTimer);
   if (!qlSuggestionsOn() || !query.trim()) return;
@@ -1535,7 +1525,6 @@ function qlSuggest(query) {
   }, 250);
 }
 
-/** The web search: quicklaunch.provider, else the search widget's, else none. */
 function qlProvider() {
   const widget = (layout?.header ?? []).find((w) => w.type === 'search')?.options ?? {};
   const name = qlSettings.provider ?? widget.provider ?? null;
@@ -1545,7 +1534,6 @@ function qlProvider() {
   return { name: QL_NAMES[name] || translate('qlWeb'), url, target: qlSettings.target ?? widget.target ?? '_blank' };
 }
 
-/** Every service (nested groups too) and bookmark, for matching. */
 function qlEntries() {
   const out = [];
   const walk = (groups) => {
@@ -1793,19 +1781,17 @@ function connectEvents() {
   });
 }
 
-/** Shows only the cards and bookmarks that match every word of `query`; returns the matching cards. */
 let lastQuery = '';
 function filterServices(query) {
   lastQuery = String(query || '');
   const words = lastQuery.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = [];
-  // children before parents, so a parent stays visible when only a nested group matches
   const sections = [...document.querySelectorAll('#groups .group, #bookmarks .group')].reverse();
   for (const section of sections) {
     const group = (section.dataset.group || '').toLowerCase();
     let visible = 0;
     for (const item of section.querySelectorAll('.card, .bm')) {
-      if (item.closest('.group') !== section) continue; // a nested group's cards are its own
+      if (item.closest('.group') !== section) continue;
       const text = `${item.dataset.search || item.textContent.toLowerCase()} ${group}`;
       // a card its filter hides is no search hit either (Enter would open it), unless they are shown
       const shown = !item.classList.contains('filtered') || document.body.classList.contains('show-filtered');
@@ -1859,7 +1845,7 @@ document.getElementById('lock-btn').addEventListener('click', async () => {
 });
 document.getElementById('filtered-btn').addEventListener('click', (e) => {
   setShowFiltered(e.currentTarget.getAttribute('aria-pressed') !== 'true');
-  if (lastQuery.trim()) filterServices(lastQuery); // a search that is on now counts them too
+  if (lastQuery.trim()) filterServices(lastQuery);
 });
 document.getElementById('toast-close').addEventListener('click', hideToast);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideToast(); });

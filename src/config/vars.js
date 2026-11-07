@@ -10,7 +10,6 @@
 import fs from 'node:fs';
 import { isPlainObject } from '../util.js';
 
-// DASHBOARD_VAR_X, HOMEPAGE_FILE_Y, ...: the environment variables the config may name
 export const VARIABLE_NAME = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_[A-Z0-9_]+$/;
 const VARIABLE_PREFIX = /^(DASHBOARD|HOMEPAGE)_(VAR|FILE)_/;
 const PLACEHOLDER = /\{\{\s*((?:DASHBOARD|HOMEPAGE)_(?:VAR|FILE)_[A-Z0-9_]+)\s*\}\}/g;
@@ -25,7 +24,6 @@ export const isConfigVariable = (name) => VARIABLE_PREFIX.test(name);
 // `{{ states.x }}` are lowercase and left alone.
 const LOOKALIKE = /\{\{\s*([A-Z][A-Z0-9_]*)\s*\}\}/g;
 
-/** The variable names (DASHBOARD_VAR_X, ...) whose placeholders appear in `value`. */
 export function variablesIn(value) {
   const names = new Set();
   const walk = (node) => {

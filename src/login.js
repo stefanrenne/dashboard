@@ -49,7 +49,6 @@ export class SessionStore {
     const token = randomToken();
     const now = this.now();
     this.sessions.set(tokenHash(token), { expires: now + rememberMs, touched: now, password });
-    // the oldest go when there are many (each login from another browser makes one)
     if (this.sessions.size > MAX_SESSIONS) {
       const oldest = [...this.sessions].sort((a, b) => a[1].touched - b[1].touched).slice(0, this.sessions.size - MAX_SESSIONS);
       for (const [k] of oldest) this.sessions.delete(k);

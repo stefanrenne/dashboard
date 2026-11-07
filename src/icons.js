@@ -16,12 +16,11 @@ const SELFHST_ICONS = 'https://cdn.jsdelivr.net/gh/selfhst/icons';
  * (as in homepage), `si-plex` -> Simple Icons, `mdi-flask` -> Material Design Icons (both with
  * an optional colour, `mdi-flask-#f0d453`), `sh-plex` / `sh-plex.svg` -> selfh.st icons,
  * `/icons/x.svg` -> the config's icons folder, `http(s)://...` as is, `dashboard` -> Dashboard's own
- * mark (src/mark.js). Anything else has no image.
+ * mark (MARK). Anything else has no image.
  */
 export function resolveIcon(icon) {
   if (!icon) return null;
   if (/^https?:\/\//.test(icon) || icon.startsWith('/icons/')) return icon;
-  // Dashboard's own mark, built in
   if (icon === 'dashboard') return MARK;
   // Single-colour icons (Material Design, Simple Icons) are drawn as a mask in the page; the
   // #dash-mask fragment says so, with an optional colour (homepage's mdi-name-#f0d453).

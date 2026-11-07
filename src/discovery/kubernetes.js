@@ -10,8 +10,6 @@ import { getJson } from '../http.js';
 const ANNOTATION_PREFIX = 'getdashboard.dev/';
 export const HOMEPAGE_PREFIX = 'gethomepage.dev/';
 
-/** GET on the Kubernetes API with a connection from k8sConnection(). */
-/** GETs `path` from the Kubernetes API of `connection` (kubeconfig.js k8sConnection). */
 export function k8sGet(path, { connection: conn, timeoutMs = 5000 }) {
   // joined, not resolved: an API server can sit under a path (Rancher's /k8s/clusters/<id>)
   const url = new URL(`${conn.url.replace(/\/+$/, '')}${path}`);
@@ -19,10 +17,6 @@ export function k8sGet(path, { connection: conn, timeoutMs = 5000 }) {
   return getJson({ url, headers: k8sHeaders(conn), tls, timeoutMs, name: 'Kubernetes API' });
 }
 
-/**
- * Annotated resources (Ingress, IngressRoute, HTTPRoute) to discovered services. `hrefOf`
- * derives the link when the annotations give none.
- */
 function servicesFromResources(list, instanceName = null, hrefOf = () => null) {
   const out = [];
   for (const res of list.items ?? []) {
@@ -49,7 +43,6 @@ function servicesFromResources(list, instanceName = null, hrefOf = () => null) {
   return out;
 }
 
-/** An Ingress's link: its first rule's host and path, https when TLS covers that host. */
 function ingressHref(ing) {
   const rule = ing.spec?.rules?.find((r) => r.host);
   if (!rule) return null;
@@ -57,7 +50,6 @@ function ingressHref(ing) {
   return `${tls ? 'https' : 'http'}://${rule.host}${rule.http?.paths?.[0]?.path ?? '/'}`;
 }
 
-/** Pure mapping from an IngressList to discovered services. */
 export function servicesFromIngresses(list, instanceName = null) {
   return servicesFromResources(list, instanceName, ingressHref);
 }
@@ -92,7 +84,6 @@ export function httpRouteHref(route, protocols = new Map()) {
   return `${scheme}://${host}${match?.value ?? '/'}`;
 }
 
-/** The scheme of a Gateway's listener: the named section, else the first listener. */
 export function listenerScheme(gateway, sectionName) {
   const listeners = gateway?.spec?.listeners ?? [];
   const listener = listeners.find((l) => l.name === sectionName) ?? listeners[0];
@@ -143,5 +134,4 @@ export async function discoverKubernetes(opts = {}) {
   return out;
 }
 
-/** Whether kubernetes.yaml turns discovery on (in the cluster, or with a kubeconfig). */
 export const kubernetesOn = (config) => ['cluster', 'default'].includes(config?.mode);

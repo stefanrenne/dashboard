@@ -12,7 +12,6 @@ import { parseDocument, documentText } from './config/edit.js';
 import { mergeDiscovered } from './discovery/index.js';
 import { buildState } from './layout.js';
 
-/** The given { name: text } that are homepage's files, or null when there are none. */
 export function homepageFiles(files) {
   const given = Object.fromEntries(Object.entries(files && typeof files === 'object' ? files : {}).filter(([k, v]) => HOMEPAGE_FILES.includes(k) && typeof v === 'string'));
   return Object.keys(given).length ? given : null;

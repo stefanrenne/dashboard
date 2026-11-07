@@ -17,14 +17,12 @@ export const FILES = ['public/index.html', 'public/setup.js', 'public/login.js',
 
 const block = (src) => /const I18N = (\{[\s\S]*?\n\});/.exec(src);
 
-/** The I18N object of a page file. */
 export function readI18n(file) {
   const m = block(fs.readFileSync(path.join(ROOT, file), 'utf8'));
   if (!m) throw new Error(`${file}: no const I18N`);
   return new Function(`return ${m[1]}`)();
 }
 
-/** Per file and language, the keys it lacks with their English text. */
 export function missing() {
   const out = {};
   for (const file of FILES) {
@@ -56,11 +54,9 @@ export function apply(file, langs) {
     const at = lines.findIndex((l) => head.test(l));
     if (at < 0) throw new Error(`${file}: no language ${lang}`);
     if (/\},?\s*$/.test(lines[at]) && lines[at].includes('{"')) {
-      // all on its head line
       const [, pre, json] = /^(.*?: )(\{.*\}),?\s*$/.exec(lines[at]);
       lines[at] = `${pre}${JSON.stringify({ ...JSON.parse(json), ...fresh })},`;
     } else if (/^\s*"/.test(lines[at + 1] ?? '') && /^ {2}\},?$/.test(lines[at + 2] ?? '')) {
-      // the texts as one line of "key": "value" pairs below the head
       const pairs = Object.entries(fresh).map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(', ');
       lines[at + 1] = `${lines[at + 1].replace(/,?\s*$/, '')}, ${pairs}`;
     } else {
@@ -69,7 +65,6 @@ export function apply(file, langs) {
     }
   }
   fs.writeFileSync(full, lines.join('\n'));
-  // it still parses, and has what was added
   const after = readI18n(file);
   for (const [lang, add] of Object.entries(langs)) for (const k of Object.keys(add)) if (k in known.en && !(k in after[lang])) throw new Error(`${file}: ${lang}.${k} not added`);
 }

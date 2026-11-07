@@ -10,7 +10,6 @@ import { validateOptions } from './options.js';
 const DEFAULT_TIMEOUT_MS = 10_000;
 // the most an action may take; a widget keeps its own, shorter limit (the button's `timeout`)
 export const ACTION_TIMEOUT_MS = 60 * 60 * 1000;
-// what an action shows is cut to this many characters (the end is kept)
 const ACTION_OUTPUT_MAX = 64 * 1024;
 // After an action, the other instances on its card answer fresh for a while (the page asks right
 // away, after 5 and after 30 seconds): their results are kept this short meanwhile.
@@ -47,7 +46,6 @@ export class WidgetRuntime {
     this.attributeWarnings = new Set(); // widget types already warned about an attribute they did not declare
   }
 
-  /** Replaces the set of instances; keeps ctx.cache stores of instances that still exist. */
   setInstances(instances, registry = this.registry, secrets = this.secrets) {
     this.registry = registry;
     this.instances = instances;
@@ -119,7 +117,6 @@ export class WidgetRuntime {
     const settling = this.settling.get(instanceId);
     // a run that began before an action on the card ended may hold the old state: not kept
     if (this.instances.get(instanceId) === instance && (settling?.round ?? 0) === round) {
-      // many viewers' params could pile up: drop what has expired once the cache grows
       if (this.cache.size > 500) for (const [k, v] of this.cache) if (v.expires <= this.now()) this.cache.delete(k);
       const keep = settling && settling.until > this.now() ? Math.min(instance.refreshMs, SETTLE_CACHE_MS) : instance.refreshMs;
       this.cache.set(key, { result, expires: this.now() + keep });
@@ -185,10 +182,6 @@ export class WidgetRuntime {
     };
   }
 
-  /**
-   * Calls a widget's `kind` ('fetch' or 'action') with its ctx: in the worker for an installed
-   * widget when there is a sandbox, else in this process; given up after `timeoutMs`.
-   */
   async #call(kind, instanceId, instance, widget, { params = {}, timeoutMs }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new Error(`timed out after ${timeoutMs} ms`)), timeoutMs);
@@ -289,7 +282,6 @@ function unixSocketFetch(pathAndQuery, { socketPath, method = 'GET', headers = {
   });
 }
 
-/** Validates what a widget returned; throws with a message meant for the widget author. */
 export function checkData(data) {
   if (typeof data !== 'object' || Array.isArray(data)) throw new Error('fetch() must return an object');
   if (data.status !== undefined && !SERVICE_STATUSES.includes(data.status)) {
@@ -320,7 +312,6 @@ export function checkData(data) {
   return data;
 }
 
-/** `vars` fill `{name}` placeholders in a translated label: a map of text or numbers. */
 function checkVars(vars, where) {
   if (vars === undefined) return;
   if (typeof vars !== 'object' || vars === null || Array.isArray(vars)) throw new Error(`${where}: vars must be a map`);
@@ -387,8 +378,6 @@ export function describeError(err) {
   return cause && !message.includes(cause) ? `${message} (${cause})` : message;
 }
 
-/** Removes secret values from a message before it is logged or sent to the browser. */
-/** What an action returned, as the page shows it: status, output (its end), exit code, error; secrets scrubbed. */
 function actionResult(data, secrets = []) {
   const d = data && typeof data === 'object' ? data : {};
   const out = { status: d.status === 'ok' ? 'ok' : 'error' };

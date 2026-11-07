@@ -61,10 +61,6 @@ export async function discoverDocker(server) {
   return servicesFromContainers(containers, server);
 }
 
-/**
- * Whether each Docker server answers: its version and number of containers, or the error, with
- * a hint for a socket the dashboard may not use.
- */
 export async function checkDocker({ servers, get }) {
   return Promise.all(servers.map(async (s) => {
     const target = s.socket ?? s.url;

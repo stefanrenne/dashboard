@@ -34,11 +34,7 @@ export function parseConfigYaml(text) {
 
 const join = (p, key) => (typeof key === 'number' ? `${p}[${key}]` : p ? `${p}.${key}` : String(key));
 
-/**
- * The file an include in `from` names: { name (relative to the config folder), full } or
- * { error }. Paths are relative to the including file, end in .yaml or .yml and stay inside the
- * config folder (checked on the resolved path).
- */
+/** The file an include in `from` names: { name (relative to the config folder), full } or { error }. */
 function includeTarget(configDir, from, inc) {
   if (!inc.file) return { error: 'expected a file name' };
   if (path.isAbsolute(inc.file)) return { error: 'use a path relative to this file, inside the config folder' };

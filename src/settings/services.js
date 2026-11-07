@@ -21,7 +21,6 @@ function fieldsOf(map) {
   }));
 }
 
-/** Sets the fields the page sent in a service's map, where they changed. */
 function setFields(map, fields, at) {
   for (const [key, kind] of Object.entries(SERVICE_FIELDS)) {
     if (!fields || !(key in fields)) continue;

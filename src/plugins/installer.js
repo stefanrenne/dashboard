@@ -34,7 +34,6 @@ const GIT_URL = /^(https?:\/\/|ssh:\/\/|file:\/\/|git@)[^\s]+$/;
 const NPM_NAME = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/;
 const COMMIT = /^[0-9a-f]{40}$/;
 const PINNED_REF = /^([0-9a-f]{40}|v?\d+\.\d+\.\d+([-+][\w.-]+)?)$/;
-// the name of a git repository from its URL: https://github.com/a/widgets.git → widgets
 const repoName = (url) => path.basename(url.replace(/\/+$/, '')).replace(/\.git$/, '');
 const PINNED_VERSION = /^\d+\.\d+\.\d+([-+][\w.-]+)?$/;
 const RELEASE_TAG = /^v?(\d+)\.(\d+)\.(\d+)$/;
@@ -47,7 +46,6 @@ export const DEFAULT_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/da
 // it is checked like any other (pluginUpdateInterval), without the warning for not being pinned.
 const DEVELOP_PLUGINS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#develop', label: 'widgets', followsBranch: true }];
 
-/** The default plugins for a dashboard of this version: the develop branch for a develop build. */
 export function defaultPluginsFor(version) {
   return String(version).startsWith('develop-') ? DEVELOP_PLUGINS : DEFAULT_PLUGINS;
 }
@@ -85,7 +83,6 @@ export function parseSource(entry) {
   throw new Error(`"${source}": a source starts with "git+" or "npm:"`);
 }
 
-/** A git URL without scheme noise, for comparing two sources of the same repository. */
 function repoOf(entry) {
   const source = typeof entry.source === 'string' ? entry.source : '';
   if (!source.startsWith('git+')) return null;
@@ -141,7 +138,6 @@ function writeLock(configDir, plugins) {
   fs.writeFileSync(file, text);
 }
 
-/** A local folder's version: its widget.yaml (one widget) or package.json (a collection), else null. */
 function localVersion(dir) {
   try {
     if (fs.existsSync(path.join(dir, 'widget.yaml'))) return readManifest(dir).version ?? null;
@@ -217,7 +213,6 @@ export async function syncPlugins({ configDir, entries, update = false, keepUnus
       }
       const locked = lock[src.key];
       const lockedHere = Boolean(locked?.dir && fs.existsSync(path.join(pluginsRoot, locked.dir)));
-      // a #latest locked below the release this dashboard needs is updated, as with `update`
       const behind = Boolean(src.latest && entry.atLeast && locked?.tag && olderTag(locked.tag, entry.atLeast));
       if (behind) log.info(`plugins: ${label} is locked at ${locked.tag}, this dashboard needs ${entry.atLeast} or newer; updating`);
       const refresh = update === true || (update === 'moving' && (src.latest || src.floating)) || behind;
@@ -232,7 +227,6 @@ export async function syncPlugins({ configDir, entries, update = false, keepUnus
           log.info(`plugins: installed ${label} as ${record.dir}`);
         } catch (err) {
           if (!lockedHere) throw err;
-          // an update that fails (offline, a bad release) keeps the version that worked
           errors.push({ source: label, message: `update failed, keeping ${locked.dir}: ${err.message}` });
           record = locked;
         }
@@ -276,7 +270,6 @@ function removeUnlocked(pluginsRoot, lock, log, warnings) {
   }
 }
 
-/** The widget folders of a package: the package itself, or the widgets of a collection. */
 function collectionDirs(root) {
   return [...widgetDirs(root), ...widgetDirs(path.join(root, 'widgets'))];
 }
@@ -303,10 +296,6 @@ function freshTmp(pluginsRoot) {
   return fs.mkdtempSync(path.join(tmp, 'x-'));
 }
 
-/**
- * Moves an unpacked package into place and returns that folder name: <id>@<version> for a
- * widget, `collectionName` for a collection.
- */
 function place(pkgRoot, subdir, pluginsRoot, collectionName) {
   const widgetDir = subdir ? safeJoin(pkgRoot, subdir) : pkgRoot;
   if (!widgetDir) throw new Error(`subdir "${subdir}" is outside the package`);
@@ -350,21 +339,17 @@ export async function pluginUpdates({ configDir, entries, run = defaultRun }) {
   return news;
 }
 
-// a release tag's [major, minor, patch], or undefined (pre-releases are no release)
 const tagVersion = (tag) => RELEASE_TAG.exec(String(tag))?.slice(1).map(Number);
-/** <0, 0 or >0 as release tag `a` is older than, the same as or newer than `b`. */
 const compareTags = (a, b) => {
   const [x, y] = [tagVersion(a), tagVersion(b)];
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i];
   return 0;
 };
 
-/** True when release tag `tag` is older than `min` (both v1.2.3 or 1.2.3). */
 export function olderTag(tag, min) {
   return Boolean(tagVersion(tag) && tagVersion(min)) && compareTags(tag, min) < 0;
 }
 
-/** The highest release tag (v1.2.3 or 1.2.3, no pre-releases) out of `names`, or undefined. */
 export function latestTag(names) {
   return names.filter(tagVersion).reduce((best, name) => (best === undefined || compareTags(name, best) > 0 ? name : best), undefined);
 }

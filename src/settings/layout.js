@@ -24,7 +24,6 @@ function entriesOf(raw) {
   return isMap(raw) ? Object.entries(raw) : [];
 }
 
-/** A group's settings as the form shows them. */
 function formOf(v, nested = false) {
   const o = isMap(v) ? v : {};
   const tri = (x) => (typeof x === 'boolean' ? String(x) : '');
@@ -115,7 +114,6 @@ function fileValue(key, v) {
   return v === '' ? undefined : v;
 }
 
-/** Sets a group's keys in `map` (a YAML map node); returns whether anything differs from before. */
 function applyKeys(doc, map, g, keys) {
   for (const [key] of keys) {
     if (!(key in g)) continue;
@@ -153,7 +151,6 @@ export function writeLayout(configDir, groups, known) {
     else node.set(name, doc.createNode({}));
     return find(name);
   };
-  // a group's settings map, made when needed
   const settingsOf = (entry) => {
     if (list && !entry.pair) {
       const item = doc.createNode({ [entry.name]: {} });

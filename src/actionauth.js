@@ -12,7 +12,7 @@ export const COOKIE = 'dash_unlock';
 const PASSWORD_HEADER = 'x-dashboard-password';
 const PASSKEY_HEADER = 'x-dashboard-passkey'; // a one-time token from a passkey check (src/passkeys.js)
 const DEFAULT_REMEMBER_MS = 15 * 60 * 1000;
-const FREE_FAILURES = 5; // then a wait, doubled each time
+const FREE_FAILURES = 5;
 const FIRST_WAIT_MS = 30_000;
 const MAX_WAIT_MS = 15 * 60 * 1000;
 const SCRYPT = SCRYPT_HASH;
@@ -39,7 +39,6 @@ export async function checkPassword(password, given) {
   return crypto.timingSafeEqual(got, expected);
 }
 
-/** A loopback connection that no proxy passed on: a script inside the container (curl 127.0.0.1). */
 /** A short fingerprint of a password (its stored form), so a new password ends the sessions of the old one. */
 export function passwordFingerprint(password) {
   return password?.value ? crypto.createHash('sha256').update(`dash-session:${password.value}`).digest('hex').slice(0, 32) : '';
@@ -47,10 +46,7 @@ export function passwordFingerprint(password) {
 
 
 
-/**
- * Wrong tries per address: FREE_FAILURES free, then a wait of FIRST_WAIT_MS that doubles up to
- * MAX_WAIT_MS. Shared by the admin password and the onboarding code.
- */
+/** Wrong tries per address; shared by the admin password and the onboarding code. */
 export class FailureLimiter {
   constructor(now = Date.now) {
     this.now = now;
@@ -143,7 +139,6 @@ export class ActionGate {
     if (retryAfter) return { ok: false, status: 429, body: { ok: false, needsPassword: true, retryAfter, error: 'too many wrong passwords' } };
     const passkeyToken = req.headers[PASSKEY_HEADER];
     if (passkeyToken !== undefined) {
-      // a token from a passkey check that succeeded just before; single use
       if (!this.passkeys?.consume(String(passkeyToken))) return { ok: false, status: 401, body: { ok: false, needsPassword: true, always: requirement === 'always', error: 'the passkey check expired; try again' } };
       const cookie = requirement === 'password' ? this.#unlockCookie(req, base) : null;
       return { ok: true, headers: cookie ? { 'set-cookie': cookie } : {} };

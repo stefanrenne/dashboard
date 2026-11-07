@@ -37,6 +37,6 @@ if [ "$(id -u)" = 0 ]; then
 fi
 
 # Started as another user: the same marker when it can write the empty /config. The setup
-# wizard (src/onboarding.js) removes it once it has written the config.
+# wizard (src/onboarding/wizard.js) removes it once it has written the config.
 if [ -z "$(ls -A /config 2>/dev/null)" ]; then : > /config/.onboarding 2>/dev/null || echo "/config is empty and not writable for $(id -u): the setup wizard cannot start" >&2; fi
 exec node /app/src/server.js "$@"

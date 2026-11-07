@@ -77,7 +77,6 @@ const pathOf = (key) => FIELDS[key].at ?? [key];
 const getIn = (obj, at) => at.reduce((o, k) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? o[k] : undefined), obj);
 
 
-/** A field's value as the form shows it, from the file's value `v`. */
 function formValue(def, v) {
   switch (def.type) {
     case 'string': case 'url': return typeof v === 'string' ? v : typeof v === 'number' ? String(v) : def.default ?? '';
@@ -97,7 +96,6 @@ export function readSettings(configDir) {
   const raw = doc.toJS() ?? {};
   const values = {};
   for (const [key, def] of Object.entries(FIELDS)) values[key] = formValue(def, getIn(raw, pathOf(key)));
-  // the forms that need more than one path
   values.title = typeof raw.title === 'string' ? raw.title : DEFAULTS.title;
   if (typeof raw.background === 'string') values.backgroundImage = raw.background;
   values.allowedHosts = Array.isArray(raw.allowedHosts) ? raw.allowedHosts.map(String) : typeof raw.allowedHosts === 'string' ? raw.allowedHosts.split(',').map((h) => h.trim()).filter(Boolean) : [];
@@ -108,7 +106,6 @@ export function readSettings(configDir) {
   return { values, other: Object.keys(raw).filter((k) => !known.has(k)), hasPassword: typeof raw.adminPassword === 'string' && raw.adminPassword !== '' };
 }
 
-/** Checks one value; { value } cleaned up, or { error }. */
 function checkValue(key, def, v) {
   if (def.type === 'string' || def.type === 'url') {
     const max = def.max ?? 200;
@@ -147,7 +144,7 @@ function checkValue(key, def, v) {
     for (const [i, item] of v.entries()) {
       if (!item || typeof item !== 'object') return { error: `${key}[${i}]: expected ${def.required.join(' and ')}` };
       const clean = Object.fromEntries(def.keys.map((k) => [k, typeof item[k] === 'string' ? item[k].trim().slice(0, 300) : '']));
-      if (def.keys.every((k) => clean[k] === '')) continue; // an empty row
+      if (def.keys.every((k) => clean[k] === '')) continue;
       if (def.required.some((k) => clean[k] === '')) return { error: `${key}[${i}]: ${def.required.join(' and ')} needed` };
       out.push(clean);
     }
@@ -169,7 +166,6 @@ export function checkSettings(input) {
   return { values: out };
 }
 
-/** Removes the map at `at` (and its parents) when it became empty. */
 function prune(doc, at) {
   for (let n = at.length - 1; n >= 1; n--) {
     const node = doc.getIn(at.slice(0, n));
@@ -178,7 +174,6 @@ function prune(doc, at) {
   }
 }
 
-/** Sets `value` at `at`; makes the maps on the way when they are not maps yet. */
 function setIn(doc, at, value) {
   for (let n = 1; n < at.length; n++) if (!YAML.isMap(doc.getIn(at.slice(0, n)))) doc.setIn(at.slice(0, n), doc.createNode({}));
   doc.setIn(at, value);
@@ -264,7 +259,6 @@ function writeBackground(doc, values) {
   } else doc.set('background', doc.createNode(raw));
 }
 
-/** Writes a new admin password's hash into settings.yaml. */
 export function writeAdminPassword(configDir, hash) {
   const yaml = openYaml(configDir, FILE, { shape: 'map' });
   yaml.doc.set('adminPassword', hash);

@@ -101,7 +101,6 @@ export async function scanContainers({ servers, widgets, host, get, selfId = os.
     } catch {
       // an older API or a proxy without NETWORKS=1: no links to own addresses
     }
-    // the dashboard's own networks, when it runs in a container of this server
     let mine = new Set();
     try {
       mine = new Set(Object.keys((await get(server, `/containers/${encodeURIComponent(selfId)}/json`)).NetworkSettings?.Networks ?? {}));
@@ -265,14 +264,12 @@ export class Onboarding {
     return fs.existsSync(this.marker);
   }
 
-  /** At start: a code for this run, in the log with how to open the wizard. */
   announce(url) {
     if (!this.active) return;
     this.code = newCode();
     this.log.info(`first start: open ${url}/setup to set up the dashboard. From outside your local network it asks for this code: ${this.code}`);
   }
 
-  /** May this request use the wizard? Local, or a session from the code. */
   allowed(req) {
     if (isLocal(req)) return true;
     const token = cookieValue(req, COOKIE);
@@ -292,8 +289,8 @@ export class Onboarding {
   }
 
   /**
-   * Writes the files (each to a temporary name, then renamed), refusing all of them when one
-   * exists already, and removes the marker. { ok, written } or { ok: false, exists: [...] }.
+   * Writes the files, refusing all of them when one exists already, and removes the marker.
+   * { ok, written } or { ok: false, exists: [...] }.
    */
   finish(files) {
     const exists = Object.keys(files).filter((f) => fs.existsSync(path.join(this.configDir, f)));

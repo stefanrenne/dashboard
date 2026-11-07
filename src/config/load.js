@@ -115,7 +115,6 @@ function parseFile(dir, file, text, opts, out) {
     out.errors.push({ file, path: line ? `line ${line}` : '', message: err.message.split('\n')[0] });
     return undefined;
   }
-  // includes first, so variables and secrets in included files are handled the same way
   parsed = resolveIncludes(parsed, { configDir: dir, file, errors: out.errors, overrides: opts.overrides });
   const sub = substitute(parsed, opts);
   for (const s of sub.secrets) out.secrets.add(s);
@@ -203,7 +202,6 @@ function normalizeSettings(raw, ctx) {
   const settings = { ...DEFAULT_SETTINGS, ...raw };
   settings.discovery = { ...DEFAULT_SETTINGS.discovery, ...(isPlainObject(raw.discovery) ? raw.discovery : {}) };
   if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
-  // a value from its list; an unknown one falls back to the default, or is left out without one
   for (const [key, values] of SETTING_CHOICES) {
     if (settings[key] === undefined || values.includes(settings[key])) continue;
     const fallback = DEFAULTS[key];
@@ -419,7 +417,6 @@ export function normalizeService(name, def, file, p, ctx) {
       if (Number.isFinite(Number(v))) service[key] = Number(v);
       else ctx.warn(file, `${p}.${key}`, 'expected a number, ignored');
     } else if (kind === 'filter') {
-      // hides the card while true; parsed here, bound to the service's widgets in layout.js
       try {
         if (typeof v !== 'string') throw new Error('expected an expression, such as widget.update == false');
         service.filter = parseFilter(v);

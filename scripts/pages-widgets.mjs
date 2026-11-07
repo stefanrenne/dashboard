@@ -12,7 +12,6 @@ import { exampleEntry } from './widget-images.mjs';
 
 const COLLECTION = 'https://github.com/stefanrenne/dashboard-widgets';
 
-/** The widget folders (with a widget.yaml) directly in `dir`, sorted. */
 export function widgetFolders(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -21,7 +20,6 @@ export function widgetFolders(dir) {
     .map((d) => path.join(dir, d));
 }
 
-/** Options from widget.yaml, each with the comment at the end of its line as description. */
 /** The line comments of the keys directly under a top-level `section:` of widget.yaml. */
 function lineComments(yamlText, section) {
   const comments = {};
@@ -40,6 +38,7 @@ export function attributeRows(yamlText) {
   return Object.entries(YAML.parse(yamlText).attributes ?? {}).map(([name, def]) => ({ name, type: def?.type, description: comments[name] ?? '' }));
 }
 
+/** Options from widget.yaml, each with the comment at the end of its line as description. */
 export function optionRows(yamlText) {
   const manifest = YAML.parse(yamlText);
   const comments = lineComments(yamlText, 'options');
@@ -100,7 +99,6 @@ export function widgetPage(dir, source, image = null) {
   const also = (manifest.aliases ?? []).map((a) => ` (or \`${a}\`)`).join('');
   const info = `\`type: ${id}\`${also} · version ${manifest.version} · widget API ${manifest.apiVersion} · ${where}\n{: .fs-3 .text-grey-dk-000 }\n` +
     (image ? `\n![${manifest.name} with example data](${image})\n` : '');
-  // the README's own sections, renamed for the page: what it shows, and what a filter can read
   const [title, ...rest] = readme.split('\n');
   let body = rest.join('\n').replace(/^## Fields$/m, '## Display fields');
   const fields = displayFields(body, manifest);
@@ -120,7 +118,6 @@ export function widgetPage(dir, source, image = null) {
     : '';
   const options = `## Configuration options\n\n${optionsTable(optionRows(yamlText))}\nEvery widget also takes \`refresh\` (or \`refreshInterval\` in ms), \`fields\` and \`hideErrors\`; see [Services](../../configuration/services.html).\n${filterAttributes}`;
 
-  // the options and filter attributes go before ## Example, or at the end
   const example = body.search(/^## Example/m);
   body = example === -1 ? `${body.trimEnd()}\n\n${options}` : `${body.slice(0, example)}${options}\n${body.slice(example)}`;
   const kind = exampleEntry(dir, 'http://example.lan')?.kind === 'header' ? 'header' : 'service';

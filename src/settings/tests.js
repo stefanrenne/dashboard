@@ -2,8 +2,6 @@
 // and how many services discovery finds) and a Proxmox node (its version, with the API token).
 // Errors never carry a secret (the caller scrubs them too).
 
-import http from 'node:http';
-import https from 'node:https';
 import { k8sGet, discoverKubernetes, kubernetesOn } from '../discovery/kubernetes.js';
 import { k8sConnection } from '../discovery/kubeconfig.js';
 import { getJson } from '../http.js';

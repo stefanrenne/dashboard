@@ -29,7 +29,6 @@ function widgetForm(map, type, schemaFor) {
   return { type, options, hidden: Object.keys(options).filter((k) => isHidden(options[k])), rest: Object.keys(o).filter((k) => k !== 'type' && !(k in options)) };
 }
 
-/** Sets the options the page sent in `map`, where they changed. Returns the warnings. */
 function applyOptions(map, w, schemaFor, at, file) {
   const warnings = [];
   const schema = schemaFor(w.type) ?? {};

@@ -64,7 +64,6 @@ export function readManifest(dir) {
 }
 
 const ATTRIBUTE_TYPES = ['boolean', 'number', 'string'];
-// `from:` sources other than a block key, with the type they give
 const ATTRIBUTE_SOURCES = { '@attention': 'boolean', '@status': 'string', '@rows': 'number' };
 const ATTRIBUTE_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
@@ -89,10 +88,6 @@ function checkAttributes(attributes) {
   return problems;
 }
 
-/**
- * Loads one widget folder. Throws with a readable message when the package is broken
- * or needs a widget API version this core does not support.
- */
 export async function loadWidget(dir, { source = 'builtin' } = {}) {
   const manifest = readManifest(dir);
   if (manifest.apiVersion === 1) {
@@ -142,7 +137,6 @@ export async function loadWidget(dir, { source = 'builtin' } = {}) {
   };
 }
 
-/** Lists the widget folders directly inside `root` (folders that contain widget.yaml). */
 export function widgetDirs(root) {
   if (!root) return [];
   let entries;

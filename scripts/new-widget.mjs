@@ -13,7 +13,6 @@ const TEMPLATE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const ID = /^[a-z0-9][a-z0-9-]{0,62}$/; // as src/plugins/loader.js
 const SKIP = new Set(['node_modules', '.git']);
 
-/** Renames the template's widget in every text file under `dir`. */
 export function renameWidget(dir, id, name = id.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase())) {
   if (!ID.test(id)) throw new Error(`"${id}" is not a widget id: lowercase letters, digits and dashes`);
   const pascal = id.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('').replace(/^(\d)/, 'W$1');

@@ -19,7 +19,6 @@ export class Discovery {
     this.signature = '';
   }
 
-  /** (Re)configures from the loaded config and runs a first poll. */
   async configure(config) {
     this.stop();
     this.config = config;

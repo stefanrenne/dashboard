@@ -24,7 +24,6 @@ export function splitFiles(block) {
   return files;
 }
 
-/** The first service in a services.yaml list (nested groups too) with a widget of one of `types`. */
 function findService(groups, types) {
   for (const group of groups ?? []) {
     for (const items of Object.values(group ?? {})) {
@@ -92,7 +91,6 @@ export function exampleEntry(dir, mockUrl, required = null) {
 
 // Examples that need other options to look like a homelab: this machine's disks, or an icon from a
 // CDN instead of one in the user's own icons folder.
-const SKIP = new Set();
 const OPTIONS = { resources: { cpu: true, memory: true, disk: ['/'], uptime: true }, logo: { icon: 'proxmox.svg' } };
 
 // Widgets that show another page or a camera get a made-up one from a small local server.
@@ -141,7 +139,6 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   const { createApp } = await import('../src/app.js');
   const { startMock } = await import(path.join(collectionDir, 'scripts/mock-homelab.mjs'));
   const mock = await startMock();
-  // the collection's fake services and per-widget options (scripts/fakes.mjs), when it has them
   const fakesFile = path.join(collectionDir, 'scripts/fakes.mjs');
   const { startFakes, exampleOptions } = fs.existsSync(fakesFile) ? await import(fakesFile) : {};
   const fakes = startFakes ? await startFakes() : null;
@@ -156,13 +153,11 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   const widgetsDir = path.join(collectionDir, 'widgets');
   const ids = fs.readdirSync(widgetsDir).filter((d) => fs.existsSync(path.join(widgetsDir, d, 'widget.yaml'))).sort();
   const hasServer = (id) => fs.existsSync(path.join(widgetsDir, id, 'server.js'));
-  // one service per widget, under the example's name (made unique), or a header widget
   const services = new Map(); // id -> { name, href, icon, widget }
   const names = new Set();
   const header = new Map(); // id -> entry
   const providers = {};
   for (const id of ids) {
-    if (SKIP.has(id)) continue;
     const example = exampleEntry(path.join(widgetsDir, id), mock.url, required ? required[id] ?? {} : null);
     if (!example) continue;
     if (OPTIONS[id] && example.kind === 'header') example.entry = { [Object.keys(example.entry)[0]]: OPTIONS[id] };
@@ -188,7 +183,6 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   const quiet = { info() {}, warn() {}, error() {} };
   const app = await createApp({ configDir, log: quiet, defaultPlugins: [{ path: collectionDir, label: 'widgets' }], dockerSocket: null, releasesUrl: null });
 
-  // which widgets got data, by widget id: the others are left without an image
   const instanceOf = () => new Map([
     ...app.layout.groups.flatMap((g) => g.services.map((s) => [[...services].find(([, e]) => e.name === s.name)?.[0], s.widgets[0]])),
     ...app.layout.header.map((w) => [[...header].find(([, e]) => Object.keys(e)[0] === w.type)?.[0] ?? w.type, w]),

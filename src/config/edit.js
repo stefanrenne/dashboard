@@ -93,7 +93,6 @@ const key = (m) => `${m.file}\u0000${m.path}\u0000${m.message}`;
 export function checkConfigText(configDir, file, text, opts = {}) {
   configPath(configDir, file);
   if (CUSTOM_FILES.includes(file)) return { errors: [], warnings: [] };
-  // an included file is checked as part of the config file it ends up in
   const { root } = editableFile(configDir, file);
   const name = root.replace(/\.yaml$/, '');
   const rootText = readConfigFile(configDir, root).text;
@@ -140,7 +139,6 @@ export function listHistory(configDir, file) {
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
 
-/** The text of a kept version of `file`. */
 export function readHistory(configDir, file, id) {
   if (!listHistory(configDir, file).some((v) => v.id === id)) throw new ConfigEditError(`${file}: no such earlier version`, 404);
   return fs.readFileSync(path.join(historyDir(configDir, file), id), 'utf8');

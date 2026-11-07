@@ -7,7 +7,6 @@
 import fs from 'node:fs';
 import { PLUGINS_DIR } from './schema.js';
 
-/** Whether a change to `filename` (relative to the config dir) should reload the config. */
 export function isConfigChange(filename) {
   if (!filename) return true;
   const parts = String(filename).split(/[\\/]/);
@@ -16,7 +15,6 @@ export function isConfigChange(filename) {
 
 const FALLBACK_POLL_MS = 5000;
 
-/** "path size mtime" of every YAML file under `dir` (plugins/ left out), as one string. */
 function snapshot(dir, rel = '') {
   let entries;
   try {

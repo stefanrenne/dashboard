@@ -18,7 +18,7 @@ const { values } = parseArgs({
 });
 
 const configDir = path.resolve(values.config);
-const log = createLogger(); // stdout, and a file when settings.yaml has logpath
+const log = createLogger();
 
 const app = await createApp({ configDir, log, watch: true });
 // the last line of defence: a request that fails is answered and logged, never ends the process
@@ -36,7 +36,6 @@ server.requestTimeout = 30_000;
 server.maxConnections = 2000;
 server.listen(Number(values.port), values.host, () => {
   log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
-  // a first install: where the wizard is, and the code it asks from outside the local network
   const shown = ['0.0.0.0', '::'].includes(values.host) ? '<this server>' : values.host;
   app.onboarding.announce(`http://${shown}:${values.port}`);
 });

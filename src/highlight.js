@@ -65,7 +65,6 @@ export function numberIn(value) {
   const dots = (token.match(/\./g) ?? []).length;
   let plain = token;
   if (commas && dots) {
-    // the later separator is the decimal one
     plain = token.lastIndexOf(',') > token.lastIndexOf('.') ? token.replace(/\./g, '').replace(',', '.') : token.replace(/,/g, '');
   } else if (commas || dots) {
     const sep = commas ? ',' : '.';

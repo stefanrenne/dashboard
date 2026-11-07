@@ -70,7 +70,6 @@ async function init() {
     }
     $('passkey').disabled = false;
   });
-  // a passkey for this host: ask for it at once; cancelled, the password and the button stay
   if (!$('passkey').hidden && !info.broken) $('passkey').click();
   $('login').addEventListener('submit', async (e) => {
     e.preventDefault();

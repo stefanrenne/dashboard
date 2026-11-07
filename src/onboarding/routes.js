@@ -1,6 +1,7 @@
 // The setup wizard's routes: /setup, /setup.js and /api/onboarding/*, while the config folder is
 // new (wizard.js: the marker, the one-time code). It shows the Docker servers and running
 // containers, tries widgets, reads homepage's files, and at the end writes the config files.
+// Everything but the page and its state needs the local network or the code from the log.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,7 +58,6 @@ export function onboardingRoutes(app) {
     if (typeof sec.adminPassword !== 'string' || sec.adminPassword.length < MIN_PASSWORD) {
       return { error: `security.adminPassword: at least ${MIN_PASSWORD} characters` };
     }
-    // checked as the settings page checks them
     const checked = checkSettings({
       title: typeof s.title === 'string' ? s.title.slice(0, 100) : '', allowedHosts: Array.isArray(sec.allowedHosts) ? sec.allowedHosts : [],
       ...Object.fromEntries(['language', 'theme', 'color'].filter((k) => s[k] !== undefined).map((k) => [k, s[k]])),

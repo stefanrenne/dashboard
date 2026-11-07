@@ -94,7 +94,6 @@ export class Passkeys {
     return this.list.filter((p) => p.rpId === rpId).map(({ id, name, created, lastUsed }) => ({ id, name, created, lastUsed: lastUsed ?? null }));
   }
 
-  /** Whether a passkey can be used on this request: https and at least one passkey for its host. */
   available(req) {
     const rp = rpContext(req);
     return Boolean(rp && this.list.some((p) => p.rpId === rp.rpId));
@@ -151,7 +150,6 @@ export class Passkeys {
     return { ok: true, passkey: { id, name, created: passkey.created, lastUsed: null } };
   }
 
-  /** Removes a passkey; whether there was one. */
   remove(id) {
     const before = this.list.length;
     this.list = this.list.filter((p) => p.id !== id);
@@ -216,7 +214,6 @@ export class Passkeys {
     return until > this.now();
   }
 
-  /** A problem with clientDataJSON, or null. */
   #checkClient(raw, type, purpose, rp) {
     let data;
     try {

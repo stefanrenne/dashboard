@@ -43,10 +43,7 @@ export const SECURITY_HEADERS = securityHeaders();
 
 export const BODY_LIMIT = 1024 * 1024;
 
-/**
- * The request body as JSON: only `application/json`, at most `limit` bytes. Rejects with an
- * Error whose `status` is the answer to give (413, 415 or 400).
- */
+/** Rejects with an Error whose `status` is the answer to give (413, 415 or 400). */
 export function readJson(req, limit = BODY_LIMIT) {
   return new Promise((resolve, reject) => {
     const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -85,7 +82,6 @@ export function isPrivateAddress(address) {
   return a === '::1' || /^f[cd][0-9a-f]{2}:/.test(a) || /^fe[89ab][0-9a-f]:/.test(a);
 }
 
-/** The addresses a request passed through: X-Forwarded-For and Forwarded `for=`, in order. */
 function forwardedChain(req) {
   const out = [];
   for (const part of String(req.headers['x-forwarded-for'] ?? '').split(',')) if (part.trim()) out.push(part.trim());
@@ -103,13 +99,13 @@ export function isLocal(req) {
   return forwardedChain(req).every((a) => isPrivateAddress(a.replace(/^([\d.]+):\d+$/, '$1')));
 }
 
+/** A loopback connection that no proxy passed on: a script inside the container (curl 127.0.0.1). */
 export function isInternal(req) {
   const address = String(req.socket?.remoteAddress ?? '');
   const loopback = address === '::1' || address.startsWith('127.') || address.startsWith('::ffff:127.');
   return loopback && req.headers['x-forwarded-for'] === undefined && req.headers.forwarded === undefined;
 }
 
-/** The value of one cookie of a request, or null. */
 export function cookieValue(req, name) {
   for (const part of String(req.headers.cookie ?? '').split(';')) {
     const at = part.indexOf('=');
@@ -123,7 +119,6 @@ export const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(r
 /** The address the request came from, as the server sees it (a proxy is one address). */
 export const clientAddress = (req) => String(req.socket?.remoteAddress ?? 'unknown');
 
-/** A random token for a cookie or a challenge. */
 export const randomToken = () => crypto.randomBytes(32).toString('base64url');
 
 /** A Set-Cookie value: HttpOnly, Secure over https; `maxAge` in seconds (0 clears it, null: a session cookie). */
@@ -131,7 +126,6 @@ export function cookie(req, name, value, { path: where = '/', maxAge = null, sam
   return `${name}=${value}; Path=${where}${maxAge === null ? '' : `; Max-Age=${Math.round(maxAge)}`}; HttpOnly; SameSite=${sameSite}${secureRequest(req) ? '; Secure' : ''}`;
 }
 
-/** Sends `body` (JSON unless `type` says otherwise); never cached. */
 export function send(res, status, body, type = 'application/json', headers = SECURITY_HEADERS) {
   const data = type === 'application/json' ? JSON.stringify(body) : body;
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', ...headers });
@@ -183,7 +177,6 @@ export function hostAllowed(header, list) {
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-/** The page a refused host gets: what to set, with the name it was opened by. */
 export function hostRefusedPage(header, list) {
   const name = escapeHtml(hostName(header).slice(0, 100) || '(none)');
   const all = list.length ? `[${list.join(', ')}, ${name}]` : `[${name}]`;

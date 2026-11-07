@@ -17,7 +17,6 @@
 const OPS = ['==', '!=', '<=', '>=', '<', '>', '&&', '||', '!', '(', ')'];
 const COMPARE = ['==', '!=', '<', '<=', '>', '>='];
 
-/** The tokens of an expression: { t: 'op' | 'num' | 'str' | 'word', v, at }. Throws on a stray character. */
 function tokenize(text) {
   const tokens = [];
   let i = 0;
@@ -46,7 +45,6 @@ function tokenize(text) {
       i += num[0].length;
       continue;
     }
-    // a path: letters, digits, _ - . and [n]
     const word = /^[A-Za-z_][\w.-]*(\[\d+\][\w.-]*)*/.exec(text.slice(i));
     if (word) {
       tokens.push({ t: 'word', v: word[0], at: i });
@@ -145,7 +143,6 @@ export function parseFilter(text) {
   return tree;
 }
 
-/** Every reference in a tree, in order. */
 export function filterRefs(tree, out = []) {
   if (!tree || typeof tree !== 'object') return out;
   if (tree.ref) out.push(tree.ref);

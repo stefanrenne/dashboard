@@ -33,7 +33,6 @@ import { safeJoin, scrub } from './util.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
-// the browser code and styles the pages share
 const SHARED_FILES = ['common.js', 'theme.css'];
 const REPO_URL = 'https://github.com/stefanrenne/dashboard';
 /**
@@ -78,14 +77,12 @@ export async function createApp({
   eventStreams = EVENT_STREAMS,
 } = {}) {
   const sseClients = new Set();
-  // installed widgets run in a worker thread (src/plugins/sandbox.js) unless DASHBOARD_WIDGET_ISOLATION=off
   const sandbox = env.DASHBOARD_WIDGET_ISOLATION === 'off' ? null : new WidgetSandbox({ log, env, memoryMb: Number(env.DASHBOARD_WIDGET_MEMORY_MB) > 0 ? Number(env.DASHBOARD_WIDGET_MEMORY_MB) : undefined });
   const runtime = new WidgetRuntime({ registry: new Map(), log, timeoutMs, sandbox, configDir: path.resolve(configDir) });
   const state = { config: null, registry: new Map(), pluginResult: { errors: [], warnings: [] }, registryErrors: [], layout: null, actions: new Map(), frames: [], loginOn: false, hostsNoted: false, anyHostNoted: false };
   const updates = new UpdateCheck({ url: releasesUrl, log, onChange: () => state.config && rebuild() });
   const discovery = new Discovery({ log, env, onChange: () => state.config && rebuild(), ...discoveryOptions });
   let chain = Promise.resolve();
-  // the admin password is settings.yaml adminPassword only (a hash the settings page writes)
   if (['DASHBOARD_ADMIN_PASSWORD', 'DASHBOARD_ADMIN_PASSWORD_FILE', 'DASHBOARD_ACTION_PASSWORD', 'DASHBOARD_ACTION_PASSWORD_FILE'].some((k) => env[k] !== undefined)) {
     log.warn('DASHBOARD_ADMIN_PASSWORD (and _FILE, and the older DASHBOARD_ACTION_PASSWORD) are no longer read: the admin password is adminPassword in settings.yaml; set it on the settings page');
   }
@@ -125,9 +122,7 @@ export async function createApp({
     else updates.stop();
     const latest = checkUpdates ? updates.latest : null;
     const update = latest && isNewer(latest.version, VERSION) ? latest : null;
-    // the installed plugins (name and version) next to the version, behind the same setting
     const plugins = showVersion ? state.pluginResult.packages ?? [] : [];
-    // the login page needs an admin password; without one the page stays open, and says so
     state.loginOn = Boolean(state.config.settings.login?.required && gate.password);
     const messages = state.config.settings.login?.required && !gate.password
       ? { ...layout.messages, warnings: [...layout.messages.warnings, { file: 'settings.yaml', path: 'login', message: 'needs an admin password (set one on the settings page); the page opens without a login now' }] }
@@ -167,7 +162,6 @@ export async function createApp({
     return news;
   }
 
-  /** Reloads everything; calls are queued so two reloads never interleave. */
   function reload({ update = false } = {}) {
     chain = chain.then(async () => {
       const config = loadConfig(configDir, { env });
@@ -181,9 +175,8 @@ export async function createApp({
       for (const e of [...config.errors, ...pluginResult.errors, ...errors]) {
         log.warn(`config: ${e.file ?? e.source}${e.path ? ` ${e.path}` : ''}: ${e.message}`);
       }
-      await discovery.configure(config); // its first poll calls rebuild() when something was found
+      await discovery.configure(config);
       rebuild();
-      // the new widgets are live: the old versions' folders can go now (a failure is a warning)
       const warnings = pluginResult.warnings.length;
       pluginResult.removeUnused();
       if (pluginResult.warnings.length !== warnings) rebuild();
@@ -243,7 +236,6 @@ export async function createApp({
     const hosts = hostsNow();
     if (!hostAllowed(req.headers.host, hosts)) {
       log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts)`);
-      // a browser gets a page that says what to set; the API a short text
       if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
       return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to allowedHosts in settings.yaml`, 'text/plain; charset=utf-8');
     }
@@ -261,11 +253,9 @@ export async function createApp({
     const method = req.method === 'HEAD' ? 'GET' : req.method;
     if (method !== 'GET' && !fromThisPage(req)) return send(res, 403, { error: 'missing X-Requested-With' });
     try {
-      // a first load that failed (see the log) leaves no config: say so instead of failing each request
       if (!state.config && p !== '/api/health') {
         return send(res, 503, 'The dashboard could not load its configuration; see its log.', 'text/plain; charset=utf-8');
       }
-      // what every page loads (index, login, setup, settings): before the wizard and the login page
       if (method === 'GET' && SHARED_FILES.includes(p.slice(1))) return sendFile(res, path.join(publicDir, p.slice(1)));
       if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, { method, path: p });
       // a first install: the wizard first (docker/start.sh wrote the marker into the empty config folder)
@@ -273,7 +263,6 @@ export async function createApp({
         res.writeHead(302, { location: 'setup', 'cache-control': 'no-store', ...SECURITY_HEADERS });
         return res.end();
       }
-      // settings.yaml `login`: the admin password opens the page; a session is checked on the server
       const login = state.config?.settings.login;
       const { loginOn } = state;
       let loggedIn = false;
@@ -433,11 +422,6 @@ export async function createApp({
     return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) });
   }
 
-  /**
-   * The setup wizard and its API (src/onboarding.js), only while the config folder has the
-   * onboarding marker. Everything but the page and its state needs a visitor on the local
-   * network or the code from the log; what writes also needs the X-Requested-With header.
-   */
   /** Calls a `target: hidden-iframe` URL (configured, never from the request) and reports the outcome. */
   async function runAction(action) {
     const secrets = [...(state.config?.secrets ?? [])];

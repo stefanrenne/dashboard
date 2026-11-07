@@ -1,5 +1,6 @@
-// The setup wizard of a first install (/setup, see src/onboarding.js): basics, services from
-// the running containers, homepage's files, a security checklist, then it writes the config.
+// The setup wizard of a first install (/setup, see src/onboarding/wizard.js and routes.js): basics,
+// the Docker servers, services from the running containers (or homepage's files), a security
+// checklist, then it writes the config.
 // The YAML stays the source: this page only sends what you chose, the server writes the files.
 'use strict';
 
@@ -65,7 +66,6 @@ function applyTheme() {
 }
 
 // ---------------------------------------------------------------- frame
-/** Draws the step again; `newStep` moves the focus to its heading, otherwise the page stays where it is. */
 function render(newStep = false) {
   const y = window.scrollY ?? 0;
   applyTheme();
@@ -92,7 +92,6 @@ function actions(...extra) {
   if (state.step > 0) right.append(el('button', { type: 'button', text: t('back'), onclick: () => go(state.step - 1) }));
   if (state.step < STEPS.length - 1) {
     const next = el('button', { type: 'button', class: 'primary', text: t('next'), onclick: async () => {
-      // the services step only lets go when every ticked service is complete and answers
       if (state.step === 3) {
         state.securityShown = true;
         if (securityProblem()) return render();
@@ -151,10 +150,9 @@ function renderBasics() {
   ];
 }
 
-// ---------------------------------------------------------------- 2. services
+// ---------------------------------------------------------------- 3. services
 const widgetById = (id) => state.widgets.find((w) => w.id === id);
 
-/** The options a widget starts with: its defaults, and the URL the scan found. */
 function startOptions(widget, url) {
   const out = {};
   for (const [name, def] of Object.entries(widget?.options ?? {})) if (def.default !== undefined) out[name] = def.default;
@@ -235,7 +233,6 @@ function renderCard(card) {
   return box;
 }
 
-/** What a ticked service still misses: a name, a link, a required option; '' when complete. */
 function cardProblem(card) {
   if (!card.name.trim()) return t('needName');
   if (!/^https?:\/\/\S+$/.test(card.href.trim())) return t('needLink');
@@ -247,16 +244,12 @@ function cardProblem(card) {
   return '';
 }
 
-/**
- * Before the next step: every ticked service complete, and every widget tested (again, unless it
- * worked). The ones that fail are marked, with their error, and the page goes to the first one.
- */
 async function servicesReady() {
   const ticked = (state.cards ?? []).filter((c) => c.on);
   for (const c of ticked) {
     const problem = cardProblem(c);
     if (problem) c.result = { ok: false, text: problem };
-    else if (!c.type) c.result = null; // a link only: complete is enough
+    else if (!c.type) c.result = null;
   }
   state.blocked = false;
   state.checking = true;
@@ -321,7 +314,7 @@ async function checkDocker() {
   } catch (err) {
     state.dockerReport = { socketMounted: false, servers: [], errors: [err.message] };
   }
-  state.cards = null; // the services step scans again
+  state.cards = null;
   if (state.step === 1) render();
 }
 
@@ -430,7 +423,6 @@ function renderSecurity() {
   const sec = state.security;
   const problem = state.securityShown ? securityProblem() : '';
   const field = (id, value, oninput, attrs = {}) => el('input', { id, value, oninput: (e) => { oninput(e.target.value); }, ...attrs });
-  // a choice: its title in bold (with a badge), the explanation below it a little smaller
   const choice = (value, title, text, badge = null) => el('label', { class: 'choice', for: `login-${value}` },
     el('input', { type: 'radio', name: 'login', id: `login-${value}`, value, checked: sec.login === (value === 'page'), onchange: () => { sec.login = value === 'page'; } }),
     el('span', {}, el('strong', { text: title }), badge ? el('span', { class: 'badge', text: badge }) : null, el('br'), el('span', { class: 'hint', text })));

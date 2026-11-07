@@ -68,7 +68,6 @@ export function readKubeconfig(file, { context } = {}) {
   return out;
 }
 
-/** The connection for kubernetes.yaml: { mode, kubeconfig?, context? }. */
 export function k8sConnection(config = {}, { configDir = '.', env = process.env, home = os.homedir(), saDir = K8S_SA_DIR } = {}) {
   if (config.mode === 'default') {
     return readKubeconfig(kubeconfigPath({ file: config.kubeconfig, configDir, env, home }), { context: config.context });
@@ -80,7 +79,6 @@ export function k8sConnection(config = {}, { configDir = '.', env = process.env,
   };
 }
 
-/** The request headers for a connection: a bearer token or basic authentication. */
 export function k8sHeaders(conn) {
   if (conn.token) return { authorization: `Bearer ${conn.token}` };
   if (conn.username) return { authorization: `Basic ${Buffer.from(`${conn.username}:${conn.password ?? ''}`).toString('base64')}` };

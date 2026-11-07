@@ -78,7 +78,6 @@ export function readServers(configDir, file) {
   return { hash, form: formOf(s), blank: entryOf(s, null).fields, flat: false, entries: root.items.map((p) => ({ id: keyName(p), name: keyName(p), ...entryOf(s, p.value) })) };
 }
 
-/** Sets an entry's fields in `map`, where they changed; returns the warnings. */
 function applyFields(doc, map, s, fields, at, file) {
   const warnings = [];
   for (const f of s.fields) {
@@ -108,7 +107,6 @@ function applyFields(doc, map, s, fields, at, file) {
     if (value === '' || value === f.default) value = undefined;
     if (value === undefined) {
       if (map.hasIn(f.at)) map.deleteIn(f.at);
-      // an emptied parent (tls:) goes too
       const parent = f.at.length > 1 ? map.get(f.at[0], true) : null;
       if (YAML.isMap(parent) && parent.items.length === 0) map.delete(f.at[0]);
     } else if (current === undefined || current === null || String(current) !== String(value)) {

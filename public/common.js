@@ -49,12 +49,10 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
-/** A translate function for `I18N` in the language `currentLang()` gives; English, then the key, as fallbacks. */
 function translator(I18N, currentLang) {
   return (key, vars = {}) => String((I18N[currentLang()] ?? {})[key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 }
 
-/** Sets the page's language (a known one of `I18N`, else English) and its direction; returns it. */
 function applyLanguage(language, I18N) {
   const lang = I18N[language] ? language : 'en';
   document.documentElement.lang = lang;
@@ -62,7 +60,6 @@ function applyLanguage(language, I18N) {
   return lang;
 }
 
-/** Sets the colour's shades as the theme tokens; returns them (50 … 950). */
 function applyPalette(color) {
   const shades = (PALETTES[color] ?? PALETTES.slate).split(' ');
   SHADES.forEach((s, i) => document.documentElement.style.setProperty(`--t${s}`, shades[i]));
@@ -71,7 +68,6 @@ function applyPalette(color) {
 
 const systemLight = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches;
 
-/** Sets the appearance (auto follows the system, also when none is given); returns light or dark. */
 function applyAppearance(theme) {
   const resolved = theme === 'light' || theme === 'dark' ? theme : systemLight() ? 'light' : 'dark';
   document.documentElement.dataset.theme = resolved;

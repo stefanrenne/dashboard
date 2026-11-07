@@ -14,9 +14,6 @@ const GRACE_MS = 1000;
 // What the worker's process.env leaves out: the values behind {{DASHBOARD_VAR_*}} and
 // {{DASHBOARD_FILE_*}} (and their paths). A widget gets those through ctx.options, for the
 // instances the config gives them to, never all of them.
-
-
-/** The environment of the widget worker: the dashboard's, without the config's variables. */
 function workerEnv(env = process.env) {
   return Object.fromEntries(Object.entries(env).filter(([name]) => !isConfigVariable(name)));
 }
@@ -69,7 +66,6 @@ export class WidgetSandbox {
     this.#calls.delete(id);
   }
 
-  /** Runs a widget's fetch (or `kind: 'action'`, its action) in the worker; resolves its data or rejects with its error. */
   run({ url, instanceId, apiVersion = 2, options, params = {}, kind = 'fetch', configDir = null, signal, log }) {
     this.#worker ??= this.#spawn();
     const worker = this.#worker;
@@ -97,7 +93,6 @@ export class WidgetSandbox {
     });
   }
 
-  /** Drops ctx.cache stores of instances that no longer exist. */
   keep(ids) {
     this.#worker?.postMessage({ type: 'keep', ids: [...ids] });
   }
