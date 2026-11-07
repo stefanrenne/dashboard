@@ -18,6 +18,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   with a warning when the dashboard loaded it.
 - Settings page, Kubernetes: saving any field of a kubernetes.yaml without `mode:` wrote
   `mode: disabled` into it; the default now stays out of the file, as elsewhere.
+- Settings page: the hint under "Stay logged in for" offered 0 ("asks every time"), which the
+  dashboard never took; it now gives the minimum, 1m.
+- Settings page: a settings.yaml with homepage's `language: zh-CN` showed English, while the
+  dashboard uses Simplified Chinese.
 - After an import on the settings page, the Services, Header widgets, Bookmarks and server forms
   still showed the files from before, and a save there was refused as a conflict.
 - A "Saved" on the settings page no longer stays on when another section is opened.

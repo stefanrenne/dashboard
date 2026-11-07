@@ -8,7 +8,7 @@ import { openYaml } from './yaml.js';
 import {
   LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
   TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
-  HTTP_URL, BACKGROUND_MAX, TRISTATE, MIN_DURATIONS,
+  HTTP_URL, BACKGROUND_MAX, TRISTATE, MIN_DURATIONS, LANGUAGE_ALIASES,
 } from '../config/schema.js';
 
 const optional = (values) => ['', ...values];
@@ -19,15 +19,15 @@ const optional = (values) => ['', ...values];
 // ('' leaves it out, 'true' or 'false'), int (min..max, '' leaves it out), duration (with
 // `off` for false or 0), hosts, list (of maps with `keys`, `required` ones needed).
 export const FIELDS = {
-  title: { type: 'string', max: 100 },
+  title: { type: 'string', max: 100, default: DEFAULTS.title },
   description: { type: 'string', default: '', max: 300 },
   favicon: { type: 'string', default: '' },
   startUrl: { type: 'string', default: '' },
   base: { type: 'url', default: '' },
   instanceName: { type: 'string', default: '' },
-  language: { type: 'enum', values: LANGUAGES },
-  theme: { type: 'enum', values: THEMES },
-  color: { type: 'enum', values: COLORS },
+  language: { type: 'enum', values: LANGUAGES, default: DEFAULTS.language },
+  theme: { type: 'enum', values: THEMES, default: DEFAULTS.theme },
+  color: { type: 'enum', values: COLORS, default: DEFAULTS.color },
   showTitle: { type: 'boolean', default: true },
   headerStyle: { type: 'enum', values: HEADER_STYLES, default: DEFAULTS.headerStyle },
   target: { type: 'enum', values: TARGETS, default: DEFAULTS.target },
@@ -105,9 +105,9 @@ function formValue(def, v) {
 export function readSettings(configDir) {
   const { doc } = openYaml(configDir, FILE, { shape: 'map' });
   const raw = doc.toJS() ?? {};
+  if (LANGUAGE_ALIASES[raw.language]) raw.language = LANGUAGE_ALIASES[raw.language];
   const values = {};
   for (const [key, def] of Object.entries(FIELDS)) values[key] = formValue(def, getIn(raw, pathOf(key)));
-  values.title = typeof raw.title === 'string' ? raw.title : DEFAULTS.title;
   if (typeof raw.background === 'string') values.backgroundImage = raw.background;
   values.allowedHosts = Array.isArray(raw.allowedHosts) ? raw.allowedHosts.map(String) : typeof raw.allowedHosts === 'string' ? raw.allowedHosts.split(',').map((h) => h.trim()).filter(Boolean) : [];
   const login = raw.login;

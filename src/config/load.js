@@ -11,7 +11,7 @@ import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
-import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, MIN_DURATIONS, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
+import { LANGUAGE_ALIASES, BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, MIN_DURATIONS, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
 
 
 const DEFAULT_SETTINGS = {
@@ -202,7 +202,7 @@ function normalizeSettings(raw, ctx) {
   const settings = { ...DEFAULT_SETTINGS, ...raw };
   settings.discovery = { ...DEFAULT_SETTINGS.discovery, ...(isPlainObject(raw.discovery) ? raw.discovery : {}) };
   settings.discoveryMs = durationSetting(settings.discovery.interval, { file, at: 'discovery.interval', fallback: DEFAULTS.discoveryInterval, min: MIN_DURATIONS.discoveryInterval }, ctx);
-  if (settings.language === 'zh-CN') settings.language = 'zh-Hans'; // homepage's old name, still accepted
+  settings.language = LANGUAGE_ALIASES[settings.language] ?? settings.language;
   for (const [key, values] of SETTING_CHOICES) {
     if (settings[key] === undefined || values.includes(settings[key])) continue;
     const fallback = DEFAULTS[key];

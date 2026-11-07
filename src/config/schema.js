@@ -10,6 +10,8 @@ export const CUSTOM_FILES = ['custom.css', 'custom.js'];
 // homepage's files that are taken over as they are (setup wizard, import on the settings page)
 export const HOMEPAGE_FILES = ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'];
 
+// older names settings.yaml may still use (homepage's), and the language they mean
+export const LANGUAGE_ALIASES = { 'zh-CN': 'zh-Hans' };
 export const LANGUAGES = ['en', 'nl', 'fr', 'de', 'es', 'ca', 'he', 'hr', 'hu', 'it', 'nb-NO', 'pt', 'ru', 'sv', 'vi', 'zh-Hans', 'zh-Hant'];
 export const THEMES = ['auto', 'dark', 'light'];
 export const COLORS = ['slate', 'gray', 'zinc', 'neutral', 'stone', 'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];

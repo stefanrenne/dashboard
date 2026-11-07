@@ -137,3 +137,11 @@ test('durations: the form refuses what the dashboard would raise when it loads',
   assert.equal(checkSettings({ actionsRemember: '0' }).error, undefined, '0: ask every time');
   assert.equal(checkSettings({ discoveryInterval: '5s' }).error, undefined);
 });
+
+test('the form shows what the dashboard uses: its defaults for missing keys, homepage\'s old language name as the one it means', () => {
+  const dir = tmpDir('dash-settings-');
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), 'language: zh-CN\n');
+  const { values } = readSettings(dir);
+  const { settings } = loadConfig(dir);
+  for (const key of ['title', 'language', 'theme', 'color']) assert.equal(values[key], settings[key], key);
+});
