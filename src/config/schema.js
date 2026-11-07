@@ -35,6 +35,10 @@ export const HIGHLIGHT_LEVELS = ['good', 'warn', 'danger'];
 export const BLUR_PX = { none: 0, xs: 4, sm: 8, '': 8, md: 12, lg: 16, xl: 24, '2xl': 40, '3xl': 64 };
 export const BLURS = Object.keys(BLUR_PX).filter(Boolean);
 export const MAX_GROUP_COLUMNS = 8;
+// settings.yaml background: the highest percentage of each
+export const BACKGROUND_MAX = { saturate: 200, brightness: 200, opacity: 100 };
+// a yes/no that can be left out ('': the default)
+export const TRISTATE = ['', 'true', 'false'];
 // a group's own `columns:` in settings.yaml layout
 export const MAX_COLUMNS_IN_GROUP = 12;
 

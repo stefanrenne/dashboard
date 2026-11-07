@@ -6,7 +6,7 @@
 
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
-import { KUBERNETES_MODES } from '../config/schema.js';
+import { KUBERNETES_MODES, TRISTATE } from '../config/schema.js';
 import { shownSecret, secretFromPage, refuseToken, isHidden } from './secrets.js';
 import { openYaml, entries, keyName, rename, setItems } from './yaml.js';
 
@@ -14,7 +14,7 @@ import { openYaml, entries, keyName, rename, setItems } from './yaml.js';
 // file) }. Types: string, number, enum, boolean, tristate ('' leaves it out), secret.
 // `named`: a map of name → entry; `flat(root)`: the file is one entry for all (homepage's form).
 const field = (name, type, more = {}) => ({ name, at: [name], type, ...more });
-export const SPECS = {
+const SPECS = {
   'docker.yaml': {
     named: true,
     fields: [
@@ -45,7 +45,8 @@ function spec(file) {
 }
 
 /** The form of a file's entries, for the page: [{ name, type, values }]. */
-const formOf = (s) => s.fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
+export const serverForm = (file) => formOf(spec(file));
+const formOf = (s) => s.fields.map(({ name, type, values }) => ({ name, type, ...(type === 'tristate' ? { values: TRISTATE } : values ? { values } : {}) }));
 
 /** An entry (a YAML map) as the form has it: { fields, hidden, other }. */
 function entryOf(s, map) {
@@ -90,7 +91,7 @@ function applyFields(doc, map, s, fields, at, file) {
       if (typeof v !== 'boolean') throw new ConfigEditError(`${where}: true or false`, 400);
       value = v;
     } else if (f.type === 'tristate') {
-      if (!['', 'true', 'false'].includes(v)) throw new ConfigEditError(`${where}: empty, true or false`, 400);
+      if (!TRISTATE.includes(v)) throw new ConfigEditError(`${where}: empty, true or false`, 400);
       value = v === '' ? undefined : v === 'true';
     } else {
       if (typeof v !== 'string' || v.length > 2000) throw new ConfigEditError(`${where}: text of at most 2000 characters`, 400);

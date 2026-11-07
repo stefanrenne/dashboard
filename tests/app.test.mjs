@@ -1898,3 +1898,39 @@ test('settings page icons: a name resolved for the preview; the local files and 
     await t.close();
   }
 });
+
+test('settings page files: the admin password stays out of reach through an included file, and a broken settings.yaml is a 400', async () => {
+  const password = hashPassword('Sesam-123', { N: 1024 });
+  const t = await startApp({ 'settings.yaml': '!include base.yaml\n', 'base.yaml': `title: Lab\nadminPassword: "${password}"\n` });
+  const auth = { 'x-dashboard-password': 'Sesam-123' };
+  const get = (p) => fetch(`${t.base}/api/settings/files${p}`, { headers: auth }).then((r) => r.json());
+  const post = (p, body) => fetch(`${t.base}/api/settings/files${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) });
+  try {
+    const base = await get('/base.yaml');
+    const other = hashPassword('Other-456', { N: 1024 });
+    assert.equal((await post('/base.yaml', { text: base.text.replace(/adminPassword: .*/, `adminPassword: "${other}"`), hash: base.hash })).status, 400);
+    assert.equal((await post('/base.yaml', { text: base.text.replace('title: Lab', 'title: Home'), hash: base.hash })).status, 200, 'the rest of the file can change');
+    const root = await get('/settings.yaml');
+    const broken = await post('/settings.yaml', { text: 'title: [Lab\n', hash: root.hash });
+    assert.equal(broken.status, 400);
+    assert.match((await broken.json()).errors[0].file, /settings\.yaml/);
+  } finally {
+    await t.close();
+  }
+});
+
+test('settings page: a form of settings.yaml made on an older version of the file is refused, not written over it', async () => {
+  const t = await startApp({ 'settings.yaml': `title: Lab\nadminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n` });
+  const headers = { 'content-type': 'application/json', 'x-requested-with': 'dashboard', 'x-dashboard-password': 'Sesam-123' };
+  const post = (p, body) => fetch(`${t.base}/api/settings${p}`, { method: 'POST', headers, body: JSON.stringify(body) });
+  try {
+    const opened = await (await fetch(`${t.base}/api/settings`, { headers })).json();
+    fs.writeFileSync(path.join(t.configDir, 'settings.yaml'), fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8').replace('title: Lab', 'title: Changed by hand'));
+    for (const [p, body] of [['', { values: { ...opened.values, title: 'Lab' } }], ['/layout', { groups: opened.layout.groups }], ['/plugins', { entries: opened.plugins.entries }]]) {
+      assert.equal((await post(p, { ...body, hash: opened.hash })).status, 409, p || 'general');
+    }
+    assert.match(fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8'), /title: Changed by hand/);
+  } finally {
+    await t.close();
+  }
+});

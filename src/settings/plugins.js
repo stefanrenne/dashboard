@@ -89,8 +89,8 @@ export function checkPlugins(input) {
 }
 
 /** Writes the page's list into settings.yaml; nothing when it is the same. */
-export function writePlugins(configDir, entries) {
-  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+export function writePlugins(configDir, entries, hash) {
+  const yaml = openYaml(configDir, FILE, { shape: 'map', hash });
   const { doc } = yaml;
   const current = doc.get('plugins', true);
   const old = YAML.isSeq(current) ? current.items : [];

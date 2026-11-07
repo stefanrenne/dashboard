@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { checkLanguages, withCommon } from './helpers.mjs';
-import { SPECS } from '../src/settings/servers.js';
+import { serverForm } from '../src/settings/servers.js';
 import { schemaForPage } from '../src/config/schema.js';
 import { formForPage } from '../src/settings/form.js';
 
@@ -49,7 +49,6 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
   return { w: dom.window, doc: dom.window.document, calls };
 }
 // the form of a server file as the server sends it
-const serverForm = (file) => SPECS[file].fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
 const tick = () => new Promise((r) => setTimeout(r, 20));
 const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), form: formForPage(), values: VALUES, other: ['layout', 'plugins'], noPassword: false, ...extra });
 

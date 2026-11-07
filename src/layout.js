@@ -111,8 +111,8 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
   function withConnection(type, rawOptions, where) {
     const options = withReferences(rawOptions, where);
     if (options.url) return options;
-    if (type === 'proxmoxvm' && options.node) return { ...proxmoxFor(options.node), ...options };
-    if ((type === 'kubernetes' || type === 'kubernetes-pods') && config.kubernetes?.mode === 'default') {
+    if (type === CORE_WIDGETS.proxmox && options.node) return { ...proxmoxFor(options.node), ...options };
+    if ((type === 'kubernetes' || type === CORE_WIDGETS.pods) && config.kubernetes?.mode === 'default') {
       const c = kubeConnection();
       if (!c) return options;
       const filled = { url: c.url, token: c.token, username: c.username, password: c.password, ...tlsOptions(c), insecure: c.insecure };

@@ -6,10 +6,9 @@
 
 import YAML from 'yaml';
 import { openYaml } from './yaml.js';
-import { GROUP_STYLES, MAX_COLUMNS_IN_GROUP } from '../config/schema.js';
+import { GROUP_STYLES, MAX_COLUMNS_IN_GROUP, TRISTATE as TRI } from '../config/schema.js';
 
 const FILE = 'settings.yaml';
-const TRI = ['', 'true', 'false'];
 // [key, default] of a group's own settings, as the page has them
 const KEYS = [['style', ''], ['columns', ''], ['header', true], ['initiallyCollapsed', ''], ['useEqualHeights', ''], ['iconsOnly', ''], ['icon', ''], ['tab', '']];
 const TRISTATES = new Set(['initiallyCollapsed', 'useEqualHeights', 'iconsOnly']);
@@ -131,8 +130,8 @@ const hasSettings = (g, keys) => keys.some(([key]) => key in g && fileValue(key,
  * Writes the page's layout into settings.yaml. `groups` comes from checkLayout, `known` is what
  * readLayout returns now (for the order the page started from).
  */
-export function writeLayout(configDir, groups, known) {
-  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+export function writeLayout(configDir, groups, known, hash) {
+  const yaml = openYaml(configDir, FILE, { shape: 'map', hash });
   const { doc } = yaml;
   let node = doc.get('layout', true);
   if (!YAML.isMap(node) && !YAML.isSeq(node)) {

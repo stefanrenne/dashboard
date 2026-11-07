@@ -10,7 +10,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { FailureLimiter } from '../actionauth.js';
 import { isLocal, cookie, cookieValue, randomToken } from '../http.js';
-import { LANGUAGES, COLORS, DOCKER_PORT } from '../config/schema.js';
+import { LANGUAGES, COLORS, THEMES, DEFAULTS, DOCKER_PORT } from '../config/schema.js';
 import { discoveredBy, LOCAL_NAME } from '../discovery/docker.js';
 import { writeAtomic } from '../util.js';
 
@@ -195,11 +195,11 @@ export function settingsYaml({ title, language, theme, color, allowedHosts = [],
     '# Dashboard settings. See https://getdashboard.dev/configuration/settings.html',
     `title: ${yamlValue(title)}`,
     `language: ${yamlValue(language)}          # ${LANGUAGES.join(', ')}`,
-    `theme: ${yamlValue(theme)}           # auto, dark, light`,
+    `theme: ${yamlValue(theme)}           # ${THEMES.join(', ')}`,
     `color: ${yamlValue(color)}          # ${COLORS.join(', ')}`,
     'showTitle: true',
-    'headerStyle: boxed    # boxed: header widgets in a box; clean: without',
-    'target: _blank        # where service links open',
+    `headerStyle: ${DEFAULTS.headerStyle}    # boxed: header widgets in a box; clean: without`,
+    `target: ${DEFAULTS.target}        # where service links open`,
     '',
     securityYaml({ allowedHosts, adminPassword, login }),
     '# Widgets from outside the widgets collection. Pin a tag/commit (or #latest) or exact version.',

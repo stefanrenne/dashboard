@@ -101,7 +101,8 @@ export function checkConfigText(configDir, file, text, opts = {}) {
   const secrets = [...before.secrets, ...after.secrets];
   const clean = (list) => list.map((m) => ({ file: m.file, path: m.path, message: scrub(m.message, secrets) }));
   const known = new Set(before.errors.map(key));
-  return { errors: clean(after.errors.filter((m) => !known.has(key(m)))), warnings: clean(after.warnings) };
+  // before / after: the root file as loadConfig reads it (includes in), undefined when it does not parse
+  return { errors: clean(after.errors.filter((m) => !known.has(key(m)))), warnings: clean(after.warnings), before: before.raw, after: after.raw };
 }
 
 // .history/ mirrors the folders: .history/services/media.yaml.<time> for services/media.yaml
@@ -144,17 +145,18 @@ export function readHistory(configDir, file, id) {
   return fs.readFileSync(path.join(historyDir(configDir, file), id), 'utf8');
 }
 
-/**
- * Writes `text` into `file`. `hash` (from readConfigFile) refuses the save with 409 when the file
- * changed since. The new text is checked first (checkConfigText): a save that adds errors is refused.
- * Returns { hash, warnings, changed }; throws ConfigEditError (with `errors` for a refused check).
- */
 /** Refuses a save made on a version of `file` other than `current` (409). */
 export function sameVersion(file, hash, current) {
   if (hash !== undefined && hash !== current.hash) {
     throw new ConfigEditError(`${file} changed since it was opened: reload it and make your change again`, 409, { hash: current.hash });
   }
 }
+
+/**
+ * Writes `text` into `file`. `hash` (from readConfigFile) refuses the save with 409 when the file
+ * changed since. The new text is checked first (checkConfigText): a save that adds errors is refused.
+ * Returns { hash, warnings, changed }; throws ConfigEditError (with `errors` for a refused check).
+ */
 
 export function writeConfigFile(configDir, file, text, { hash, opts = {} } = {}) {
   const full = configPath(configDir, file);

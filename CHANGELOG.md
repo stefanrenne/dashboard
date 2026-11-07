@@ -7,6 +7,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Fixed
 - Import on the settings page ignored homepage files named `.yml`; they count as `.yaml`, as in the
   setup wizard.
+- Settings page, Advanced: a file settings.yaml includes could change the admin password, which
+  otherwise only changes under Security with the current one; and a settings.yaml with a syntax
+  error got "internal error" instead of the error with its line.
+- Settings page: General, Groups and Widgets saved over a settings.yaml changed since the page was
+  opened (in another tab, the text editor or by hand); such a save is now refused, as the other
+  forms already did.
 - After an import on the settings page, the Services, Header widgets, Bookmarks and server forms
   still showed the files from before, and a save there was refused as a conflict.
 - A "Saved" on the settings page no longer stays on when another section is opened.

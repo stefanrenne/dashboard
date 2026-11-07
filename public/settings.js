@@ -294,7 +294,7 @@ async function save() {
   render();
   let out;
   try {
-    out = await api('', { values: state.values });
+    out = await api('', { values: state.values, hash: state.data.hash });
   } catch (err) {
     out = { ok: false, error: err.message };
   }
@@ -382,7 +382,7 @@ async function saveLayout() {
   state.status = t('saving');
   state.statusClass = 'muted';
   render();
-  const out = await api('/layout', { groups: state.layoutGroups }).catch((err) => ({ ok: false, error: err.message }));
+  const out = await api('/layout', { groups: state.layoutGroups, hash: state.data.hash }).catch((err) => ({ ok: false, error: err.message }));
   if (out.needsPassword) return askPassword();
   if (out.ok) {
     const open = new Set(state.layoutGroups.filter((g) => g.open).map((g) => g.name));
@@ -456,7 +456,7 @@ async function savePlugins() {
   state.statusClass = 'muted';
   render();
   const entries = state.pluginEntries.map(({ kind, value, subdir, only, index }) => ({ kind, value, subdir, only, index }));
-  const out = await api('/plugins', { entries }).catch((err) => ({ ok: false, error: err.message }));
+  const out = await api('/plugins', { entries, hash: state.data.hash }).catch((err) => ({ ok: false, error: err.message }));
   if (out.needsPassword) return askPassword();
   if (out.ok) {
     takePlugins(out);
@@ -813,7 +813,7 @@ function serverFields(file, form, entry, id) {
     const fields = entry.fields;
     if (type === 'boolean') return el('label', { class: 'check', for: fid }, el('input', { type: 'checkbox', id: fid, checked: fields[name], onchange: (e) => { fields[name] = e.target.checked; } }), label);
     if (type === 'enum' || type === 'tristate') {
-      const choices = type === 'tristate' ? [['', t('styleDefault')], ['true', t('on')], ['false', t('off')]] : values.map((v) => [v, spec.values?.[name]?.[v] ? t(spec.values[name][v]) : v]);
+      const choices = type === 'tristate' ? options(values, t('styleDefault')) : values.map((v) => [v, spec.values?.[name]?.[v] ? t(spec.values[name][v]) : v]);
       return field(fid, label, el('select', { id: fid, onchange: (e) => { fields[name] = e.target.value; } }, ...choices.map(([v, text]) => el('option', { value: v, selected: v === fields[name], text }))));
     }
     return field(fid, label, el('input', { type: type === 'secret' ? 'password' : 'text', id: fid, value: fields[name] ?? '', spellcheck: 'false', autocapitalize: 'off',

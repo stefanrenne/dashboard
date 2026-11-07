@@ -116,7 +116,7 @@ function secretScalars(doc, where, schemaFor) {
   return found;
 }
 
-function parse(text, file) {
+function parse(text) {
   const doc = YAML.parseDocument(text);
   if (doc.errors.length) return null;
   return doc;
@@ -130,7 +130,7 @@ function splice(text, edits) {
 
 /** The secrets of `text`: Map of token → { value, path }. */
 export function secretsOf(file, text, schemaFor = () => null) {
-  const doc = parse(text, file);
+  const doc = parse(text);
   const out = new Map();
   if (!doc) return out;
   for (const { node, path } of secretScalars(doc, file, schemaFor)) out.set(tokenFor(node.value), { value: node.value, path });
@@ -143,7 +143,7 @@ export function secretsOf(file, text, schemaFor = () => null) {
  * as text instead.
  */
 export function maskConfigText(file, text, schemaFor = () => null, knownSecrets = []) {
-  const doc = parse(text, file);
+  const doc = parse(text);
   if (!doc) {
     let out = text;
     for (const s of knownSecrets) if (isSecretValue(s)) out = out.split(s).join(tokenFor(s));
@@ -166,7 +166,7 @@ export function unmaskConfigText(file, newText, currentText, schemaFor = () => n
   const unknown = [...newText.matchAll(TOKEN)].map((m) => m[0]).find((t) => !known.has(t));
   if (unknown) throw new ConfigEditError(`${whereOf(file).file}: ${unknown} is not a hidden value of this file; type the secret again`, 400);
   let text = newText;
-  const doc = parse(newText, file);
+  const doc = parse(newText);
   if (doc && HAS_TOKEN.test(newText)) {
     const edits = [];
     YAML.visit(doc, {

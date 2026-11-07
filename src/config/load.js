@@ -11,7 +11,7 @@ import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
-import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
+import { BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
 
 
 const DEFAULT_SETTINGS = {
@@ -170,7 +170,7 @@ export function checkConfigFile(dir, name, text, opts = {}) {
   const out = collector();
   const raw = parseFile(dir, `${name}.yaml`, text, opts, out);
   NORMALIZE[name](raw, out.ctx, dir);
-  return { errors: out.errors, warnings: out.warnings, secrets: out.secrets };
+  return { errors: out.errors, warnings: out.warnings, secrets: out.secrets, raw };
 }
 
 /** `- Key: value` entries: a list of single-key maps. Returns [[key, value, index]]. */
@@ -340,7 +340,7 @@ function normalizeBackground(raw, file, ctx) {
   const background = { image: raw.image };
   const blur = blurPx(raw.blur, file, 'background.blur', ctx);
   if (blur !== null) background.blur = blur;
-  for (const [key, max] of [['saturate', 200], ['brightness', 200], ['opacity', 100]]) {
+  for (const [key, max] of Object.entries(BACKGROUND_MAX)) {
     if (raw[key] === undefined || raw[key] === null) continue;
     const n = Number(raw[key]);
     if (!Number.isFinite(n) || n < 0 || n > max) ctx.warn(file, `background.${key}`, `expected a number from 0 to ${max}, ignored`);

@@ -8,7 +8,6 @@ import path from 'node:path';
 import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
 import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
-import { parseConfigYaml } from '../config/include.js';
 import { checkPassword, hashPassword, passwordFingerprint } from '../actionauth.js';
 import { rpContext } from '../passkeys.js';
 import { tryWidget } from '../plugins/runtime.js';
@@ -57,7 +56,7 @@ export function settingsRoutes(app) {
     const rp = rpContext(req);
     const r = state.pluginResult;
     return {
-      ok: true, schema: schemaForPage(), form: formForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
+      ok: true, hash: readConfigFile(configDir, 'settings.yaml').hash, schema: schemaForPage(), form: formForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
       plugins: { ...readPlugins(configDir, app.defaultPlugins), errors: r.errors ?? [], warnings: r.warnings ?? [], packages: r.packages ?? [] },
       noPassword: !gate.password,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] },
@@ -79,7 +78,7 @@ export function settingsRoutes(app) {
     ['POST', '', async ({ req, body }) => {
       const checked = checkSettings(body?.values);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
-      await saved(writeSettings(configDir, checked.values), Object.keys(checked.values).join(', '));
+      await saved(writeSettings(configDir, checked.values, body.hash), Object.keys(checked.values).join(', '));
       return answer(req);
     }],
     ['POST', '/password', async ({ req, res, body }) => {
@@ -117,13 +116,13 @@ export function settingsRoutes(app) {
     ['POST', '/layout', async ({ req, body }) => {
       const checked = checkLayout(body?.groups);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
-      await saved(writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo())), 'the layout');
+      await saved(writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo()), body.hash), 'the layout');
       return answer(req);
     }],
     ['POST', '/plugins', async ({ req, body }) => {
       const checked = checkPlugins(body?.entries);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
-      await saved(writePlugins(configDir, checked.entries), 'the plugins');
+      await saved(writePlugins(configDir, checked.entries, body.hash), 'the plugins');
       return answer(req);
     }],
 
@@ -176,10 +175,11 @@ export function settingsRoutes(app) {
       const current = readConfigFile(configDir, file);
       sameVersion(file, body.hash, current);
       const { text, warnings } = unmaskConfigText(where, body.text, current.text, schemaFor);
-      // the admin password changes under Security, with the current one: never through a file
-      const touchesPassword = where.root === 'settings.yaml' && (/^adminPassword(\.|\[|$)/.test(where.at)
-        || (file === 'settings.yaml' && (parseConfigYaml(text)?.adminPassword ?? null) !== (parseConfigYaml(current.text)?.adminPassword ?? null)));
-      if (touchesPassword) throw new ConfigEditError(`${file}: the admin password is changed under Security, with the current one`, 400);
+      // the admin password changes under Security, with the current one: never through a file, nor
+      // through a file settings.yaml includes. A broken settings.yaml (before) can be repaired here.
+      const password = (raw) => (raw && typeof raw === 'object' ? raw.adminPassword ?? null : null);
+      const { before, after } = where.root === 'settings.yaml' ? checkConfigText(configDir, file, text, { env }) : {};
+      if (before !== undefined && after !== undefined && password(before) !== password(after)) throw new ConfigEditError(`${file}: the admin password is changed under Security, with the current one`, 400);
       const out = writeConfigFile(configDir, file, text, { hash: body.hash, opts: { env } });
       await saved(out, file);
       return { ok: true, file, hash: out.hash, changed: out.changed, warnings: [...warnings, ...out.warnings] };

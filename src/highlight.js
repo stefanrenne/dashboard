@@ -16,8 +16,7 @@
 // and regex (flags, default "i"). Any rule takes negate: true.
 
 import { isPlainObject } from './util.js';
-
-const LEVELS = ['good', 'warn', 'danger'];
+import { HIGHLIGHT_LEVELS as LEVELS } from './config/schema.js';
 
 // homepage's default colours per level, as Tailwind classes; settings.blockHighlights.levels
 // overrides them per level and the page turns them into CSS with its palettes.

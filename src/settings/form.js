@@ -8,7 +8,7 @@ import { openYaml } from './yaml.js';
 import {
   LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES,
   TARGETS, SEARCH_PROVIDERS, BUTTON_POSITIONS, BLURS, MAX_GROUP_COLUMNS, DEFAULTS,
-  HTTP_URL,
+  HTTP_URL, BACKGROUND_MAX, TRISTATE,
 } from '../config/schema.js';
 
 const optional = (values) => ['', ...values];
@@ -40,9 +40,9 @@ export const FIELDS = {
   cardBlur: { type: 'enum', values: optional(BLURS), default: '' },
   backgroundImage: { type: 'string', at: ['background', 'image'], default: '', special: true },
   backgroundBlur: { type: 'enum', values: optional(BLURS), at: ['background', 'blur'], default: '', special: true },
-  backgroundSaturate: { type: 'int', min: 0, max: 200, at: ['background', 'saturate'], default: '', special: true },
-  backgroundBrightness: { type: 'int', min: 0, max: 200, at: ['background', 'brightness'], default: '', special: true },
-  backgroundOpacity: { type: 'int', min: 0, max: 100, at: ['background', 'opacity'], default: '', special: true },
+  backgroundSaturate: { type: 'int', min: 0, max: BACKGROUND_MAX.saturate, at: ['background', 'saturate'], default: '', special: true },
+  backgroundBrightness: { type: 'int', min: 0, max: BACKGROUND_MAX.brightness, at: ['background', 'brightness'], default: '', special: true },
+  backgroundOpacity: { type: 'int', min: 0, max: BACKGROUND_MAX.opacity, at: ['background', 'opacity'], default: '', special: true },
   fullWidth: { type: 'boolean', default: false },
   maxGroupColumns: { type: 'int', min: 1, max: MAX_GROUP_COLUMNS, default: '' },
   maxBookmarkGroupColumns: { type: 'int', min: 1, max: MAX_GROUP_COLUMNS, default: '' },
@@ -76,7 +76,7 @@ export const FIELDS = {
 export function formForPage() {
   return Object.fromEntries(Object.entries(FIELDS).map(([name, d]) => [name, {
     type: d.type,
-    ...(d.type === 'tristate' ? { values: ['', 'true', 'false'] } : d.values ? { values: d.values } : {}),
+    ...(d.type === 'tristate' ? { values: TRISTATE } : d.values ? { values: d.values } : {}),
     ...(d.min !== undefined ? { min: d.min } : {}), ...(d.max !== undefined ? { max: d.max } : {}),
     ...(d.keys ? { keys: d.keys } : {}),
   }]));
@@ -127,7 +127,7 @@ function checkValue(key, def, v) {
   }
   if (def.type === 'enum') return def.values.includes(v) ? { value: v } : { error: `${key}: one of ${def.values.filter(Boolean).join(', ')}` };
   if (def.type === 'boolean') return typeof v === 'boolean' ? { value: v } : { error: `${key}: true or false` };
-  if (def.type === 'tristate') return ['', 'true', 'false'].includes(v) ? { value: v } : { error: `${key}: empty, true or false` };
+  if (def.type === 'tristate') return TRISTATE.includes(v) ? { value: v } : { error: `${key}: empty, true or false` };
   if (def.type === 'int') {
     const text = String(v ?? '').trim();
     if (text === '') return { value: '' };
@@ -206,8 +206,8 @@ function fileValue(doc, def, v) {
 }
 
 /** Writes the page's values into settings.yaml: set where they differ from the default, left out where not. */
-export function writeSettings(configDir, values) {
-  const yaml = openYaml(configDir, FILE, { shape: 'map' });
+export function writeSettings(configDir, values, hash) {
+  const yaml = openYaml(configDir, FILE, { shape: 'map', hash });
   const { doc } = yaml;
   // only what changed: the form sends every field, and a key it did not touch stays as written
   const before = readSettings(configDir).values;

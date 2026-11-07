@@ -3,7 +3,7 @@
 
 import YAML from 'yaml';
 import { ConfigEditError } from '../config/edit.js';
-import { SERVICE_FIELDS } from '../config/schema.js';
+import { SERVICE_FIELDS, TRISTATE } from '../config/schema.js';
 import { readTree, writeTree } from './tree.js';
 import { serviceWidgets, setServiceWidgets } from './widgets.js';
 
@@ -27,7 +27,7 @@ function setFields(map, fields, at) {
     const v = fields[key];
     let value;
     if (kind === 'boolean') {
-      if (!['', 'true', 'false'].includes(v)) throw new ConfigEditError(`${at}.${key}: empty, true or false`, 400);
+      if (!TRISTATE.includes(v)) throw new ConfigEditError(`${at}.${key}: empty, true or false`, 400);
       value = v === '' ? undefined : v === 'true';
     } else if (kind === 'flag') {
       if (typeof v !== 'boolean') throw new ConfigEditError(`${at}.${key}: true or false`, 400);
