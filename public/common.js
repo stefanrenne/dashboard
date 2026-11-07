@@ -74,10 +74,21 @@ function applyAppearance(theme) {
   return resolved;
 }
 
+// ---------------------------------------------------------------- requests
+/**
+ * A POST to the dashboard: `body` as JSON (none: an empty one), with the header the server asks
+ * on every write (a page of another site cannot send it). The Response.
+ */
+const post = (url, body, headers = {}) => fetch(url, {
+  method: 'POST',
+  headers: { 'x-requested-with': 'dashboard', ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers },
+  ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+});
+const postJson = (url, body, headers) => post(url, body, headers).then((r) => r.json());
+
 // ---------------------------------------------------------------- passkeys
 const fromB64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 const toB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const postJson = (url, body) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify(body) }).then((r) => r.json());
 const webauthn = () => Boolean(window.isSecureContext && window.PublicKeyCredential && navigator.credentials);
 /** Whether a passkey can be used here: a browser with WebAuthn, https, and a passkey for this host. */
 async function passkeyAvailable() {

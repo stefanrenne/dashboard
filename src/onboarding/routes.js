@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { send, sendFile, readJson, hostName, hostIsAddress, SECURITY_HEADERS } from '../http.js';
-import { DEFAULTS, MIN_PASSWORD } from '../config/schema.js';
+import { DEFAULTS, MIN_PASSWORD, HOMEPAGE_FILES, THEMES } from '../config/schema.js';
 import { hashPassword } from '../actionauth.js';
 import { checkDocker, dockerGet } from '../discovery/docker.js';
 import { widgetCatalog } from '../plugins/loader.js';
@@ -112,7 +112,7 @@ export function onboardingRoutes(app) {
     if (method === 'GET' && p === '/setup') return sendFile(res, path.join(app.publicDir, 'setup.html'));
     if (method === 'GET' && p === '/setup.js') return sendFile(res, path.join(app.publicDir, 'setup.js'));
     const route = p.slice('/api/onboarding/'.length);
-    if (method === 'GET' && route === 'state') return send(res, 200, { active: true, allowed: onboarding.allowed(req), version: app.version });
+    if (method === 'GET' && route === 'state') return send(res, 200, { active: true, allowed: onboarding.allowed(req), version: app.version, homepageFiles: HOMEPAGE_FILES, themes: THEMES, defaults: { title: DEFAULTS.title, language: DEFAULTS.language, theme: DEFAULTS.theme, color: DEFAULTS.color } });
     let body = null;
     if (method === 'POST') {
       try {

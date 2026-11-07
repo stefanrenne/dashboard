@@ -78,7 +78,7 @@ async function init() {
     $('submit').disabled = true;
     let out;
     try {
-      out = await (await fetch('api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ password }) })).json();
+      out = await postJson('api/login', { password });
     } catch {
       out = { ok: false };
     }

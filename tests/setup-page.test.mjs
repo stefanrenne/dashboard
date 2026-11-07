@@ -36,7 +36,7 @@ async function page({ allowed = true, answers = {} } = {}) {
       window.fetch = async (url, init = {}) => {
         const p = new URL(url, 'http://192.168.1.10:3000/').pathname.replace('/api/onboarding/', '');
         calls.push({ p, body: init.body ? JSON.parse(init.body) : undefined });
-        const body = p === 'state' ? { active: true, allowed }
+        const body = p === 'state' ? { active: true, allowed, homepageFiles: ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'], themes: ['auto', 'dark', 'light'], defaults: { title: 'Homelab', language: 'en', theme: 'auto', color: 'slate' } }
           : p === 'widgets' ? { widgets: WIDGETS }
             : p === 'containers' ? { containers: CONTAINERS, problems: [] }
               : p === 'docker' ? (init) => ({ socketMounted: true, errors: [], servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 32 }, ...JSON.parse(init.body).docker.map((d) => ({ name: d.name ?? 'nas', target: `http://${d.address}`, ok: false, error: 'connect ECONNREFUSED', permission: false }))] })

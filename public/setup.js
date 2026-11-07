@@ -31,7 +31,8 @@ const t = translator(I18N, () => lang);
 
 const state = {
   step: 0,
-  settings: { title: 'Homelab', language: 'en', theme: 'auto', color: 'slate' },
+  settings: null, // { title, language, theme, color }: the server's defaults, then the basics step
+  themes: [],
   widgets: [],
   cards: null, // [{ on, name, group, href, container, server, image, discovered, type, options, result }]
   scanProblems: [],
@@ -41,6 +42,7 @@ const state = {
   dockerReport: null, // { socketMounted, servers: [{ name, target, ok, version, containers, error, permission }], errors }
   scanError: '',
   status: null,
+  homepageFiles: [], // the homepage files the import reads (the server's list)
   security: { password: '', repeat: '', login: false, hosts: '', hostsTouched: false },
   securityShown: false,
   skip: false, // Skip the setup: no services, straight to the security step
@@ -48,9 +50,8 @@ const state = {
 const STEPS = ['stepBasics', 'stepDocker', 'stepServices', 'stepSecurity', 'stepDone'];
 
 async function api(path, body) {
-  const init = body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify(body) };
-  const res = await fetch(`api/onboarding/${path}`, init);
-  const out = await res.json();
+  const url = `api/onboarding/${path}`;
+  const out = await (body === undefined ? fetch(url).then((r) => r.json()) : postJson(url, body));
   if (out?.needsCode) {
     showCode();
     throw new Error('code needed');
@@ -117,10 +118,9 @@ function showCode(message = '') {
   const form = el('form', {
     onsubmit: async (e) => {
       e.preventDefault();
-      const res = await fetch('api/onboarding/code', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ code: input.value }) });
-      const out = await res.json();
+      const out = await postJson('api/onboarding/code', { code: input.value }).catch((err) => ({ ok: false, unreachable: err.message }));
       if (out.ok) return start();
-      status.textContent = out.retryAfter ? t('wait', { seconds: out.retryAfter }) : t('codeWrong');
+      status.textContent = out.unreachable ?? (out.retryAfter ? t('wait', { seconds: out.retryAfter }) : t('codeWrong'));
     },
   }, el('label', { for: 'setup-code', text: t('codeLabel') }), input, el('div', { class: 'actions' }, el('div', { class: 'right' }, el('button', { type: 'submit', class: 'primary', text: t('codeSubmit') }))));
   document.getElementById('panel').replaceChildren(el('h2', { text: t('codeTitle'), tabindex: '-1' }), el('p', { text: t('codeText') }), status, form);
@@ -144,7 +144,7 @@ function renderBasics() {
     el('div', { class: 'grid' },
       el('label', { for: 'title' }, t('titleLabel'), el('input', { type: 'text', id: 'title', value: s.title, maxlength: '100', oninput: (e) => { s.title = e.target.value; } })),
       el('label', { for: 'language' }, t('languageLabel'), select('language', s.language, Object.entries(LANGUAGE_NAMES), (v) => { s.language = v; lang = I18N[v] ? v : 'en'; render(); })),
-      el('label', { for: 'theme' }, t('themeLabel'), select('theme', s.theme, [['auto', t('themeAuto')], ['dark', t('themeDark')], ['light', t('themeLight')]], (v) => { s.theme = v; render(); }))),
+      el('label', { for: 'theme' }, t('themeLabel'), select('theme', s.theme, state.themes.map((th) => [th, t(`theme${th[0].toUpperCase()}${th.slice(1)}`)]), (v) => { s.theme = v; render(); }))),
     el('div', {}, el('span', { class: 'muted', text: t('colorLabel') }), swatches),
     actions(el('button', { type: 'button', class: 'link', text: t('skipSetup'), onclick: () => { state.skip = true; go(3); } })),
   ];
@@ -363,14 +363,14 @@ function homepageSection() {
     const other = [];
     for (const f of e.target.files) {
       const name = f.name.replace(/\.yml$/, '.yaml');
-      if (['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'].includes(name)) files[name] = await f.text();
+      if (state.homepageFiles.includes(name)) files[name] = await f.text();
       else other.push(f.name);
     }
     if (!Object.keys(files).length) {
       state.homepage = { error: t('notHomepage', { list: other.join(', ') }) };
       return render();
     }
-    state.homepage = { files, report: await api('homepage', { files }), used: false };
+    state.homepage = { files, report: await api('homepage', { files }).catch((err) => ({ ok: false, error: err.message })), used: false };
     render();
   } });
   if (h?.error) report.append(el('p', { class: 'error', text: h.error }));
@@ -454,7 +454,7 @@ function payload() {
   const { skip } = state;
   const cards = skip ? [] : (state.cards ?? []).filter((c) => c.on && c.name.trim());
   return {
-    settings: { ...state.settings, title: state.settings.title.trim() || 'Homelab' },
+    settings: { ...state.settings, title: state.settings.title.trim() },
     docker: skip ? [] : state.docker,
     services: cards.map((c) => ({
       group: c.group, name: c.name, href: c.href || c.options?.url || undefined, container: c.container, server: c.server,
@@ -518,10 +518,17 @@ async function start() {
 async function init() {
   const browser = (navigator.language || 'en').toLowerCase();
   const guess = Object.keys(LANGUAGE_NAMES).find((l) => l.toLowerCase() === browser) ?? Object.keys(LANGUAGE_NAMES).find((l) => browser.startsWith(l.toLowerCase().split('-')[0]));
-  if (guess) state.settings.language = guess;
-  lang = I18N[state.settings.language] ? state.settings.language : 'en';
+  lang = guess && I18N[guess] ? guess : 'en';
+  applyLanguage(lang, I18N);
+  let s;
+  try {
+    s = await (await fetch('api/onboarding/state')).json();
+  } catch (err) {
+    document.getElementById('panel').replaceChildren(el('p', { class: 'error', role: 'alert', text: err.message }));
+    return;
+  }
+  Object.assign(state, { homepageFiles: s.homepageFiles, themes: s.themes, settings: { ...s.defaults, ...(guess ? { language: guess } : {}) } });
   applyTheme();
-  const s = await (await fetch('api/onboarding/state')).json();
   if (!s.active) {
     window.location.href = './';
     return;

@@ -1271,7 +1271,7 @@ test('onboarding: / leads to the wizard; local or with the code; it writes the c
     assert.deepEqual([root.status, root.headers.get('location')], [302, 'setup']);
     assert.match(await (await t.get('/setup')).text(), /<script src="setup.js"><\/script>/);
     assert.equal((await t.get('/setup.js')).status, 200);
-    assert.deepEqual(await t.json('/api/onboarding/state'), { active: true, allowed: true, version: (await t.json('/api/health')).version }, 'a test request is local');
+    assert.deepEqual(await t.json('/api/onboarding/state'), { active: true, allowed: true, version: (await t.json('/api/health')).version, homepageFiles: ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'], themes: ['auto', 'dark', 'light'], defaults: { title: 'Homelab', language: 'en', theme: 'auto', color: 'slate' } }, 'a test request is local');
     // from outside: the code
     assert.equal((await t.get('/api/onboarding/widgets', { headers: outside })).status, 401);
     assert.equal((await post('code', { code: 'NOPE-NOPE' }, outside)).status, 401);

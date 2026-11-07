@@ -32,9 +32,9 @@ const t = translator(I18N, () => lang);
 const state = { section: 'general', files: null, file: {}, chosen: {}, mode: {}, forms: {}, data: null, values: null, status: '', statusClass: 'muted', pw: { current: '', next: '', repeat: '', message: '', ok: false }, pk: { name: '', message: '', ok: false, busy: false } };
 
 async function api(path, body, headers = {}) {
-  const init = body === undefined && !Object.keys(headers).length ? {} : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) };
-  const res = await fetch(`api/settings${path}`, init);
-  return res.json();
+  const url = `api/settings${path}`;
+  if (body === undefined && !Object.keys(headers).length) return (await fetch(url)).json();
+  return postJson(url, body ?? {}, headers);
 }
 
 function applyTheme(v) {
@@ -455,8 +455,7 @@ async function syncPlugins(update) {
   state.status = t('pluginSyncing');
   state.statusClass = 'muted';
   render();
-  const out = await fetch(`api/plugins/sync${update ? '?update=1' : ''}`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } })
-    .then((r) => r.json()).catch((err) => ({ error: err.message }));
+  const out = await postJson(`api/plugins/sync${update ? '?update=1' : ''}`).catch((err) => ({ error: err.message }));
   const fresh = await api('').catch(() => null);
   if (fresh?.ok) takePlugins(fresh);
   state.status = out.error ? t('failed', { error: out.error }) : t('pluginSynced');
@@ -1078,7 +1077,7 @@ async function saveFile(name) {
   f.remarks = [];
   f.conflict = false;
   render();
-  const res = await fetch(`api/settings${fileUrl(name)}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ text: f.draft, hash: f.hash }) })
+  const res = await post(`api/settings${fileUrl(name)}`, { text: f.draft, hash: f.hash })
     .catch((err) => ({ status: 0, json: async () => ({ ok: false, error: err.message }) }));
   const out = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
   if (out.needsPassword) return askPassword();
