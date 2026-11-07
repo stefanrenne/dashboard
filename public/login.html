@@ -8,26 +8,8 @@
 <title>Log in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="theme.css">
 <style>
-  /* the theme tokens of index.html and setup.html (the shades come from settings.yaml's colour) */
-  :root {
-    --t50: #f8fafc; --t100: #f1f5f9; --t200: #e2e8f0; --t300: #cbd5e1; --t400: #94a3b8; --t500: #64748b;
-    --t600: #475569; --t700: #334155; --t800: #1e293b; --t900: #0f172a; --t950: #020617;
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --dash-bg: var(--t800); --dash-text: var(--t200); --dash-muted: var(--t300); --dash-heading: var(--t100);
-    --dash-card: rgb(255 255 255 / .05); --dash-block: color-mix(in srgb, var(--t900) 30%, transparent);
-    --dash-border: color-mix(in srgb, var(--t200) 20%, transparent); --dash-accent: var(--t400); --dash-on-accent: var(--t950);
-    --dash-error: #fb7185;
-  }
-  :root[data-theme="light"] {
-    color-scheme: light;
-    --dash-bg: var(--t50); --dash-text: var(--t700); --dash-muted: var(--t500); --dash-heading: var(--t800);
-    --dash-card: #ffffff; --dash-block: color-mix(in srgb, var(--t200) 50%, transparent);
-    --dash-border: color-mix(in srgb, var(--t800) 20%, transparent); --dash-accent: var(--t600); --dash-on-accent: #ffffff;
-    --dash-error: #be123c;
-  }
   * { box-sizing: border-box; }
   html { background: var(--dash-bg); }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--dash-bg); color: var(--dash-text);
