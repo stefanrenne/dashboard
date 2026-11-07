@@ -127,8 +127,7 @@ function text(key, attrs = {}) {
 function number(key, min, max) {
   return el('input', { type: 'number', id: key, min: String(min), max: String(max), step: '1', inputmode: 'numeric', value: state.values[key], oninput: (e) => { state.values[key] = e.target.value; } });
 }
-const BLURS = ['none', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'];
-const blurs = () => [['', t('blurOff')], ...BLURS.map((b) => [b, b])];
+const blurs = () => [['', t('blurOff')], ...state.data.schema.blurs.map((b) => [b, b])];
 
 /** A list of small maps (pwa icons, shortcuts): a row of inputs each, added and removed. */
 function listField(key, legend, help, columns) {
@@ -148,34 +147,23 @@ function listField(key, legend, help, columns) {
 const saveBar = () => statusBar(state, save);
 
 function render() {
+  if (state.data.noPassword) return show(passwordSection());
+  const section = SECTIONS.find((x) => x.id === state.section);
+  // a section with a form shows its file as text when asked
+  if (section.form && state.mode[section.file] === 'text') return show(nav(), modeToggle(section.file), fileSection(section));
+  return show(nav(), section.view(section));
+}
+
+function generalSection() {
   const v = state.values;
   const d = state.data;
-  if (d.noPassword) return show(passwordSection());
-  if (state.section === 'layout') return show(nav(), layoutSection());
-  if (state.section === 'plugins') return show(nav(), pluginsSection());
-  if (state.section === 'services' && state.mode['services.yaml'] !== 'text') return show(nav(), servicesSection());
-  if (state.section === 'header' && state.mode['widgets.yaml'] !== 'text') return show(nav(), headerSection());
-  if (state.section === 'bookmarks' && state.mode['bookmarks.yaml'] !== 'text') return show(nav(), bookmarksSection());
-  const serverFile = { docker: 'docker.yaml', kubernetes: 'kubernetes.yaml', proxmox: 'proxmox.yaml' }[state.section];
-  if (serverFile && state.mode[serverFile] !== 'text') return show(nav(), serversSection(serverFile));
-  if (serverFile) return show(nav(), modeToggle(serverFile), fileSection(SECTIONS.find((x) => x[0] === state.section)));
-  if (state.section === 'bookmarks') return show(nav(), modeToggle('bookmarks.yaml'), fileSection(SECTIONS.find((x) => x[0] === 'bookmarks')));
-  if (state.section === 'header') return show(nav(), modeToggle('widgets.yaml'), fileSection(SECTIONS.find((x) => x[0] === 'header')));
-  if (state.section === 'services') return show(nav(), modeToggle('services.yaml'), fileSection(SECTIONS.find((x) => x[0] === 'services')));
-  if (state.section === 'advanced') {
-    const parts = [].concat(fileSection(SECTIONS.find((x) => x[0] === 'advanced')));
-    return show(nav(), ...parts.slice(0, 1), importPanel(), ...parts.slice(1));
-  }
-  if (!['general', 'security'].includes(state.section)) return show(nav(), fileSection(SECTIONS.find((x) => x[0] === state.section)));
-  if (state.section === 'security') return show(nav(), securityPanel(), passwordSection(), passkeySection(), saveBar());
   const swatches = el('div', { class: 'swatches', role: 'group', 'aria-label': t('colorLabel') }, ...Object.keys(PALETTES).map((name) => {
     const b = el('button', { type: 'button', class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === v.color), onclick: () => { v.color = name; applyTheme(v); render(); } });
     b.style.background = PALETTES[name].split(' ')[5];
     return b;
   }));
   const ql = v.qlProvider === 'custom';
-  return show(
-    nav(),
+  return [
     el('section', { class: 'panel' },
       el('h2', { text: t('secAppearance') }),
       el('div', { class: 'grid' },
@@ -217,7 +205,7 @@ function render() {
       el('h2', { text: t('secQuicklaunch') }),
       el('p', { class: 'muted', text: t('quicklaunchHelp') }),
       el('div', { class: 'grid' },
-        field('qlProvider', t('qlProvider'), select('qlProvider', [['', t('asSearchWidget')], ...['google', 'duckduckgo', 'bing', 'baidu', 'brave', 'startpage', 'custom'].map((p) => [p, p])])),
+        field('qlProvider', t('qlProvider'), select('qlProvider', [['', t('asSearchWidget')], ...state.data.schema.searchProviders.map((p) => [p, p])])),
         field('qlTarget', t('qlTarget'), select('qlTarget', [['', t('asServiceLinks')], ['_blank', t('targetBlank')], ['_self', t('targetSelf')], ['_top', t('targetTop')]])),
         field('qlShowSearchSuggestions', t('qlShowSearchSuggestions'), select('qlShowSearchSuggestions', [['', t('asSearchWidget')], ['true', t('on')], ['false', t('off')]])),
         field('qlMobileButtonPosition', t('qlMobileButtonPosition'), select('qlMobileButtonPosition', [['', t('none')], ['top-left', t('posTopLeft')], ['top-right', t('posTopRight')], ['bottom-left', t('posBottomLeft')], ['bottom-right', t('posBottomRight')]]))),
@@ -248,7 +236,7 @@ function render() {
       check('disableIndexing', t('disableIndexing')),
       d.other.length ? el('p', { class: 'muted', text: t('otherKeys', { list: d.other.join(', ') }) }) : null),
     saveBar(),
-  );
+  ];
 }
 
 function securityPanel() {
@@ -294,6 +282,30 @@ async function save() {
   render();
 }
 
+// ---------------------------------------------------------------- lists of entries
+// an entry's own number, for the ids of its fields (an entry keeps it when the list is reordered)
+let uid = 0;
+const keyOf = new WeakMap();
+const kid = (o) => { if (!keyOf.has(o)) keyOf.set(o, ++uid); return keyOf.get(o); };
+
+/** Up and down (and Remove) for the entry at `i` of `list`; the moved entry's button keeps the focus. */
+function orderButtons(list, i, name, id, { remove = true } = {}) {
+  const move = (by) => {
+    const j = i + by;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    render();
+    // the same button keeps the focus; at the top or bottom, the other one
+    const key = kid(list[j]);
+    const same = document.getElementById(`${by < 0 ? 'up' : 'down'}-${key}`);
+    (same?.disabled ? document.getElementById(`${by < 0 ? 'down' : 'up'}-${key}`) : same)?.focus();
+  };
+  return el('span', { class: 'order' },
+    el('button', { type: 'button', id: `up-${id}`, text: '↑', 'aria-label': t('moveUp', { name }), disabled: i === 0, onclick: () => move(-1) }),
+    el('button', { type: 'button', id: `down-${id}`, text: '↓', 'aria-label': t('moveDown', { name }), disabled: i === list.length - 1, onclick: () => move(1) }),
+    remove ? el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeHost', { host: name }), onclick: () => { list.splice(i, 1); render(); } }) : null);
+}
+
 // ---------------------------------------------------------------- the groups (settings.yaml layout)
 function groupFields(g, id, { nested = false, kind = 'services' } = {}) {
   const sel = (key, label, entries) => field(`${id}-${key}`, label, el('select', { id: `${id}-${key}`, onchange: (e) => { g[key] = e.target.value; } },
@@ -314,15 +326,6 @@ function groupFields(g, id, { nested = false, kind = 'services' } = {}) {
 
 function layoutSection() {
   const groups = state.layoutGroups;
-  const move = (i, by) => {
-    const j = i + by;
-    if (j < 0 || j >= groups.length) return;
-    [groups[i], groups[j]] = [groups[j], groups[i]];
-    render();
-    // the same button keeps the focus; at the top or bottom, the other one
-    const same = document.getElementById(`lg-${j}-${by < 0 ? 'up' : 'down'}`);
-    (same?.disabled ? document.getElementById(`lg-${j}-${by < 0 ? 'down' : 'up'}`) : same)?.focus();
-  };
   const kindText = (g) => (g.kind === 'services' ? t('kindServices') : g.kind === 'bookmarks' ? t('kindBookmarks') : t('kindGone'));
   return [
     el('section', { class: 'panel' },
@@ -332,9 +335,7 @@ function layoutSection() {
         el('header', {},
           el('strong', { text: g.name }),
           el('span', { class: g.kind ? 'muted' : 'error', text: kindText(g) }),
-          el('span', { class: 'order' },
-            el('button', { type: 'button', id: `lg-${i}-up`, text: '↑', 'aria-label': t('moveUp', { name: g.name }), disabled: i === 0, onclick: () => move(i, -1) }),
-            el('button', { type: 'button', id: `lg-${i}-down`, text: '↓', 'aria-label': t('moveDown', { name: g.name }), disabled: i === groups.length - 1, onclick: () => move(i, 1) }))),
+          orderButtons(groups, i, g.name, kid(g), { remove: false })),
         g.kind
           ? el('details', { open: g.open || null, ontoggle: (e) => { g.open = e.target.open; } },
             el('summary', { text: t('groupSettings') }),
@@ -373,14 +374,6 @@ const pinText = (pin) => (pin ? t('pluginPinned', { version: pin.tag ?? pin.vers
 function pluginsSection() {
   const list = state.pluginEntries;
   const p = state.data.plugins ?? { defaults: [], packages: [], errors: [], warnings: [] };
-  const move = (i, by) => {
-    const j = i + by;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    render();
-    const same = document.getElementById(`pl-${j}-${by < 0 ? 'up' : 'down'}`);
-    (same?.disabled ? document.getElementById(`pl-${j}-${by < 0 ? 'down' : 'up'}`) : same)?.focus();
-  };
   const help = { git: 'pluginValueHelpGit', npm: 'pluginValueHelpNpm', path: 'pluginValueHelpPath' };
   const placeholder = { git: 'https://github.com/someone/dashboard-widget-x#v1.0.0', npm: 'dashboard-widget-x@1.0.0', path: './my-widgets/x' };
   const input = (e, i, key, attrs = {}) => el('input', { type: 'text', id: `pl-${i}-${key}`, value: e[key], spellcheck: 'false', autocapitalize: 'off', oninput: (ev) => { e[key] = ev.target.value; }, ...attrs });
@@ -396,10 +389,7 @@ function pluginsSection() {
           el('header', {},
             el('strong', { class: 'image', text: name }),
             el('span', { class: 'muted', text: e.index === null ? '' : pinText(e.pin) }),
-            el('span', { class: 'order' },
-              el('button', { type: 'button', id: `pl-${i}-up`, text: '↑', 'aria-label': t('moveUp', { name }), disabled: i === 0, onclick: () => move(i, -1) }),
-              el('button', { type: 'button', id: `pl-${i}-down`, text: '↓', 'aria-label': t('moveDown', { name }), disabled: i === list.length - 1, onclick: () => move(i, 1) }),
-              el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeHost', { host: name }), onclick: () => { state.pluginEntries = list.filter((x) => x !== e); render(); } }))),
+            orderButtons(list, i, name, kid(e))),
           el('div', { class: 'body' },
             el('div', { class: 'grid' },
               field(`pl-${i}-kind`, t('pluginKind'), el('select', { id: `pl-${i}-kind`, onchange: (ev) => { e.kind = ev.target.value; render(); } },
@@ -516,9 +506,6 @@ function statusBar({ status, statusClass }, onSave, ...buttons) {
 
 // ---------------------------------------------------------------- services.yaml as a form
 // Each entry keeps the id of its YAML node; the server rebuilds the file from them (src/settings/tree.js).
-let uid = 0;
-const keyOf = new WeakMap();
-const kid = (o) => { if (!keyOf.has(o)) keyOf.set(o, ++uid); return keyOf.get(o); };
 const services = () => state.forms['services.yaml'].data;
 
 function modeToggle(root) {
@@ -531,21 +518,6 @@ function allGroups(items, prefix = '') {
   return items.filter((x) => x.kind === 'group' && !x.include).flatMap((g) => [{ group: g, label: prefix + g.name }, ...allGroups(g.items, `${prefix}${g.name} › `)]);
 }
 
-function orderButtons(list, i, name, id) {
-  const move = (by) => {
-    const j = i + by;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    render();
-    const key = kid(list[j]);
-    const same = document.getElementById(`${by < 0 ? 'up' : 'down'}-${key}`);
-    (same?.disabled ? document.getElementById(`${by < 0 ? 'down' : 'up'}-${key}`) : same)?.focus();
-  };
-  return el('span', { class: 'order' },
-    el('button', { type: 'button', id: `up-${id}`, text: '↑', 'aria-label': t('moveUp', { name }), disabled: i === 0, onclick: () => move(-1) }),
-    el('button', { type: 'button', id: `down-${id}`, text: '↓', 'aria-label': t('moveDown', { name }), disabled: i === list.length - 1, onclick: () => move(1) }),
-    el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeHost', { host: name }), onclick: () => { list.splice(i, 1); render(); } }));
-}
 
 function serviceCard(s, list, i) {
   const id = kid(s);
@@ -665,7 +637,7 @@ function widgetEditor(list, catalog, file, prefix) {
       const fid = `${id}-${k}`;
       const set = (e) => { w.options[k] = e.target.value; };
       const label = `${k}${def.required ? ' *' : ''}`;
-      const help = def.secret && /^__SECRET_[0-9a-f]{10}__$/.test(w.options[k] ?? '') ? t('wHidden') : def.description ?? '';
+      const help = w.hidden?.includes(k) ? t('wHidden') : def.description ?? '';
       if (def.type === 'enum' || def.type === 'boolean') {
         const values = def.type === 'boolean' ? ['true', 'false'] : def.values ?? [];
         return field(fid, label, el('select', { id: fid, onchange: set },
@@ -874,13 +846,16 @@ function serversSection(file) {
 }
 
 // ---------------------------------------------------------------- import from homepage, download
-const HOMEPAGE_FILES = ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'];
 
 function importPanel() {
   const imp = state.imp ?? (state.imp = {});
   const input = el('input', { type: 'file', id: 'import-files', multiple: true, accept: '.yaml,.yml', onchange: async (e) => {
     const files = {};
-    for (const f of e.target.files ?? []) if (HOMEPAGE_FILES.includes(f.name)) files[f.name] = await f.text();
+    // homepage's files by their name; .yml counts as .yaml
+    for (const f of e.target.files ?? []) {
+      const name = f.name.replace(/\.yml$/, '.yaml');
+      if (state.data.schema.homepageFiles.includes(name)) files[name] = await f.text();
+    }
     imp.files = files;
     imp.result = null;
     imp.status = '';
@@ -941,9 +916,9 @@ function downloadText(name, text) {
 }
 
 // ---------------------------------------------------------------- icon fields: suggestions and a preview
-const iconUrls = new Map(); // name → Promise of the address it stands for (src/layout.js resolveIcon)
+const iconUrls = new Map(); // name → Promise of { url, mask } (src/icons.js resolveIcon, through the server)
 function iconUrl(name) {
-  if (!iconUrls.has(name)) iconUrls.set(name, api(`/icon?name=${encodeURIComponent(name)}`).then((out) => out.url ?? null).catch(() => null));
+  if (!iconUrls.has(name)) iconUrls.set(name, api(`/icon?name=${encodeURIComponent(name)}`).then((out) => ({ url: out.url ?? null, mask: Boolean(out.mask) })).catch(() => ({ url: null, mask: false })));
   return iconUrls.get(name);
 }
 
@@ -971,12 +946,12 @@ function iconInput(id, value, set, placeholder = 'plex.svg') {
   const update = async (name) => {
     const v = String(name ?? '').trim();
     if (!v) return preview.replaceChildren();
-    const url = await iconUrl(v);
+    const { url, mask: isMask } = await iconUrl(v);
     if (!url) return preview.replaceChildren(el('span', { class: 'error', text: '?' }));
     // single-colour icons (mdi-, si-) are a mask in the text colour, as on the dashboard
-    if (url.includes('#dash-mask')) {
+    if (isMask) {
       const mask = el('span', { class: 'mask' });
-      const src = `url("${url.replace(/#dash-mask.*$/, '')}")`;
+      const src = `url("${url}")`;
       mask.style.setProperty('mask-image', src);
       mask.style.setProperty('-webkit-mask-image', src);
       return preview.replaceChildren(mask);
@@ -992,27 +967,30 @@ function iconInput(id, value, set, placeholder = 'plex.svg') {
 }
 
 // ---------------------------------------------------------------- sections and the config files
-// [id, text key, the config file it edits]; General, Security, Groups and Widgets are the forms above. The sections with a file
-// show it as text until their own form is there.
+// The sections: id, label (a text key), file (the config file it edits), form (it can show that
+// file as text instead), view(section) (what it shows).
 const SECTIONS = [
-  ['general', 'navGeneral', null],
-  ['security', 'navSecurity', null],
-  ['layout', 'navLayout', null],
-  ['plugins', 'navPlugins', null],
-  ['services', 'navServices', 'services.yaml'],
-  ['header', 'navHeader', 'widgets.yaml'],
-  ['bookmarks', 'navBookmarks', 'bookmarks.yaml'],
-  ['docker', 'navDocker', 'docker.yaml'],
-  ['kubernetes', 'navKubernetes', 'kubernetes.yaml'],
-  ['proxmox', 'navProxmox', 'proxmox.yaml'],
-  ['advanced', 'navAdvanced', 'settings.yaml'],
+  { id: 'general', label: 'navGeneral', view: generalSection },
+  { id: 'security', label: 'navSecurity', view: () => [securityPanel(), passwordSection(), passkeySection(), saveBar()] },
+  { id: 'layout', label: 'navLayout', view: layoutSection },
+  { id: 'plugins', label: 'navPlugins', view: pluginsSection },
+  { id: 'services', label: 'navServices', file: 'services.yaml', form: true, view: servicesSection },
+  { id: 'header', label: 'navHeader', file: 'widgets.yaml', form: true, view: headerSection },
+  { id: 'bookmarks', label: 'navBookmarks', file: 'bookmarks.yaml', form: true, view: bookmarksSection },
+  { id: 'docker', label: 'navDocker', file: 'docker.yaml', form: true, view: (x) => serversSection(x.file) },
+  { id: 'kubernetes', label: 'navKubernetes', file: 'kubernetes.yaml', form: true, view: (x) => serversSection(x.file) },
+  { id: 'proxmox', label: 'navProxmox', file: 'proxmox.yaml', form: true, view: (x) => serversSection(x.file) },
+  { id: 'advanced', label: 'navAdvanced', file: 'settings.yaml', view: (x) => {
+    const [panel, ...rest] = [].concat(fileSection(x));
+    return [panel, importPanel(), ...rest];
+  } },
 ];
-const sectionOf = (hash) => (SECTIONS.some((x) => x[0] === String(hash).slice(1)) ? String(hash).slice(1) : 'general');
+const sectionOf = (hash) => (SECTIONS.some((x) => x.id === String(hash).slice(1)) ? String(hash).slice(1) : 'general');
 const fileUrl = (name) => `/files/${encodeURIComponent(name)}`;
 
 function nav() {
   return [el('nav', { class: 'sections', 'aria-label': t('navLabel') },
-    ...SECTIONS.map(([id, key]) => el('a', { href: `#${id}`, 'aria-current': id === state.section ? 'page' : null, text: t(key) }))), iconList()];
+    ...SECTIONS.map(({ id, label }) => el('a', { href: `#${id}`, 'aria-current': id === state.section ? 'page' : null, text: t(label) }))), iconList()];
 }
 
 async function loadFiles() {
@@ -1029,12 +1007,12 @@ async function loadFile(name, keepStatus = false) {
   const out = await api(fileUrl(name)).catch((err) => ({ ok: false, error: err.message }));
   if (out.needsPassword) return askPassword();
   state.file[name] = out.ok
-    ? { text: out.text, draft: out.text, hash: out.hash, exists: out.exists, history: out.history, ...(keepStatus ? { status: old.status, statusClass: old.statusClass, problems: old.problems, remarks: old.remarks } : {}) }
+    ? { text: out.text, draft: out.text, hash: out.hash, exists: out.exists, history: out.history, secrets: out.secrets ?? [], ...(keepStatus ? { status: old.status, statusClass: old.statusClass, problems: old.problems, remarks: old.remarks } : {}) }
     : { error: out.error };
   render();
 }
 
-function fileSection([, , root]) {
+function fileSection({ file: root }) {
   if (!state.files) {
     loadFiles();
     return el('section', { class: 'panel' }, el('p', { class: 'muted', text: t('fileLoading') }));
@@ -1069,7 +1047,7 @@ function fileSection([, , root]) {
       f.exists === false ? el('p', { class: 'muted', text: t('fileNew') }) : null,
       name === 'custom.js' ? el('p', { class: 'warn', role: 'note', text: t('fileCustomJs') }) : name === 'custom.css' ? el('p', { class: 'muted', text: t('fileCustomCss') }) : null,
       area,
-      /__SECRET_[0-9a-f]{10}__/.test(f.draft) ? el('p', { class: 'hint muted', text: t('fileSecrets') }) : null,
+      f.secrets?.length ? el('p', { class: 'hint muted', text: t('fileSecrets') }) : null,
       f.problems?.length ? el('div', { class: 'error', role: 'alert' }, t('fileProblems'), el('ul', { class: 'plain' }, ...f.problems.map(message))) : null,
       f.remarks?.length ? el('div', { class: 'warn' }, t('fileRemarks'), el('ul', { class: 'plain' }, ...f.remarks.map(message))) : null,
       f.conflict ? el('p', { class: 'error' }, t('fileConflict'), ' ', el('button', { type: 'button', class: 'link', text: t('fileReload'), onclick: () => loadFile(name) })) : null,
@@ -1262,6 +1240,9 @@ window.HD_SETTINGS = { I18N, state };
 state.section = sectionOf(window.location.hash);
 window.addEventListener('hashchange', () => {
   state.section = sectionOf(window.location.hash);
+  // a save's status belongs to the section it was made in
+  state.status = '';
+  state.statusClass = 'muted';
   if (state.data) render();
 });
 // a file edited but not saved: the browser asks before leaving

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { JSDOM } from 'jsdom';
 import { checkLanguages, withCommon } from './helpers.mjs';
 import { SPECS } from '../src/settings/servers.js';
+import { schemaForPage } from '../src/config/schema.js';
 
 const HTML = withCommon(fs.readFileSync(path.resolve('public/settings.html'), 'utf8')).replace('<script src="settings.js"></script>', '');
 const SCRIPT = fs.readFileSync(path.resolve('public/settings.js'), 'utf8');
@@ -49,7 +50,7 @@ async function page(answers, setup = () => {}, url = 'http://dash.lan/settings')
 // the form of a server file as the server sends it
 const serverForm = (file) => SPECS[file].fields.map(({ name, type, values }) => ({ name, type, ...(values ? { values } : {}) }));
 const tick = () => new Promise((r) => setTimeout(r, 20));
-const data = (extra = {}) => ({ ok: true, schema: { minPassword: 8 }, values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
+const data = (extra = {}) => ({ ok: true, schema: schemaForPage(), values: VALUES, other: ['layout', 'plugins'], hasPassword: true, noPassword: false, ...extra });
 
 test('settings page: every language complete, the palettes the page\'s own', async () => {
   const { w } = await page({ 'GET /api/settings': data() });
@@ -187,7 +188,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     'GET /api/settings': data(),
     'GET /api/settings/files': { ok: true, files: FILES },
     'GET /api/settings/services': { ok: true, hash: 'h1', items: [], discovered: [] },
-    'GET /api/settings/files/services.yaml': () => ({ ok: true, file: 'services.yaml', exists: true, hash, text, history: [{ id: 'services.yaml.2026-11-06T10-00-00-000Z', time: '2026-11-06T10:00:00.000Z', size: 10 }] }),
+    'GET /api/settings/files/services.yaml': () => ({ ok: true, file: 'services.yaml', exists: true, hash, text, secrets: ['[1].Apps[0].App.widget.key'], history: [{ id: 'services.yaml.2026-11-06T10-00-00-000Z', time: '2026-11-06T10:00:00.000Z', size: 10 }] }),
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
     'GET /api/settings/files/media.yaml': { ok: true, file: 'media.yaml', exists: true, hash: 'm1', text: '- Plex: {}\n', history: [] },
     'GET /api/settings/files/services.yaml/history/services.yaml.2026-11-06T10-00-00-000Z': { ok: true, text: '# the old one\n' },
@@ -316,7 +317,7 @@ test('settings page: the groups: settings per group and nested group, the order 
   doc.querySelector('[aria-label="Developer omhoog"]').click();
   assert.deepEqual(cards(), ['Developer', 'Infra', 'Gone']);
   assert.equal(doc.activeElement.getAttribute('aria-label'), 'Developer omlaag', 'at the top the focus goes to the other button');
-  assert.equal(doc.getElementById('lg-0-up').disabled, true);
+  assert.equal(doc.querySelector('[aria-label="Developer omhoog"]').disabled, true, 'at the top');
   [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
   await tick();
   const sent = calls.filter((c) => c.p === '/api/settings/layout').at(-1).body.groups;
@@ -376,7 +377,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   const fields = (extra = {}) => ({ href: '', icon: '', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false, ...extra });
   const items = [
     { kind: 'group', id: '0', name: 'Infra', items: [
-      { kind: 'service', id: '0/0', name: 'Router', fields: fields({ href: 'http://router.lan', ping: 'router.lan' }), widgets: [{ id: 'widget', type: 'custom-api', options: { url: 'http://router.lan/api', key: '__SECRET_0123456789__' }, rest: ['mappings'] }], other: [] },
+      { kind: 'service', id: '0/0', name: 'Router', fields: fields({ href: 'http://router.lan', ping: 'router.lan' }), widgets: [{ id: 'widget', type: 'custom-api', options: { url: 'http://router.lan/api', key: '__SECRET_0123456789__' }, hidden: ['key'], rest: ['mappings'] }], other: [] },
       { kind: 'group', id: '0/1', name: 'Network', items: [] },
     ] },
     { kind: 'group', id: '1', name: 'Media', include: 'media.yaml', items: [] },
@@ -582,11 +583,11 @@ test('settings page: connection tests for a Proxmox node and Kubernetes', async 
 
 test('settings page: icon fields suggest the icons in use and show a preview', async () => {
   const fields = { href: '', icon: 'plex.svg', description: '', siteMonitor: '', ping: '', container: '', server: '', target: '', statusStyle: '', showStats: '', weight: '', filter: '', confirm: '', proxmoxNode: '', proxmoxVMID: '', proxmoxType: '', app: '', namespace: '', podSelector: '', external: false };
-  const urls = { 'plex.svg': 'https://cdn.example.com/svg/plex.svg', 'mdi-server': 'https://cdn.example.com/mdi/server.svg#dash-mask' };
+  const urls = { 'plex.svg': { url: 'https://cdn.example.com/svg/plex.svg', mask: false }, 'mdi-server': { url: 'https://cdn.example.com/mdi/server.svg', mask: true } };
   const { doc, w } = await page({
     'GET /api/settings': data(),
     'GET /api/settings/icons': { ok: true, local: ['/icons/lab.png'], used: ['plex.svg'] },
-    'GET /api/settings/icon': (init, u) => ({ ok: true, url: urls[u.searchParams.get('name')] ?? null }),
+    'GET /api/settings/icon': (init, u) => ({ ok: true, ...(urls[u.searchParams.get('name')] ?? { url: null, mask: false }) }),
     'GET /api/settings/services': { ok: true, hash: 'h', items: [{ kind: 'group', id: '0', name: 'Media', items: [{ kind: 'service', id: '0/0', name: 'Plex', fields, widgets: [], other: [] }] }], discovered: [], widgets: [] },
   }, () => {}, 'http://dash.lan/settings#services');
   await tick();
