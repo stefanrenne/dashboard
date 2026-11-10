@@ -399,7 +399,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.match(panel(), /Media › Jellyfin \(docker:local\)/);
   assert.match(panel(), /Ook: mappings \(bewerk ze als tekst\)/);
   assert.match(panel(), /Verborgen; typ om te vervangen/);
-  const router = doc.querySelector('.card');
+  const router = doc.querySelector('.card .card');
   const id = router.querySelector('input[id$="-name"]').id.replace('-name', '');
   const set = (sid, value, event = 'input') => { const n = doc.getElementById(sid); n.value = value; n.dispatchEvent(new w.Event(event)); };
   set(`${id}-name`, 'Gateway');
@@ -420,7 +420,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.deepEqual([...move.options].map((o) => o.textContent), ['Infra', 'Infra › Network', 'Apps']);
   set(`${id}-move`, '1', 'change');
   // a new service in Apps, named; the include block moved down below it
-  const apps = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input')?.value === 'Apps');
+  const apps = [...doc.querySelectorAll('section.card')].find((s) => s.querySelector('input')?.value === 'Apps');
   [...apps.querySelectorAll('button')].find((b) => b.textContent === 'Een service toevoegen').click();
   const fresh = doc.activeElement;
   assert.equal(fresh.value, 'Nieuwe service');
@@ -479,10 +479,10 @@ test('settings page: bookmarks as a form: fields, move to another group, add, re
   await tick();
   assert.match(doc.getElementById('panel').textContent, /De bladwijzers van deze groep staan in shared\.yaml/);
   const set = (id, value, event = 'input') => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
-  const id = doc.querySelector('.card input[id$="-name"]').id.replace('-name', '');
+  const id = doc.querySelector('.card .card input[id$="-name"]').id.replace('-name', '');
   set(`${id}-description`, 'The code');
   set(`${id}-move`, '1', 'change');
-  const dev = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input')?.value === 'Developer');
+  const dev = [...doc.querySelectorAll('section.card')].find((s) => s.querySelector('input')?.value === 'Developer');
   [...dev.querySelectorAll('button')].find((b) => b.textContent === 'Een bladwijzer toevoegen').click();
   set(doc.activeElement.id, 'Hub');
   set(doc.activeElement.id.replace('-name', '-href'), 'https://hub.docker.com');
@@ -633,7 +633,7 @@ test('settings page: a save refused for one field says so next to that field, an
   assert.equal(doc.activeElement, input);
 });
 
-test('settings page: an empty services.yaml, bookmarks.yaml or proxmox.yaml looks the same: the file, what it holds, and how to start', async () => {
+test('settings page: an empty services.yaml, bookmarks.yaml or proxmox.yaml looks the same: the section, what it holds, that it is empty, and how to start', async () => {
   const { doc, w } = await page({
     'GET /api/settings': data(),
     'GET /api/settings/bookmarks': { ok: true, hash: 'b1', items: [], blank: { fields: { href: '', abbr: '', icon: '', description: '' }, other: [] } },
@@ -645,9 +645,9 @@ test('settings page: an empty services.yaml, bookmarks.yaml or proxmox.yaml look
     await tick();
     await tick();
     const panel = doc.querySelector('#panel section.panel');
-    return [panel.querySelector('h2').textContent, [...panel.querySelectorAll('button')].map((b) => b.textContent)];
+    return [panel.querySelector('h2').textContent, [...panel.querySelectorAll('p.muted')].length, [...panel.querySelectorAll('p.muted')].at(-1).textContent, [...panel.querySelectorAll('button')].map((b) => b.textContent)];
   };
-  assert.deepEqual(await head('bookmarks'), ['bookmarks.yaml', ['Een groep toevoegen']]);
-  assert.deepEqual(await head('services'), ['services.yaml', ['Een groep toevoegen']]);
-  assert.deepEqual(await head('proxmox'), ['proxmox.yaml', ['Een server toevoegen']]);
+  assert.deepEqual(await head('bookmarks'), ['Bladwijzers', 2, 'Nog geen groepen.', ['Een groep toevoegen']]);
+  assert.deepEqual(await head('services'), ['Services', 2, 'Nog geen groepen.', ['Een groep toevoegen']]);
+  assert.deepEqual(await head('proxmox'), ['Proxmox', 2, 'Nog geen servers.', ['Een server toevoegen']]);
 });
