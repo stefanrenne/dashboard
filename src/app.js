@@ -229,7 +229,7 @@ export async function createApp({
 
 
   const onboardingRoute = onboardingRoutes({ configDir, env, log, publicDir, exampleDir: path.join(ROOT, 'config.example'), version: VERSION, dockerSocket, onboarding, state, reload, runtime });
-  const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, defaultPlugins, gate, passkeys, sessions, state, reload, runtime });
+  const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, gate, passkeys, sessions, state, reload, runtime });
 
   async function handler(req, res) {
     const hosts = hostsNow();

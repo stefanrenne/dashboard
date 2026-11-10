@@ -1,13 +1,12 @@
 // The plugins list of settings.yaml on the settings page: each entry's source (git, npm or a
-// local path), subdir and only:, with what the lock file pinned it to; the defaults (the widgets
-// collection) the list extends, and whether an entry replaces one. A source is checked as the
+// local path), subdir and only:, with what the lock file pinned it to. A source is checked as the
 // installer reads it (parseSource). A save keeps the YAML node of every entry it had, so an
 // entry's comments and keys the page does not know (label, ...) stay; entries are added,
 // removed and reordered.
 
 import YAML from 'yaml';
 import { openYaml } from './yaml.js';
-import { parseSource, readLock, withDefaultPlugins } from '../plugins/installer.js';
+import { parseSource, readLock } from '../plugins/installer.js';
 
 const FILE = 'settings.yaml';
 const KINDS = ['git', 'npm', 'path'];
@@ -43,11 +42,8 @@ const pinOf = (lock, entry) => {
   }
 };
 
-/**
- * The page's view: { entries: [{ index, kind, value, subdir, only, pin, error }],
- * defaults: [{ source, replaced, pin }] }. `defaults` are the dashboard's default plugins.
- */
-export function readPlugins(configDir, defaults) {
+/** The page's view: { entries: [{ index, kind, value, subdir, only, pin, error }] }. */
+export function readPlugins(configDir) {
   const raw = openYaml(configDir, FILE, { shape: 'map' }).doc.toJS()?.plugins;
   const list = Array.isArray(raw) ? raw : [];
   const lock = readLock(configDir);
@@ -61,11 +57,7 @@ export function readPlugins(configDir, defaults) {
     }
     return { index, ...formOf(entry), pin: pinOf(lock, entry), error };
   });
-  const merged = withDefaultPlugins(list.filter(isMap), defaults);
-  return {
-    entries,
-    defaults: defaults.map((d) => ({ source: d.source, replaced: !merged.some((m) => m.source === d.source && m.yields), pin: pinOf(lock, d) })),
-  };
+  return { entries };
 }
 
 /** Checks the page's list: { entries } cleaned up, or { error }. */

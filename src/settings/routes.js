@@ -32,7 +32,7 @@ const SMALL = 64 * 1024;
 /**
  * The settings routes for the app: (req, res, { method, path, query, loggedIn }) → whether it
  * answered. `app` gives what they use of the running dashboard: configDir, env, log, publicDir,
- * runtime (tryWidget), defaultPlugins, gate, passkeys, sessions, state (config, layout, registry,
+ * runtime (tryWidget), gate, passkeys, sessions, state (config, layout, registry,
  * pluginResult) and reload().
  */
 export function settingsRoutes(app) {
@@ -57,7 +57,7 @@ export function settingsRoutes(app) {
     const r = state.pluginResult;
     return {
       ok: true, hash: readConfigFile(configDir, 'settings.yaml').hash, schema: schemaForPage(), form: formForPage(), ...readSettings(configDir), layout: readLayout(configDir, groupInfo()),
-      plugins: { ...readPlugins(configDir, app.defaultPlugins), errors: r.errors ?? [], warnings: r.warnings ?? [], packages: r.packages ?? [] },
+      plugins: { ...readPlugins(configDir), errors: r.errors ?? [], warnings: r.warnings ?? [], packages: r.packages ?? [] },
       noPassword: !gate.password,
       passkeys: { secure: Boolean(rp), host: rp?.rpId ?? null, list: rp ? passkeys.forHost(rp.rpId) : [] },
     };

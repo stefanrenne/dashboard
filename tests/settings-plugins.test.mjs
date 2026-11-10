@@ -6,7 +6,6 @@ import { readPlugins, checkPlugins, writePlugins } from '../src/settings/plugins
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 
-const DEFAULTS = [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', label: 'widgets' }];
 const TEXT = `# mine
 plugins:
   - source: git+https://github.com/someone/widget-pihole#v1.2.0   # pinned
@@ -26,20 +25,17 @@ function setup(text = TEXT) {
 }
 const file = (dir) => fs.readFileSync(path.join(dir, 'settings.yaml'), 'utf8');
 
-test('readPlugins: each entry as the page edits it, with its pin; the defaults and whether one is replaced', () => {
+test('readPlugins: each entry as the page edits it, with its pin', () => {
   const dir = setup();
-  const { entries, defaults } = readPlugins(dir, DEFAULTS);
+  const { entries } = readPlugins(dir);
   assert.deepEqual(entries.map(({ index, kind, value, subdir, only, error }) => [index, kind, value, subdir, only, error]), [
     [0, 'git', 'https://github.com/someone/widget-pihole#v1.2.0', '', '', null],
     [1, 'path', './my-widgets/garage', '', '', null],
     [2, 'npm', 'dashboard-widget-adguard@2.0.1', 'widgets/adguard', 'adguard', null],
   ]);
   assert.deepEqual(entries[0].pin, { tag: 'v1.2.0', commit: 'abc1234def', version: null });
-  assert.deepEqual(defaults, [{ source: DEFAULTS[0].source, replaced: false, pin: { tag: 'v0.20.0', commit: '0a1b2c3', version: null } }]);
   fs.writeFileSync(path.join(dir, 'settings.yaml'), 'plugins:\n  - source: git+https://github.com/stefanrenne/dashboard-widgets#v0.19.0\n  - source: ftp://nope\n');
-  const replaced = readPlugins(dir, DEFAULTS);
-  assert.equal(replaced.defaults[0].replaced, true);
-  assert.match(replaced.entries[1].error, /starts with "git\+" or "npm:"/);
+  assert.match(readPlugins(dir).entries[1].error, /starts with "git\+" or "npm:"/);
 });
 
 test('writePlugins: the same list writes nothing; edits keep each entry\'s comments and other keys', () => {
@@ -49,7 +45,7 @@ test('writePlugins: the same list writes nothing; edits keep each entry\'s comme
     assert.equal(checked.error, undefined);
     writePlugins(dir, checked.entries);
   };
-  const { entries } = readPlugins(dir, DEFAULTS);
+  const { entries } = readPlugins(dir);
   save(entries);
   assert.equal(file(dir), TEXT);
   // the pin moved, the path removed, the npm entry first, a new git entry at the end

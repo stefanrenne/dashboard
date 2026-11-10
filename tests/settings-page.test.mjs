@@ -329,10 +329,9 @@ test('settings page: the groups: settings per group and nested group, the order 
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
 });
 
-test('settings page: widget packages: the defaults, entries edited, added, reordered and removed; install again', async () => {
+test('settings page: widget packages: entries edited, added, reordered and removed; install again', async () => {
   const plugins = (entries) => ({
     entries,
-    defaults: [{ source: 'git+https://github.com/stefanrenne/dashboard-widgets#latest', replaced: false, pin: { tag: 'v0.20.0', commit: 'abc', version: null } }],
     packages: [{ name: 'widgets', version: 'v0.20.0', url: 'https://github.com/stefanrenne/dashboard-widgets/releases/tag/v0.20.0' }],
     errors: [{ source: 'git+https://github.com/someone/broken#v1', message: 'cannot clone' }], warnings: [],
   });
@@ -347,7 +346,8 @@ test('settings page: widget packages: the defaults, entries edited, added, reord
     'POST /api/plugins/sync': (init) => { synced = init; return { errors: [], warnings: [] }; },
   }, () => {}, 'http://dash.lan/settings#plugins');
   const text = doc.getElementById('panel').textContent;
-  assert.match(text, /Altijd geïnstalleerd: git\+https:\/\/github\.com\/stefanrenne\/dashboard-widgets#latest · Vastgezet op v0\.20\.0/);
+  assert.match(text, /Geïnstalleerdwidgets v0\.20\.0/, 'the default package is listed once, under Installed');
+  assert.doesNotMatch(text, /#latest neemt/, 'how to pin is said at the field, not again on top');
   assert.match(text, /Vastgezet op v1\.2\.0/);
   assert.match(text, /cannot clone/);
   const set = (id, value, event) => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
