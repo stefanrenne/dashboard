@@ -420,7 +420,7 @@ test('settings page: services as a form: fields, rename, move to another group, 
   assert.deepEqual([...move.options].map((o) => o.textContent), ['Infra', 'Infra › Network', 'Apps']);
   set(`${id}-move`, '1', 'change');
   // a new service in Apps, named; the include block moved down below it
-  const apps = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input').value === 'Apps');
+  const apps = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input')?.value === 'Apps');
   [...apps.querySelectorAll('button')].find((b) => b.textContent === 'Een service toevoegen').click();
   const fresh = doc.activeElement;
   assert.equal(fresh.value, 'Nieuwe service');
@@ -482,7 +482,7 @@ test('settings page: bookmarks as a form: fields, move to another group, add, re
   const id = doc.querySelector('.card input[id$="-name"]').id.replace('-name', '');
   set(`${id}-description`, 'The code');
   set(`${id}-move`, '1', 'change');
-  const dev = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input').value === 'Developer');
+  const dev = [...doc.querySelectorAll('section.panel')].find((s) => s.querySelector('input')?.value === 'Developer');
   [...dev.querySelectorAll('button')].find((b) => b.textContent === 'Een bladwijzer toevoegen').click();
   set(doc.activeElement.id, 'Hub');
   set(doc.activeElement.id.replace('-name', '-href'), 'https://hub.docker.com');
@@ -631,4 +631,23 @@ test('settings page: a save refused for one field says so next to that field, an
   assert.equal(input.getAttribute('aria-invalid'), 'true');
   assert.equal(doc.getElementById(input.getAttribute('aria-describedby')).textContent, 'at least 5s');
   assert.equal(doc.activeElement, input);
+});
+
+test('settings page: an empty services.yaml, bookmarks.yaml or proxmox.yaml looks the same: the file, what it holds, and how to start', async () => {
+  const { doc, w } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/bookmarks': { ok: true, hash: 'b1', items: [], blank: { fields: { href: '', abbr: '', icon: '', description: '' }, other: [] } },
+    'GET /api/settings/services': { ok: true, hash: 's1', items: [], blank: { fields: {}, widgets: [], other: [] }, widgets: [], discovered: [] },
+    'GET /api/settings/servers/proxmox.yaml': { ok: true, hash: 'p1', form: serverForm('proxmox.yaml'), blank: {}, flat: false, entries: [] },
+  }, () => {}, 'http://dash.lan/settings#bookmarks');
+  const head = async (section) => {
+    w.location.hash = section;
+    await tick();
+    await tick();
+    const panel = doc.querySelector('#panel section.panel');
+    return [panel.querySelector('h2').textContent, [...panel.querySelectorAll('button')].map((b) => b.textContent)];
+  };
+  assert.deepEqual(await head('bookmarks'), ['bookmarks.yaml', ['Een groep toevoegen']]);
+  assert.deepEqual(await head('services'), ['services.yaml', ['Een groep toevoegen']]);
+  assert.deepEqual(await head('proxmox'), ['proxmox.yaml', ['Een server toevoegen']]);
 });

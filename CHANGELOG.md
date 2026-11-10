@@ -7,6 +7,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Changed
 - The fonts (Manrope, and IBM Plex Mono for `font: plex`) come from the dashboard itself instead
   of Google Fonts: no page loads anything from outside, and they work without internet access.
+- Settings page: Services, Header widgets and Bookmarks open, like Docker, Kubernetes and Proxmox,
+  with the file's name and what it holds; an empty file shows "Add a group" there, not alone on
+  the page.
 - Settings page: the sections are grouped (Look, Content, Sources, System); on a narrow screen
   one list replaces the row of buttons.
 - Settings and setup pages: buttons, fields and colour swatches are 44 px on touch screens; a
