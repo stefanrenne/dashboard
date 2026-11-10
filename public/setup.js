@@ -62,14 +62,13 @@ async function api(path, body) {
 
 // ---------------------------------------------------------------- theme
 function applyTheme() {
-  applyPalette(state.settings.color);
+  applyFormPalette(state.settings.color);
   applyAppearance(state.settings.theme);
   applyLanguage(lang, I18N);
 }
 
 // ---------------------------------------------------------------- frame
 function render(newStep = false) {
-  const y = window.scrollY ?? 0;
   applyTheme();
   document.title = t('heading');
   document.getElementById('heading').textContent = t('heading');
@@ -78,9 +77,8 @@ function render(newStep = false) {
   steps.hidden = false;
   steps.replaceChildren(...STEPS.map((key, i) => el('li', { class: i < state.step ? 'done' : null, 'aria-current': i === state.step ? 'step' : null, text: `${i + 1}. ${t(key)}` })));
   const panel = document.getElementById('panel');
-  panel.replaceChildren(...[renderBasics, renderDocker, renderServices, renderSecurity, renderDone][state.step]().flat().filter((n) => n !== null && n !== undefined && n !== false));
+  replacePanel(panel, [renderBasics, renderDocker, renderServices, renderSecurity, renderDone][state.step]());
   if (newStep) panel.querySelector('h2')?.focus?.({ preventScroll: true });
-  else window.scrollTo?.(0, y);
 }
 
 function go(step) {
@@ -135,7 +133,7 @@ function renderBasics() {
   const select = (id, value, entries, onchange) => el('select', { id, onchange: (e) => onchange(e.target.value) },
     ...entries.map(([v, label]) => el('option', { value: v, selected: v === value, text: label })));
   const swatches = el('div', { class: 'swatches', role: 'group', 'aria-label': t('colorLabel') }, ...Object.keys(PALETTES).map((name) => {
-    const b = el('button', { type: 'button', class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === s.color), onclick: () => { s.color = name; render(); } });
+    const b = el('button', { type: 'button', id: `swatch-${name}`, class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === s.color), onclick: () => { s.color = name; render(); } });
     b.style.background = PALETTES[name].split(' ')[5];
     return b;
   }));
@@ -331,7 +329,7 @@ function renderDocker() {
   return [
     el('h2', { text: t('stepDocker'), tabindex: '-1' }),
     el('p', { class: 'muted', text: t('dockerText') }),
-    !r ? el('p', { class: 'muted', text: t('dockerChecking') }) : null,
+    !r ? el('p', { class: 'muted', role: 'status', text: t('dockerChecking') }) : null,
     r && !servers.length ? el('div', {}, el('p', { class: 'warn', text: t('dockerNone') }), el('pre', { text: 'volumes:\n  - /var/run/docker.sock:/var/run/docker.sock:ro\n# or, safer: a docker-socket-proxy (CONTAINERS=1, NETWORKS=1) and its address below' })) : null,
     servers.length ? el('ul', { class: 'plain' }, ...servers.map((s) => el('li', { class: s.ok ? 'ok' : 'error' },
       s.ok ? t('dockerOk', { name: s.name, target: s.target, version: s.version ?? '?', count: s.containers }) : t('dockerFailed', { name: s.name, target: s.target, error: s.error }),

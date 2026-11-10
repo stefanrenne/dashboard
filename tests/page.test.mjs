@@ -73,3 +73,27 @@ test('common.js: the texts the pages share, in every language', async () => {
   const { checkLanguages } = await import('./helpers.mjs');
   checkLanguages(assert, readI18n('public/common.js'));
 });
+
+test('the form pages\' colours: text, field edges, the accent and the status colours readable in every palette and appearance', () => {
+  const common = fs.readFileSync(path.resolve('public/common.js'), 'utf8');
+  const { formColors, PALETTES, contrast, over, rgbOf, WHITE } = new Function(`${common}; return { formColors, PALETTES, contrast, over, rgbOf, WHITE };`)();
+  const problems = [];
+  for (const color of Object.keys(PALETTES)) {
+    const t = Object.fromEntries(PALETTES[color].split(' ').map((hex, i) => [[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950][i], rgbOf(hex)]));
+    const surfaces = {
+      dark: [t[800], over(WHITE, t[800], 0.05), over(t[900], over(WHITE, t[800], 0.05), 0.3)],
+      light: [t[50], WHITE, over(t[200], WHITE, 0.5)],
+    };
+    for (const [look, c] of Object.entries(formColors(color))) {
+      const need = { heading: 4.5, text: 4.5, muted: 4.5, accent: 4.5, ok: 4.5, warn: 4.5, error: 4.5, field: 3 };
+      for (const [key, ratio] of Object.entries(need)) {
+        for (const surface of surfaces[look]) {
+          const r = contrast(c[key], surface);
+          if (r < ratio) problems.push(`${color} ${look} ${key}: ${r.toFixed(2)} < ${ratio}`);
+        }
+      }
+      if (contrast(c.onAccent, c.accent) < 4.5) problems.push(`${color} ${look} on the accent: ${contrast(c.onAccent, c.accent).toFixed(2)}`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});

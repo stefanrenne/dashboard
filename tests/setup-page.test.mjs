@@ -186,3 +186,16 @@ test('skip: an empty dashboard, and a file that is there already is said', async
   assert.deepEqual([sent.services, sent.security.login], [[], false]);
   assert.equal(doc.querySelector('#panel [role=status]').textContent, 'Bestaat al: services.yaml. Er is niets geschreven.');
 });
+
+test('a change that re-renders the step keeps the keyboard focus where it was; the panel is no live region', async () => {
+  const { w } = await page({});
+  const doc = w.document;
+  const swatch = doc.getElementById('swatch-emerald');
+  swatch.focus();
+  swatch.click();
+  await tick();
+  assert.notEqual(doc.getElementById('swatch-emerald'), swatch, 'the step was drawn anew');
+  assert.equal(doc.activeElement?.id, 'swatch-emerald');
+  assert.equal(doc.getElementById('swatch-emerald').getAttribute('aria-pressed'), 'true');
+  assert.equal(doc.getElementById('panel').hasAttribute('aria-live'), false, 'a screen reader does not read the whole step again');
+});

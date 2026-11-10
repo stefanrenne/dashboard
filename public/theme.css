@@ -1,20 +1,24 @@
 /* The colour tokens of the form pages (settings, setup, login). common.js sets the shades
-   --t50 … --t950 from settings.yaml's colour and data-theme from its appearance. */
+   --t50 … --t950 from settings.yaml's colour, the readable shades of text, field edges and accent
+   per appearance (--dark-text, --light-accent, …: formColors) and data-theme from its appearance.
+   The values after the var() commas are slate's, for before the script runs. */
 :root {
   --t50: #f8fafc; --t100: #f1f5f9; --t200: #e2e8f0; --t300: #cbd5e1; --t400: #94a3b8; --t500: #64748b;
   --t600: #475569; --t700: #334155; --t800: #1e293b; --t900: #0f172a; --t950: #020617;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --dash-bg: var(--t800); --dash-text: var(--t200); --dash-muted: var(--t300); --dash-heading: var(--t100);
+  --dash-bg: var(--t800); --dash-text: var(--dark-text, #e2e8f0); --dash-muted: var(--dark-muted, #cbd5e1); --dash-heading: var(--dark-heading, #f1f5f9);
   --dash-card: rgb(255 255 255 / .05); --dash-block: color-mix(in srgb, var(--t900) 30%, transparent);
-  --dash-border: color-mix(in srgb, var(--t200) 20%, transparent); --dash-accent: var(--t400); --dash-on-accent: var(--t950);
-  --dash-ok: #34d399; --dash-warn: #fbbf24; --dash-error: #fb7185;
+  --dash-border: color-mix(in srgb, var(--t200) 20%, transparent); --dash-field: var(--dark-field, #94a3b8);
+  --dash-accent: var(--dark-accent, #94a3b8); --dash-on-accent: var(--dark-onAccent, #020617);
+  --dash-ok: var(--dark-ok, #34d399); --dash-warn: var(--dark-warn, #fbbf24); --dash-error: var(--dark-error, #fb7185);
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --dash-bg: var(--t50); --dash-text: var(--t700); --dash-muted: var(--t500); --dash-heading: var(--t800);
+  --dash-bg: var(--t50); --dash-text: var(--light-text, #334155); --dash-muted: var(--light-muted, #475569); --dash-heading: var(--light-heading, #1e293b);
   --dash-card: #ffffff; --dash-block: color-mix(in srgb, var(--t200) 50%, transparent);
-  --dash-border: color-mix(in srgb, var(--t800) 20%, transparent); --dash-accent: var(--t600); --dash-on-accent: #ffffff;
-  --dash-ok: #047857; --dash-warn: #92400e; --dash-error: #be123c;
+  --dash-border: color-mix(in srgb, var(--t800) 20%, transparent); --dash-field: var(--light-field, #64748b);
+  --dash-accent: var(--light-accent, #475569); --dash-on-accent: var(--light-onAccent, #ffffff);
+  --dash-ok: var(--light-ok, #047857); --dash-warn: var(--light-warn, #92400e); --dash-error: var(--light-error, #be123c);
 }

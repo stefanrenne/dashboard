@@ -89,6 +89,76 @@ function applyPalette(color) {
   return shades;
 }
 
+/**
+ * Puts `nodes` in place of `panel`'s content, where the page re-renders it: the element that had
+ * the keyboard focus (by its id) gets it back, and the page keeps its scroll position.
+ */
+function replacePanel(panel, nodes) {
+  const focused = document.activeElement?.id;
+  const y = window.scrollY ?? 0;
+  panel.replaceChildren(...nodes.flat().filter((n) => n !== null && n !== undefined && n !== false));
+  window.scrollTo?.(0, y);
+  if (focused && document.activeElement?.id !== focused) document.getElementById(focused)?.focus?.({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------- the form pages' colours
+const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const over = (top, under, alpha) => top.map((x, i) => x * alpha + under[i] * (1 - alpha));
+const luminance = (rgb) => {
+  const [r, g, b] = rgb.map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+const WHITE = [255, 255, 255];
+
+/**
+ * The colours of the settings, setup and login pages (theme.css) for a palette, per appearance.
+ * The surfaces take the palette's tint; text, field edges, the accent and the status colours
+ * (from the emerald, amber and rose palettes) each take the first shade, from the one that suits
+ * a neutral palette on, that reaches WCAG AA on every surface (4.5:1 for text, 3:1 for a field's
+ * edge), so a light palette such as yellow stays readable.
+ */
+function formColors(color) {
+  const ramp = (name) => Object.fromEntries(PALETTES[name].split(' ').map((hex, i) => [SHADES[i], rgbOf(hex)]));
+  const t = ramp(PALETTES[color] ? color : 'slate');
+  const surfacesOf = (bg, card, tint, alpha) => [bg, card, over(tint, card, alpha), over(tint, bg, alpha)];
+  const look = {
+    dark: { surfaces: surfacesOf(t[800], over(WHITE, t[800], 0.05), t[900], 0.3), toward: [950, 900, 800, 700, 600, 500, 400, 300, 200, 100, 50] },
+    light: { surfaces: surfacesOf(t[50], WHITE, t[200], 0.5), toward: [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] },
+  };
+  // the first shade from `from` on toward more contrast that reaches `ratio` on every surface
+  const pick = (name, from, ratio, shades = t) => {
+    const { surfaces, toward } = look[name];
+    const order = toward.slice(toward.indexOf(from));
+    const shade = order.find((s) => surfaces.every((x) => contrast(shades[s], x) >= ratio)) ?? order.at(-1);
+    return shades[shade];
+  };
+  const [ok, warn, error] = ['emerald', 'amber', 'rose'].map(ramp);
+  const out = {};
+  for (const [name, start] of Object.entries({
+    dark: { heading: 100, text: 200, muted: 300, field: 400, accent: 400, ok: 400, warn: 400, error: 400 },
+    light: { heading: 800, text: 700, muted: 500, field: 500, accent: 600, ok: 700, warn: 800, error: 700 },
+  })) {
+    const accent = pick(name, start.accent, 4.5);
+    out[name] = {
+      heading: pick(name, start.heading, 4.5), text: pick(name, start.text, 4.5), muted: pick(name, start.muted, 4.5),
+      field: pick(name, start.field, 3), accent,
+      onAccent: [t[950], WHITE].sort((a, b) => contrast(b, accent) - contrast(a, accent))[0],
+      ok: pick(name, start.ok, 4.5, ok), warn: pick(name, start.warn, 4.5, warn), error: pick(name, start.error, 4.5, error),
+    };
+  }
+  return out;
+}
+
+/** Sets the form pages' colours of a palette (formColors) for both appearances, for theme.css. */
+function applyFormPalette(color) {
+  applyPalette(color);
+  const hex = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+  for (const [name, colors] of Object.entries(formColors(color))) {
+    for (const [key, rgb] of Object.entries(colors)) document.documentElement.style.setProperty(`--${name}-${key}`, hex(rgb));
+  }
+}
+
 const systemLight = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches;
 
 function applyAppearance(theme) {

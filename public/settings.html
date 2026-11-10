@@ -33,7 +33,7 @@
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .top, .saved { background: var(--dash-bg); } }
   .top { top: 0; margin-bottom: 16px; border-bottom: 1px solid var(--dash-border); }
   .top h1 { margin: 0; font-size: 1.35rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .back { flex: none; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--dash-border);
+  .back { flex: none; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--dash-field);
     background: var(--dash-card); color: var(--dash-heading); font-weight: 600; text-decoration: none; }
   .back:hover { border-color: var(--dash-accent); }
   .back:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
@@ -67,7 +67,7 @@
     <a href="./" id="back" class="back">← Dashboard</a>
     <h1 id="heading">Settings</h1>
   </header>
-  <div id="panel" aria-live="polite"><p class="muted">…</p></div>
+  <div id="panel"><p class="muted">…</p></div>
 </main>
 <script src="common.js"></script>
 <script src="settings.js"></script>

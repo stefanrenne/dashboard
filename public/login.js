@@ -29,7 +29,7 @@ const $ = (id) => document.getElementById(id);
 
 function look(info) {
   lang = applyLanguage(info.language, I18N);
-  applyPalette(info.color);
+  applyFormPalette(info.color);
   applyAppearance(info.theme);
   document.title = t('heading');
   $('heading').textContent = t('heading');

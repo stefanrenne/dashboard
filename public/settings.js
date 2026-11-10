@@ -39,7 +39,7 @@ async function api(path, body, headers = {}) {
 
 function applyTheme(v) {
   lang = applyLanguage(v.language, I18N);
-  applyPalette(v.color);
+  applyFormPalette(v.color);
   applyAppearance(v.theme);
   document.title = t('heading');
   document.getElementById('heading').textContent = t('heading');
@@ -47,9 +47,7 @@ function applyTheme(v) {
 }
 
 function show(...nodes) {
-  const y = window.scrollY ?? 0;
-  document.getElementById('panel').replaceChildren(...nodes.flat().filter(Boolean));
-  window.scrollTo?.(0, y);
+  replacePanel(document.getElementById('panel'), nodes);
 }
 
 function askPassword(message = '') {
@@ -188,7 +186,7 @@ function generalSection() {
   const v = state.values;
   const d = state.data;
   const swatches = el('div', { class: 'swatches', role: 'group', 'aria-label': t('colorLabel') }, ...Object.keys(PALETTES).map((name) => {
-    const b = el('button', { type: 'button', class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === v.color), onclick: () => { v.color = name; applyTheme(v); render(); } });
+    const b = el('button', { type: 'button', id: `swatch-${name}`, class: 'swatch', title: name, 'aria-label': name, 'aria-pressed': String(name === v.color), onclick: () => { v.color = name; applyTheme(v); render(); } });
     b.style.background = PALETTES[name].split(' ')[5];
     return b;
   }));

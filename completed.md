@@ -119,3 +119,7 @@ Finished work, newest first.
 - 2026-11-06: Connection tests for Kubernetes (the API version and how many services discovery finds) and a Proxmox node (its version with the API token) on the settings page (`src/settings-tests.js`, `/api/settings/kubernetes-test`, `/api/settings/proxmox-test`), on the saved config, errors scrubbed.
 - 2026-11-06: Icon fields on the settings page (services, bookmarks, groups, widget options of type icon, favicon): a preview of what the name resolves to (`GET /api/settings/icon`, resolveIcon; mdi-/si- as a mask in the text colour) and suggestions from config/icons and the icons in use (`GET /api/settings/icons`).
 - 2026-11-06: Screenshots of the settings page (General, Services, Groups) in docs/configuration/README.md, made by `scripts/screenshots.mjs --only settings` in Playwright's Docker image (the host lacks Chromium's libraries); the forms show the showcase's example address instead of the mock's. The settings page work of todo.md is done.
+- 2026-11-10: Design review of the setup and settings pages, Critical and High: text, field edges,
+  the accent and the status colours reach WCAG AA in every palette and both appearances
+  (`formColors` in common.js picks the shades; a test checks all 22 palettes); a re-render keeps
+  the keyboard focus, and the panel is no longer a live region.

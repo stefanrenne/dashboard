@@ -5,6 +5,14 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Fixed
+- Settings, setup and login pages: with a coloured palette (yellow, amber, lime, green, …) labels,
+  links, buttons and status texts fell far below readable contrast (down to 1.9:1), and the edges
+  of fields were hardly visible. Text, field edges, the accent and the status colours now take
+  the first shade of the palette that is readable in both appearances; the palette still tints
+  the page.
+- Settings and setup pages: choosing a colour, ticking a service or changing a select moved the
+  keyboard focus to the top of the page, and a screen reader read the whole section again after
+  every change; the focus now stays where it was.
 - Import on the settings page ignored homepage files named `.yml`; they count as `.yaml`, as in the
   setup wizard.
 - Settings page, Advanced: a file settings.yaml includes could change the admin password, which
