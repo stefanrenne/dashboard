@@ -14,8 +14,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - Settings page, Widgets: the line "Always installed: …" is gone (the package is listed under
   Installed), the intro no longer repeats how to pin a version (the field's hint says it), and
   the save bar no longer says "Saving installs what is new."
-- Settings page: the sections are grouped (Look, Content, Sources, System); on a narrow screen
-  one list replaces the row of buttons.
+- Settings page: the sections are grouped (Look, Content, Sources, System), with room between
+  the groups; on a narrow screen one list, with those group names, replaces the row of buttons.
 - Settings and setup pages: buttons, fields and colour swatches are 44 px on touch screens; a
   finished wizard step gets a ✓; a save refused for one field says so next to that field.
 
