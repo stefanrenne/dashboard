@@ -12,7 +12,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   one at the bottom of that panel, and one save bar. Services and Bookmarks no longer spread
   their groups over separate panels.
 - Settings page, Widgets: the line "Always installed: …" is gone (the package is listed under
-  Installed), and the intro no longer repeats how to pin a version (the field's hint says it).
+  Installed), the intro no longer repeats how to pin a version (the field's hint says it), and
+  the save bar no longer says "Saving installs what is new."
 - Settings page: the sections are grouped (Look, Content, Sources, System); on a narrow screen
   one list replaces the row of buttons.
 - Settings and setup pages: buttons, fields and colour swatches are 44 px on touch screens; a
