@@ -1,13 +1,12 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
 <title>Settings</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="fonts/manrope.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="forms.css">
 <style>
@@ -15,6 +14,7 @@
   main { max-width: 52rem; margin: 0 auto; padding: 0 16px 64px; }
   main:has(.saved) { padding-bottom: 0; } /* the save bar ends the page, with nothing below it */
   label > .hint { display: block; margin-top: 4px; font-size: .8125rem; color: var(--dash-muted); }
+  label > .hint.error { color: var(--dash-error); }
   .card header .order { display: flex; gap: 4px; margin-inline-start: auto; }
   .card header .order button { min-width: 32px; min-height: 32px; padding: 4px 8px; }
   .item.line { padding: 8px 0; }
@@ -38,7 +38,17 @@
   .back:hover { border-color: var(--dash-accent); }
   .back:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
   .saved { bottom: 0; justify-content: flex-end; }
-  nav.sections { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; }
+  nav.sections { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 16px; }
+  .nav-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .nav-title { margin-inline-end: 4px; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--dash-muted); }
+  .nav-choose { display: none; }
+  @media (pointer: coarse) {
+    nav.sections a, .back, .card header .order button, header.group .order button { min-height: 44px; min-width: 44px; }
+  }
+  @media (max-width: 40rem) {
+    .nav-group { display: none; }
+    .nav-choose { display: block; flex: 1 1 100%; }
+  }
   nav.sections a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 999px;
     background: var(--dash-card); color: var(--dash-text); font-size: .875rem; text-decoration: none; }
   nav.sections a:hover { color: var(--dash-heading); }

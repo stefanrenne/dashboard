@@ -123,3 +123,9 @@ Finished work, newest first.
   the accent and the status colours reach WCAG AA in every palette and both appearances
   (`formColors` in common.js picks the shades; a test checks all 22 palettes); a re-render keeps
   the keyboard focus, and the panel is no longer a live region.
+- 2026-11-10: Design review of the setup and settings pages, Medium and Low: the sections grouped
+  (Look, Content, Sources, System) with one select on a narrow screen; the wizard checks the
+  password when a field is left; a refused save names its field next to it (`aria-invalid`, focus);
+  finished wizard steps get a ✓; 44 px targets on touch screens; the pages follow the system's
+  appearance before the script runs (`light-dark()` tokens); Manrope and IBM Plex Mono served from
+  `public/fonts/`, the CSP no longer allows Google Fonts.

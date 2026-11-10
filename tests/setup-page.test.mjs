@@ -85,6 +85,9 @@ test('the steps: basics, containers with a generated form, test, security lines,
   next(doc);
   await tick();
   // 2. Docker: what answers, and a server added here
+  const done = doc.querySelector('#steps li.done');
+  assert.equal(done.textContent, '✓ 1. Basis (klaar)', 'a finished step says so, not only by its colour');
+  assert.equal(done.firstChild.getAttribute('aria-hidden'), 'true');
   assert.match(doc.getElementById('panel').textContent, /local \(\/var\/run\/docker\.sock\): Docker 27\.3\.1, 32 containers/);
   doc.getElementById('docker-address').value = 'nas.lan:2375';
   doc.getElementById('docker-address').closest('form').dispatchEvent(new w.Event('submit', { cancelable: true }));
@@ -148,6 +151,13 @@ test('the steps: basics, containers with a generated form, test, security lines,
   assert.ok(doc.querySelector('label[for=login-page] strong') && doc.querySelector('label[for=login-page] .hint'), 'a title in bold, the explanation below it');
   doc.getElementById('login-page').click();
   const type = (id, value) => { doc.getElementById(id).value = value; doc.getElementById(id).dispatchEvent(new w.Event('input')); };
+  assert.equal(doc.querySelector('[role=alert]'), null, 'nothing said before anything is typed');
+  type('admin-password', 'kort');
+  doc.getElementById('admin-password').dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.equal(doc.querySelector('[role=alert]').textContent, 'Het admin wachtwoord moet minstens 8 tekens hebben.', 'said when the field is left, before Next');
+  assert.equal(doc.getElementById('admin-password').getAttribute('aria-invalid'), 'true');
+  type('admin-password', '');
   next(doc);
   await tick();
   assert.equal(doc.querySelector('[role=alert]').textContent, 'Het admin wachtwoord moet minstens 8 tekens hebben.');

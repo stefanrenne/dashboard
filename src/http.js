@@ -33,8 +33,8 @@ export function securityHeaders(frames = [], nonce = null) {
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
     'content-security-policy':
-      "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-      `font-src 'self' https://fonts.gstatic.com; script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; connect-src 'self'; ` +
+      "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; " +
+      `font-src 'self'; script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; connect-src 'self'; ` +
       `frame-src ${frames.length ? frames.join(' ') : "'none'"}; frame-ancestors 'self'`,
   };
 }

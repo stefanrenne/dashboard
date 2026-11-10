@@ -201,11 +201,13 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     },
   });
   const links = [...doc.querySelectorAll('nav.sections a')];
-  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Beveiliging', 'Groepen', 'Widgets', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Geavanceerd']);
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Groepen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Widgets', 'Beveiliging', 'Geavanceerd']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
   assert.equal(doc.querySelector('nav.sections [aria-current=page]').textContent, 'Services');
+  assert.deepEqual([...doc.querySelectorAll('.nav-title')].map((x) => x.textContent), ['Weergave', 'Inhoud', 'Bronnen', 'Systeem']);
+  assert.equal(doc.getElementById('nav-choose').value, 'services', 'the select for a narrow screen follows');
   [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Als tekst bewerken').click();
   await tick();
   await tick();
@@ -616,4 +618,17 @@ test('settings page: icon fields suggest the icons in use and show a preview', a
   input.dispatchEvent(new w.Event('change'));
   await tick();
   assert.equal(doc.querySelector('.icon-preview').textContent, '?');
+});
+
+test('settings page: a save refused for one field says so next to that field, and takes the focus there', async () => {
+  const { doc } = await page({
+    'GET /api/settings': data(),
+    'POST /api/settings': { ok: false, error: 'discoveryInterval: at least 5s' },
+  });
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const input = doc.getElementById('discoveryInterval');
+  assert.equal(input.getAttribute('aria-invalid'), 'true');
+  assert.equal(doc.getElementById(input.getAttribute('aria-describedby')).textContent, 'at least 5s');
+  assert.equal(doc.activeElement, input);
 });

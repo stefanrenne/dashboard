@@ -27,6 +27,7 @@ them, also those behind core features, are in the widgets collection (`DEFAULT_P
 | `src/homepage.js`, `src/icons.js` | Import of homepage's files (wizard and settings page); icon names to URLs. |
 | `public/index.html` | The dashboard. A single file, vanilla JS, no build step. |
 | `public/common.js`, `public/theme.css`, `public/forms.css` | Shared by the pages: palettes, languages, `el`, theme, `post`, passkeys (loaded before each page's script); the colour tokens of the settings, setup and login pages; the form parts of the settings and setup pages. |
+| `public/fonts/` | Manrope and IBM Plex Mono (OFL, with their licences), served by the dashboard itself: no page loads anything from outside. |
 | `examples/widget-template/` | Copy-and-go template for widget authors; covered by tests. Its repository form is `../dashboard-widget-example` ([GitHub](https://github.com/stefanrenne/dashboard-widget-example)); keep the two in step. |
 | `config.example/` | Example config: the default for an empty `/config` and for `npm run dev`. |
 | `deploy/` | Your own installations (config, compose file, preview scripts). Ignored by git; never referenced from the rest of the codebase. |

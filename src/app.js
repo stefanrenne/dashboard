@@ -18,7 +18,7 @@ import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
 import { ActionGate, checkPassword, passwordFingerprint } from './actionauth.js';
-import { SessionStore, OPEN_PATHS, SHARED_FILES } from './login.js';
+import { SessionStore, isOpenPath, isSharedFile } from './login.js';
 import { Passkeys } from './passkeys.js';
 import { Onboarding } from './onboarding/wizard.js';
 import { CUSTOM_FILES } from './config/schema.js';
@@ -255,7 +255,7 @@ export async function createApp({
       if (!state.config && p !== '/api/health') {
         return send(res, 503, 'The dashboard could not load its configuration; see its log.', 'text/plain; charset=utf-8');
       }
-      if (method === 'GET' && SHARED_FILES.includes(p.slice(1))) return sendFile(res, path.join(publicDir, p.slice(1)));
+      if (method === 'GET' && isSharedFile(p.slice(1))) return sendFile(res, path.join(publicDir, p.slice(1)));
       if (p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/')) return await onboardingRoute(req, res, { method, path: p });
       // a first install: the wizard first (docker/start.sh wrote the marker into the empty config folder)
       if (method === 'GET' && (p === '/' || p === '/index.html') && onboarding.active) {
@@ -271,7 +271,7 @@ export async function createApp({
         if (s.headers['set-cookie']) res.setHeader('set-cookie', s.headers['set-cookie']);
       }
       if (p === '/login' || p === '/login.js' || p === '/api/login' || p === '/api/logout') return await loginRoute(req, res, method, p, { loginOn, loggedIn, login });
-      if (loginOn && !loggedIn && !isInternal(req) && !OPEN_PATHS.has(p)) {
+      if (loginOn && !loggedIn && !isInternal(req) && !isOpenPath(p)) {
         if (method === 'GET' && (p === '/' || p === '/index.html' || /text\/html/.test(req.headers.accept ?? ''))) {
           res.writeHead(302, { location: 'login', 'cache-control': 'no-store', ...SECURITY_HEADERS });
           return res.end();

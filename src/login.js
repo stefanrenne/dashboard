@@ -93,9 +93,13 @@ export class SessionStore {
 // logged in; the POST endpoints keep needing X-Requested-With, which no other site can send.
 const sessionCookie = (req, token, rememberMs) => cookie(req, SESSION_COOKIE, token, { maxAge: rememberMs / 1000, sameSite: 'Lax' });
 
-// the script and colours every page loads (public/), the login page too
-export const SHARED_FILES = ['common.js', 'theme.css', 'forms.css'];
+// the script, colours and fonts every page loads (public/), the login page too; `rel` is the path
+// in public/
+const SHARED_FILES = ['common.js', 'theme.css', 'forms.css'];
+export const isSharedFile = (rel) => SHARED_FILES.includes(rel) || /^fonts\/[\w-]+\.(css|woff2)$/.test(rel);
 
-// what a visitor who is not logged in may still reach: the login page, its script and API, and
-// the passkey check of the login page, and what tools ask without a browser (the image's health check, robots.txt)
-export const OPEN_PATHS = new Set(['/login', '/login.js', ...SHARED_FILES.map((f) => `/${f}`), '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify']);
+// what a visitor who is not logged in may still reach: the login page, its script and API, the
+// shared files, the passkey check of the login page, and what tools ask without a browser (the
+// image's health check, robots.txt)
+const OPEN_PATHS = new Set(['/login', '/login.js', '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify']);
+export const isOpenPath = (p) => OPEN_PATHS.has(p) || isSharedFile(p.slice(1));

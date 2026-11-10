@@ -4,12 +4,24 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- The fonts (Manrope, and IBM Plex Mono for `font: plex`) come from the dashboard itself instead
+  of Google Fonts: no page loads anything from outside, and they work without internet access.
+- Settings page: the sections are grouped (Look, Content, Sources, System); on a narrow screen
+  one list replaces the row of buttons.
+- Settings and setup pages: buttons, fields and colour swatches are 44 px on touch screens; a
+  finished wizard step gets a ✓; a save refused for one field says so next to that field.
+
 ### Fixed
 - Settings, setup and login pages: with a coloured palette (yellow, amber, lime, green, …) labels,
   links, buttons and status texts fell far below readable contrast (down to 1.9:1), and the edges
   of fields were hardly visible. Text, field edges, the accent and the status colours now take
   the first shade of the palette that is readable in both appearances; the palette still tints
   the page.
+- Settings, setup and login pages opened dark for a moment on a light system; they now follow the
+  system's appearance from the start.
+- Setup wizard: a too short or different admin password was said only after Next; it is now said
+  when the field is left.
 - Settings and setup pages: choosing a colour, ticking a service or changing a select moved the
   keyboard focus to the top of the page, and a screen reader read the whole section again after
   every change; the focus now stays where it was.

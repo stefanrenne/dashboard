@@ -8,8 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="color-scheme" content="light dark">
 <title>Homelab</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="fonts/manrope.css">
 <style>
   /* Theme shades --t50 … --t950 are set from the colour palette (PALETTES in common.js). */
   :root {
@@ -1446,7 +1445,7 @@ function applyBackground(s) {
   document.body.classList.toggle('font-plex-data', s.font === 'plexData');
   if (s.font && !document.getElementById('font-plex')) {
     document.head.append(el('link', { id: 'font-plex', rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap' }));
+      href: 'fonts/plex-mono.css' }));
   }
   document.body.classList.toggle('max-group-cols', Boolean(s.maxGroupColumns));
   document.body.style.setProperty('--max-group-cols', s.maxGroupColumns || '');

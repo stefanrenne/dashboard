@@ -1934,3 +1934,18 @@ test('settings page: a form of settings.yaml made on an older version of the fil
     await t.close();
   }
 });
+
+test('the fonts come from the dashboard itself, also before a login', async () => {
+  const t = await startApp({ 'settings.yaml': `login: true\nadminPassword: "${hashPassword('Sesam-123', { N: 1024 })}"\n` });
+  try {
+    const css = await t.get('/fonts/manrope.css', { headers: { 'x-forwarded-for': '203.0.113.7' } });
+    assert.equal(css.status, 200, 'the login page needs it');
+    const latin = /url\((manrope-latin\.woff2)\)/.exec(await css.text())[1];
+    const font = await t.get(`/fonts/${latin}`, { headers: { 'x-forwarded-for': '203.0.113.7' } });
+    assert.equal(font.headers.get('content-type'), 'font/woff2');
+    assert.equal((await t.get('/fonts/..%2Fsettings.html')).status, 404);
+    assert.doesNotMatch(css.headers.get('content-security-policy') ?? (await t.get('/login')).headers.get('content-security-policy'), /googleapis|gstatic/);
+  } finally {
+    await t.close();
+  }
+});

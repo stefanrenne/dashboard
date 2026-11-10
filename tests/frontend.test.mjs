@@ -481,7 +481,7 @@ test('headerStyle underlined/boxedWidgets, cardStyle hairline, blockStyle refine
   assert.equal(doc.getElementById('header-widgets').className, 'info underlined');
   for (const cls of ['card-hairline', 'block-refined', 'font-plex-data']) assert.ok(doc.body.classList.contains(cls), cls);
   assert.ok(!doc.body.classList.contains('font-plex'));
-  assert.match(doc.getElementById('font-plex').getAttribute('href'), /^https:\/\/fonts\.googleapis\.com\/css2\?family=IBM\+Plex\+Mono/);
+  assert.equal(doc.getElementById('font-plex').getAttribute('href'), 'fonts/plex-mono.css', 'served by the dashboard, not from outside');
 
   layout.settings.headerStyle = 'boxedWidgets';
   layout.settings.font = null;
