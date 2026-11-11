@@ -83,6 +83,31 @@ export function parseDocument(text, file) {
 
 export const documentText = (doc) => doc.toString({ lineWidth: 0 });
 
+/**
+ * The line (1-based) of a message's path in `text` ("line 3", "theme", "[0].Media[1].Router"),
+ * for the editor to mark: the deepest key or item of the path it finds, null when none.
+ */
+export function lineOfPath(text, where) {
+  const at = /^line (\d+)$/.exec(String(where ?? ''));
+  if (at) return Number(at[1]);
+  const doc = YAML.parseDocument(String(text ?? ''));
+  if (doc.errors.length || !where) return null;
+  let node = doc.contents;
+  let offset = null;
+  for (const [, index, name] of String(where).matchAll(/\[(\d+)\]|\.?([^.[\]]+)/g)) {
+    if (index !== undefined && YAML.isSeq(node) && node.items[Number(index)]) {
+      node = node.items[Number(index)];
+      offset = node.range?.[0] ?? offset;
+    } else if (name !== undefined && YAML.isMap(node)) {
+      const pair = node.items.find((p) => String(YAML.isScalar(p.key) ? p.key.value : p.key) === name);
+      if (!pair) break;
+      offset = pair.key?.range?.[0] ?? offset;
+      node = pair.value;
+    } else break;
+  }
+  return offset === null ? null : text.slice(0, offset).split('\n').length;
+}
+
 const key = (m) => `${m.file}\u0000${m.path}\u0000${m.message}`;
 
 /**

@@ -90,6 +90,28 @@
 
   textarea.code { display: block; width: 100%; min-height: 26rem; margin: 16px 0; padding: 14px 16px; resize: vertical; tab-size: 2;
     font: .8125rem/1.65 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: auto; background: var(--dash-block); }
+  /* the YAML editor: the textarea's text transparent over the same text in colour */
+  .editor { position: relative; margin: 16px 0; }
+  .editor textarea.code { position: relative; z-index: 1; margin: 0; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--dash-heading); }
+  .editor textarea.code::selection { background: color-mix(in srgb, var(--dash-accent) 30%, transparent); }
+  .editor pre.code-view { position: absolute; inset: 0; margin: 0; padding: 14px 16px; border: 1px solid transparent; border-radius: var(--radius-s); overflow: hidden; pointer-events: none;
+    background: light-dark(#ffffff, var(--dash-block)); color: var(--dash-text); tab-size: 2; white-space: pre; overflow-wrap: normal;
+    font: .8125rem/1.65 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  .code-view .line { display: block; min-height: 1lh; margin-inline: -16px; padding-inline: 16px; }
+  .code-view .line.error { background: color-mix(in srgb, var(--dash-error) 14%, transparent); box-shadow: inset 3px 0 var(--dash-error); }
+  .code-view .line.warn { background: color-mix(in srgb, var(--dash-warn) 12%, transparent); box-shadow: inset 3px 0 var(--dash-warn); }
+  .code-view .line:dir(rtl) { box-shadow: none; }
+  .y-key { color: light-dark(#1d4ed8, #93c5fd); }
+  .y-str { color: light-dark(#15803d, #86efac); }
+  .y-lit { color: light-dark(#b45309, #fcd34d); }
+  .y-tag { color: light-dark(#7e22ce, #d8b4fe); }
+  .y-comment { color: var(--dash-muted); font-style: italic; }
+  .y-punct { color: var(--dash-muted); }
+  .y-secret { color: var(--dash-muted); background: var(--dash-hover); border-radius: 3px; }
+  .live { margin: -6px 0 12px; font-size: .8125rem; }
+  .live ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+  .live button.link { font-size: inherit; font-weight: 600; color: inherit; }
+  @media (prefers-contrast: more) { .y-comment, .y-punct { color: var(--dash-text); } }
   #file-choose { display: block; width: 100%; margin-top: 6px; }
   .row.file { justify-content: flex-end; margin-top: 16px; }
   .icon-field { display: flex; align-items: center; gap: 8px; margin-top: 6px; }

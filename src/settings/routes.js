@@ -6,7 +6,7 @@
 
 import path from 'node:path';
 import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
-import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, listHistory, readHistory } from '../config/edit.js';
+import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, lineOfPath, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
 import { checkPassword, hashPassword, passwordFingerprint } from '../actionauth.js';
 import { rpContext } from '../passkeys.js';
@@ -168,6 +168,16 @@ export function settingsRoutes(app) {
       const out = masked(file, read.text);
       return { ok: true, file, exists: read.exists, hash: read.hash, text: out.text, secrets: out.secrets, history: listHistory(configDir, file) };
     }],
+    // a draft checked as a save would check it, without writing: the editor's live check
+    ['POST', /^\/files\/(.+\.ya?ml)\/check$/, async ({ body }, file) => {
+      if (typeof body?.text !== 'string') throw new ConfigEditError('expected { text }', 400);
+      configPath(configDir, file);
+      const { text } = unmaskConfigText(whereOf(file), body.text, readConfigFile(configDir, file).text, schemaFor);
+      const { errors, warnings } = checkConfigText(configDir, file, text, { env });
+      // the line a message is about, when it is about this file (the draft, as the editor has it)
+      const lined = (m) => ({ ...m, line: m.file === file ? lineOfPath(body.text, m.path) : null });
+      return { ok: true, file, errors: errors.map(lined), warnings: warnings.map(lined) };
+    }, BODY_LIMIT],
     ['POST', /^\/files\/(.+)$/, async ({ body }, file) => {
       if (typeof body?.text !== 'string' || typeof body?.hash !== 'string') throw new ConfigEditError('expected { text, hash }', 400);
       configPath(configDir, file);

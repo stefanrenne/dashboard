@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   HISTORY_DIR, HISTORY_KEEP, readConfigFile, parseDocument, documentText,
-  checkConfigText, writeConfigFile, listHistory, readHistory, configPath, editableFiles,
+  checkConfigText, lineOfPath, writeConfigFile, listHistory, readHistory, configPath, editableFiles,
 } from '../src/config/edit.js';
 import { loadConfig } from '../src/config/load.js';
 import { isConfigChange } from '../src/config/watch.js';
@@ -152,4 +152,15 @@ test('custom.css and custom.js: written as text, no YAML check, with history', (
   writeConfigFile(dir, 'custom.css', 'body { color: blue; }\n');
   assert.match(readHistory(dir, 'custom.css', listHistory(dir, 'custom.css')[0].id), /red/);
   assert.ok(editableFiles(dir).some((e) => e.file === 'custom.js'));
+});
+
+test('lineOfPath: the line of a message\'s path, for the editor to mark', () => {
+  const text = '# lab\ntitle: Lab\nlayout:\n  Media:\n    columns: 2\n';
+  assert.equal(lineOfPath(text, 'title'), 2);
+  assert.equal(lineOfPath(text, 'layout.Media.columns'), 5);
+  assert.equal(lineOfPath(text, 'layout.Nope'), 3, 'the deepest part it finds');
+  assert.equal(lineOfPath(text, 'line 4'), 4, 'a syntax error names its line');
+  assert.equal(lineOfPath('- Media:\n    - Plex:\n        href: x\n    - Radarr:\n        href: y\n', '[0].Media[1].Radarr.href'), 5);
+  assert.equal(lineOfPath('a: [', 'a'), null, 'nothing to walk in a broken file');
+  assert.equal(lineOfPath(text, ''), null);
 });

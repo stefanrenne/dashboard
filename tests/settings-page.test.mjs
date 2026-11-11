@@ -653,3 +653,43 @@ test('settings page: an empty services.yaml, bookmarks.yaml or proxmox.yaml look
   assert.deepEqual(await head('services'), ['Services', 2, 'Nog geen groepen.', ['Een groep toevoegen']]);
   assert.deepEqual(await head('proxmox'), ['Proxmox', 2, 'Nog geen servers.', ['Een server toevoegen']]);
 });
+
+test('settings page: a YAML file in colour, checked as it is typed, with the lines of its problems', async () => {
+  const text = '# lab\ntitle: Lab\ntheme: purple\nlayout:\n  Media: { columns: 2 }\nkey: __SECRET_0123456789__\n';
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data(),
+    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true }, { file: 'custom.css', root: 'custom.css', from: null, at: '', exists: false }] },
+    'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text, history: [] },
+    'GET /api/settings/files/custom.css': { ok: true, file: 'custom.css', exists: false, hash: 'c1', text: '', history: [] },
+    'POST /api/settings/files/settings.yaml/check': (init) => (JSON.parse(init.body).text.includes('purple')
+      ? { ok: true, errors: [], warnings: [{ file: 'settings.yaml', path: 'theme', message: 'unknown theme "purple"', line: 3 }] }
+      : { ok: true, errors: [], warnings: [] }),
+  }, () => {}, 'http://dash.lan/settings#advanced');
+  const settle = async () => { for (let i = 0; i < 30 && !doc.querySelector('#file-check')?.childNodes.length; i++) await tick(); };
+  await settle();
+  const view = doc.getElementById('file-view');
+  assert.equal(view.getAttribute('aria-hidden'), 'true', 'the colours are only for the eye');
+  assert.equal(view.textContent, text.split('\n').join(''), 'the same text, line by line');
+  const kinds = (cls) => [...view.querySelectorAll(`.y-${cls}`)].map((s) => s.textContent);
+  assert.deepEqual(kinds('key'), ['title', 'theme', 'layout', 'Media', 'columns', 'key']);
+  assert.deepEqual(kinds('comment'), ['# lab']);
+  assert.deepEqual(kinds('lit'), ['2']);
+  assert.deepEqual(kinds('secret'), ['__SECRET_0123456789__']);
+  // the check: its warning by the line, and the line marked
+  assert.equal(calls.filter((c) => c.p === '/api/settings/files/settings.yaml/check').length, 1);
+  assert.match(doc.getElementById('file-check').textContent, /regel 3 · theme: unknown theme "purple"/);
+  assert.equal(view.querySelectorAll('.line')[2].className, 'line warn');
+  // typing: checked again a moment later, the marks follow
+  const area = doc.getElementById('file-text');
+  area.value = text.replace('purple', 'dark');
+  area.dispatchEvent(new w.Event('input'));
+  for (let i = 0; i < 40 && doc.getElementById('file-check').textContent.includes('purple'); i++) await tick();
+  assert.equal(doc.getElementById('file-check').textContent, '✓ Geen problemen gevonden.');
+  assert.equal(view.querySelectorAll('.line.warn').length, 0);
+  // custom.css stays plain text
+  doc.getElementById('file-choose').value = 'custom.css';
+  doc.getElementById('file-choose').dispatchEvent(new w.Event('change'));
+  await tick();
+  assert.equal(doc.getElementById('file-view'), null);
+  assert.equal(doc.getElementById('file-check'), null);
+});

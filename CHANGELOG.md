@@ -4,6 +4,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Settings page, the file editor (Advanced and Edit as text): YAML in colour, and checked while you
+  type, as a save would check it, without saving: each problem with its line (a click selects it),
+  the line marked in the editor.
+
 ### Changed
 - Settings page, Advanced: every config file can be chosen and edited as text (all YAML files,
   the files they include, `custom.css` and `custom.js`), not only `settings.yaml`. Download sits

@@ -188,7 +188,8 @@ Bookmarks is a form as well: groups and bookmarks (link, abbreviation, icon, des
 Docker, Kubernetes and Proxmox are forms of their servers, each with a connection test of what is saved,
 keeping keys they do not show, such as `allowVariables`; the Proxmox token secret stays hidden.
 Advanced shows every config file as text: `settings.yaml`, the other YAML files and the files
-they include, `custom.css` and `custom.js`; it also imports
+they include, `custom.css` and `custom.js`. A YAML file shows in colour and is checked while you
+type, as a save would check it: each problem with its line, the line marked in the editor. It also imports
 homepage's files (checked first, then all of them or none; the admin password, login and allowed
 hosts stay). Each text editor can download its text, with hidden values still hidden, with its comments, and the files
 it includes. A save is checked first: a mistake is shown with its file and path and nothing is

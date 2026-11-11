@@ -1651,6 +1651,19 @@ test('settings page files: secrets as tokens, saves checked and put back, confli
     const typed = await (await post('/services.yaml', { text: fresh.text.replace(/__SECRET_\w+__/, 'typed-key-789'), hash: fresh.hash })).json();
     assert.deepEqual(typed.warnings.map((w) => w.path), ['[0].Apps[0].Counter.widget.key']);
 
+    // the live check: as a save checks, nothing written, with the line of each message
+    const before = fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8');
+    const check = (text, file = '/services.yaml') => post(`${file}/check`, { text }).then((r) => r.json());
+    const same = await check((await (await get('/services.yaml')).json()).text);
+    assert.deepEqual(same.errors, [], JSON.stringify(same));
+    const bad = await check('- Apps:\n    - Counter:\n      href: [\n');
+    assert.equal(bad.errors.length, 1);
+    assert.equal(typeof bad.errors[0].line, 'number');
+    const warned = await check('theme: purple\n', '/settings.yaml');
+    assert.deepEqual(warned.warnings.map((w) => [w.path, w.line]), [['theme', 1]]);
+    assert.equal(fs.readFileSync(path.join(t.configDir, 'services.yaml'), 'utf8'), before);
+    assert.notEqual((await post('/custom.css/check', { text: 'x' })).status, 200, 'only YAML files');
+
     // the admin password cannot be changed here
     const s = await (await get('/settings.yaml')).json();
     const changed = await post('/settings.yaml', { text: s.text.replace(/adminPassword: .*/, `adminPassword: "${hashPassword('Other-456', { N: 1024 })}"`), hash: s.hash });
