@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-11
+
 ### Added
 - Settings page, the file editor (Advanced and Edit as text): YAML in colour, and checked while you
   type, as a save would check it, without saving: each problem with its line (a click selects it),
