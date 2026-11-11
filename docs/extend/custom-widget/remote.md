@@ -8,7 +8,7 @@ it. The widget is written as [a local one](local.md); this page is about the rep
 
 Start from [dashboard-widget-example](https://github.com/stefanrenne/dashboard-widget-example)
 (**Use this template** on GitHub): the same widget as
-[`examples/widget-template`](../../examples/widget-template), set up as a repository with tests
+[`examples/widget-template`](../../../examples/widget-template), set up as a repository with tests
 that run without the dashboard and CI that releases a version tag, so users can install it with
 `#latest`. Then give it your widget's id:
 
@@ -45,7 +45,7 @@ Give each option in `widget.yaml` a line comment when its name does not explain 
   `package.json` needs `"type": "module"`.
 
 Bump `version` on every release; the dashboard installs each version in its own folder.
-Then add it to the [Catalogue](../widgets/catalogue.md#add-yours) with a pull request.
+Then add it to the [Catalogue](../../widgets/catalogue.md#add-yours) with a pull request.
 
 ## 4. How users install it
 
@@ -63,7 +63,7 @@ plugins:
 
 A repository without `widget.yaml` at its root is a collection: every folder with a
 `widget.yaml` directly in it, or in its `widgets/` folder, is installed. See
-[Plugins](../configuration/settings.md#plugins) for updates, the lock file and `pluginUpdateInterval`.
+[Plugins](../../configuration/settings.md#plugins) for updates, the lock file and `pluginUpdateInterval`.
 
-Users run your code on their server: see [Security](security.md) for what a widget can reach and
+Users run your code on their server: see [Security](../security.md) for what a widget can reach and
 what to tell your users.

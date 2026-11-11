@@ -163,9 +163,9 @@ test('showsData: only results worth a picture', () => {
 test('pages.sh: links that leave docs/ go to GitHub, from every depth', () => {
   const out = path.join(tmpDir('hd-pages-'), 'site');
   execFileSync('sh', ['scripts/pages.sh', out, 'someone/repo']);
-  const local = fs.readFileSync(path.join(out, 'extend/local.md'), 'utf8');
+  const local = fs.readFileSync(path.join(out, 'extend/custom-widget/local.md'), 'utf8');
   assert.ok(local.includes('](https://github.com/someone/repo/tree/main/examples/widget-template)'));
-  assert.ok(local.includes('](api-reference.md#clientjs)'), 'links inside docs/ stay');
+  assert.ok(local.includes('](../api-reference.md#clientjs)'), 'links inside docs/ stay');
   const home = fs.readFileSync(path.join(out, 'README.md'), 'utf8');
   assert.ok(home.includes('](https://github.com/someone/repo/tree/main/CHANGELOG.md)'));
   assert.ok(home.includes('<details markdown="1">'));

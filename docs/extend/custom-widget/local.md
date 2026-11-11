@@ -6,7 +6,7 @@ one out while you write it.
 
 ## 1. Make the folder
 
-Copy [`examples/widget-template`](../../examples/widget-template) into your config folder, for
+Copy [`examples/widget-template`](../../../examples/widget-template) into your config folder, for
 example as `my-widgets/my-nas`. Or, in a clone of the dashboard:
 
 ```bash
@@ -64,7 +64,7 @@ Guidelines:
 ## 4. Optional: a custom look
 
 Add `client.js` when blocks are not enough (a chart, a list, a progress bar). See the
-[API reference](api-reference.md#clientjs). Render in the shadow root and use the theme variables.
+[API reference](../api-reference.md#clientjs). Render in the shadow root and use the theme variables.
 
 ## 5. Add it to the dashboard
 
