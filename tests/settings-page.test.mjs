@@ -250,6 +250,8 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   w.location.hash = '#advanced';
   await tick();
   assert.equal(doc.querySelector('#panel h2').textContent, 'settings.yaml');
+  // ... and every other file the page may edit, to choose from
+  assert.deepEqual([...doc.querySelectorAll('#file-choose option')].map((o) => o.value), ['settings.yaml', 'services.yaml', 'media.yaml']);
 });
 
 test('settings page: the other settings.yaml keys as fields: background, layout, quick launch, app icons and shortcuts', async () => {
@@ -566,7 +568,7 @@ test('settings page: Advanced imports homepage files after a check', async () =>
   [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Importeren').click();
   await tick();
   assert.match(doc.getElementById('panel').textContent, /Geïmporteerd: services\.yaml\./);
-  assert.ok([...doc.querySelectorAll('.saved button')].some((b) => b.textContent === 'Downloaden'));
+  assert.ok([...doc.querySelectorAll('.row.file button')].some((b) => b.textContent === 'Downloaden'), 'next to the choice of file, not in the save bar');
   // an imported file is read again by its form, so a save there is not refused as changed
   await goTo('bookmarks');
   assert.equal(calls.filter((c) => c.p === '/api/settings/bookmarks').length, 2);

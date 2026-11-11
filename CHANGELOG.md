@@ -5,6 +5,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed
+- Settings page, Advanced: every config file can be chosen and edited as text (all YAML files,
+  the files they include, `custom.css` and `custom.js`), not only `settings.yaml`. Download sits
+  next to the choice of file instead of in the save bar.
 - The icon name `dashboard` is no longer built in: Dashboard's icon is published on Dashboard Icons
   ([dashboardicons.com/icons/dashboard](https://dashboardicons.com/icons/dashboard)), so `dashboard`,
   `dashboard.svg` and `dashboard.webp` load from there like any other name (a bare `dashboard` is
