@@ -5,6 +5,10 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Changed
+- The icon name `dashboard` is no longer built in: Dashboard's icon is published on Dashboard Icons
+  ([dashboardicons.com/icons/dashboard](https://dashboardicons.com/icons/dashboard)), so `dashboard`,
+  `dashboard.svg` and `dashboard.webp` load from there like any other name (a bare `dashboard` is
+  the png). Without `favicon:` the favicon and app icon are now `dashboard.svg` from there.
 - New look for the settings page, the setup wizard and the login page, one design across the three:
   the settings sections in a sidebar (one list to choose from on a narrow screen), lists of entries
   in one frame with hairlines between them, icons to move or remove an entry (named in a tooltip and

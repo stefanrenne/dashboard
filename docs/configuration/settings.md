@@ -6,7 +6,7 @@ layout of the groups, and the widget packages to install. Every key is optional.
 ```yaml
 title: Homelab
 description: The start page of my homelab   # meta description, for link previews and search engines
-favicon: /icons/lab.svg   # a URL, a dashboard-icons name (proxmox.svg) or a file in config/icons
+favicon: /icons/lab.svg   # a URL, a dashboard-icons name (proxmox.svg) or a file in config/icons; default: dashboard.svg
 startUrl: /               # where the installed app opens
 pwa:                      # installing the dashboard as an app (site.webmanifest)
   icons:                  # without icons, the favicon is the app icon

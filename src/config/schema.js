@@ -50,6 +50,7 @@ export const MIN_DURATIONS = { loginRemember: '1m', discoveryInterval: '5s', plu
 export const DEFAULTS = {
   kubernetesMode: 'disabled',
   title: 'Homelab',
+  favicon: 'dashboard.svg', // Dashboard's own icon on dashboard-icons
   language: 'en',
   theme: 'auto',
   color: 'slate',

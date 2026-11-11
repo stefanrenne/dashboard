@@ -25,7 +25,7 @@ test("readSettings: the page's fields with their defaults, and the other keys it
   fs.writeFileSync(path.join(dir, 'settings.yaml'), SETTINGS);
   const { values, other } = readSettings(dir);
   assert.deepEqual(values, {
-    title: 'Lab', description: '', favicon: '', startUrl: '', base: '', instanceName: '', language: 'nl', theme: 'auto', color: 'emerald', showTitle: true,
+    title: 'Lab', description: '', favicon: 'dashboard.svg', startUrl: '', base: '', instanceName: '', language: 'nl', theme: 'auto', color: 'emerald', showTitle: true,
     headerStyle: 'boxed', target: '_blank', statusStyle: '', cardStyle: '', blockStyle: '', font: '', iconStyle: 'gradient', bookmarksStyle: '', cardBlur: '',
     backgroundImage: '', backgroundBlur: '', backgroundSaturate: '', backgroundBrightness: '', backgroundOpacity: '',
     fullWidth: false, maxGroupColumns: '', maxBookmarkGroupColumns: '', useEqualHeights: false, disableCollapse: false, groupsInitiallyCollapsed: false, showStats: false,

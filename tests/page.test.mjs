@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { renderIndex } from '../src/page.js';
-import { MARK } from '../src/icons.js';
 
 const HTML = fs.readFileSync('public/index.html', 'utf8');
 
@@ -16,14 +15,14 @@ test('renderIndex: title, description and favicon in the head, escaped', () => {
   assert.equal((out.match(/<title>/g) ?? []).length, 1);
 });
 
-test('renderIndex: favicon as a dashboard-icons name or a config icon, the mark when unset', () => {
+test('renderIndex: favicon as a dashboard-icons name or a config icon, dashboard.svg when unset', () => {
   assert.match(renderIndex(HTML, { title: 'x', favicon: 'proxmox.svg' }), /<link rel="icon" href="https:\/\/cdn\.jsdelivr\.net\/[^"]+\/svg\/proxmox\.svg">/);
   assert.match(renderIndex(HTML, { title: 'x', favicon: '/icons/lab.png' }), /<link rel="icon" href="icons\/lab\.png">/);
-  assert.ok(renderIndex(HTML, { title: 'x', favicon: 'dashboard' }).includes(`<link rel="icon" href="${MARK}">`), 'favicon: dashboard');
+  assert.ok(renderIndex(HTML, { title: 'x', favicon: 'dashboard' }).includes('<link rel="icon" href="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dashboard.png">'), 'dashboard is a dashboard-icons name like any other');
   const plain = renderIndex(HTML, { title: 'x' });
-  assert.ok(plain.includes(`<link rel="icon" type="image/svg+xml" href="${MARK}">`), 'the mark');
+  assert.ok(plain.includes('<link rel="icon" href="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dashboard.svg">'), 'Dashboard\'s icon by default');
+  assert.ok(renderIndex(HTML, { title: 'x', favicon: '' }).includes('https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dashboard.svg'), 'an empty favicon is the default');
   assert.ok(!plain.includes('name="description"'));
-  assert.match(decodeURIComponent(MARK), /^data:image\/svg\+xml,<svg /, 'built in, no request');
 });
 
 test('renderIndex: a secret in the description never reaches the page', () => {
@@ -47,7 +46,7 @@ test('the colours settings.yaml takes are the palettes the pages have, and the m
 test('renderManifest: name, start_url, colours, icons from pwa or the favicon, shortcuts', async () => {
   const { renderManifest } = await import('../src/page.js');
   const plain = renderManifest({ title: 'Lab', color: 'emerald', pwa: {} });
-  assert.deepEqual(plain, { name: 'Lab', short_name: 'Lab', start_url: '/', display: 'standalone', theme_color: '#065f46', background_color: '#065f46', icons: [{ src: MARK, sizes: 'any', type: 'image/svg+xml' }] });
+  assert.deepEqual(plain, { name: 'Lab', short_name: 'Lab', start_url: '/', display: 'standalone', theme_color: '#065f46', background_color: '#065f46', icons: [{ src: 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dashboard.svg', sizes: 'any' }] });
   assert.deepEqual(renderManifest({ title: 'Lab', favicon: '/icons/lab.svg', pwa: {} }).icons, [{ src: 'icons/lab.svg', sizes: 'any' }]);
 
   const full = renderManifest({

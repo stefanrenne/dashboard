@@ -21,7 +21,7 @@ const optional = (values) => ['', ...values];
 export const FIELDS = {
   title: { type: 'string', max: 100, default: DEFAULTS.title },
   description: { type: 'string', default: '', max: 300 },
-  favicon: { type: 'string', default: '' },
+  favicon: { type: 'string', default: DEFAULTS.favicon },
   startUrl: { type: 'string', default: '' },
   base: { type: 'url', default: '' },
   instanceName: { type: 'string', default: '' },

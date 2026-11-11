@@ -11,7 +11,6 @@ not.
 | `sh-plex`, `sh-plex.svg`, `sh-plex.webp` | [selfh.st icons](https://github.com/selfhst/icons): logos of self-hosted apps (png without an extension) | [selfh.st/icons](https://selfh.st/icons/) |
 | `mdi-flask-outline` | [Material Design Icons](https://github.com/Templarian/MaterialDesign) by Pictogrammers: general-purpose symbols | [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/) |
 | `si-plex` | [Simple Icons](https://github.com/simple-icons/simple-icons): brand logos | [simpleicons.org](https://simpleicons.org) |
-| `dashboard` | Dashboard's own mark, built in (no CDN): the tiles of this site's logo | |
 | `/icons/<file>` | Your own: a file in the `icons` folder of your config | |
 | `https://...` | Any image on the web | |
 
@@ -27,7 +26,7 @@ not.
     - GitHub:
         icon: si-github                 # Simple Icons
     - Dashboard:
-        icon: dashboard                 # Dashboard's own mark
+        icon: dashboard.svg             # Dashboard's own icon, on Dashboard Icons
     - Garage door:
         icon: /icons/garage.svg         # config/icons/garage.svg
     - Camera:

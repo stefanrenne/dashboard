@@ -5,7 +5,8 @@
 // (hard rule 1); nothing else is templated.
 
 import fs from 'node:fs';
-import { MARK, plainIcon } from './icons.js';
+import { plainIcon } from './icons.js';
+import { DEFAULTS } from './config/schema.js';
 import { scrub, escapeHtml } from './util.js';
 
 
@@ -25,8 +26,8 @@ export function renderIndex(html, settings, secrets = new Set(), custom = [], no
   head.push('<link rel="manifest" href="site.webmanifest">');
   if (settings.disableIndexing === true) head.push('<meta name="robots" content="noindex, nofollow">');
   if (settings.description) head.push(`<meta name="description" content="${clean(settings.description)}">`);
-  const favicon = plainIcon(settings.favicon);
-  head.push(favicon ? `<link rel="icon" href="${clean(favicon)}">` : `<link rel="icon" type="image/svg+xml" href="${MARK}">`);
+  const favicon = plainIcon(settings.favicon || DEFAULTS.favicon);
+  if (favicon) head.push(`<link rel="icon" href="${clean(favicon)}">`);
   // custom.css / custom.js from the config folder, after the page's own style and script
   const tail = [];
   if (custom.includes('custom.css')) head.push('<link rel="stylesheet" href="custom.css">');
@@ -43,10 +44,10 @@ export function renderIndex(html, settings, secrets = new Set(), custom = [], no
 export function renderManifest(settings, secrets = new Set()) {
   const text = (value) => scrub(value, secrets);
   const color = SHADE_800[settings.color] ?? SHADE_800.slate;
-  const favicon = plainIcon(settings.favicon);
+  const favicon = plainIcon(settings.favicon || DEFAULTS.favicon);
   const icons = settings.pwa?.icons?.length
     ? settings.pwa.icons.map((i) => ({ ...i, src: text(plainIcon(i.src) ?? i.src) }))
-    : [{ src: favicon ? text(favicon) : MARK, sizes: 'any', ...(favicon ? {} : { type: 'image/svg+xml' }) }];
+    : favicon ? [{ src: text(favicon), sizes: 'any' }] : [];
   return {
     name: text(settings.title),
     short_name: text(settings.title),
