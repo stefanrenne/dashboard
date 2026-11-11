@@ -45,9 +45,22 @@ Give each option in `widget.yaml` a line comment when its name does not explain 
   `package.json` needs `"type": "module"`.
 
 Bump `version` on every release; the dashboard installs each version in its own folder.
-Then add it to the [Catalogue](../../widgets/catalogue.md#add-yours) with a pull request.
 
-## 4. How users install it
+## 4. Get listed
+
+Add a row to the [Catalogue](../../widgets/catalogue.md) with a pull request on the
+[dashboard repository](https://github.com/stefanrenne/dashboard) (`docs/widgets/catalogue.md`,
+in alphabetical order). A package is listed when it:
+
+- is public: a git repository with release tags, or an npm package;
+- targets the current widget API (`apiVersion: 2` in its widget.yaml);
+- has a README as in [2. Document it](#2-document-it);
+- keeps keys and passwords in `secret: true` options, and marks options that run something or
+  reach elsewhere `discoverable: false` (see the [API reference](../api-reference.md#option-schema)).
+
+A listing says the package exists, not that it was reviewed.
+
+## 5. How users install it
 
 ```yaml
 # settings.yaml
