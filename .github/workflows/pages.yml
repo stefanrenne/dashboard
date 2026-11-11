@@ -55,10 +55,24 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - if: steps.browsers.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - if: steps.browsers.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+      # apt can hang on a slow mirror: short network timeouts with retries, every attempt cut off
+      # after 4 minutes and tried again, instead of one attempt that hangs until it fails
+      - name: Chromium and its system libraries
+        timeout-minutes: 15
+        env:
+          CACHED: ${{ steps.browsers.outputs.cache-hit }}
+        run: |
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
+          if [ "$CACHED" = true ]; then step="install-deps chromium"; else step="install --with-deps chromium"; fi
+          for attempt in 1 2 3; do
+            timeout 240 npx playwright $step && exit 0
+            echo "::warning::playwright $step: attempt $attempt failed"
+            # a cut-off attempt can leave apt running and holding its lock
+            sudo pkill -x apt-get || true
+            sudo dpkg --configure -a || true
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Newest release of the widgets collection
         id: collection
         env:
