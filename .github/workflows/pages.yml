@@ -36,7 +36,9 @@ jobs:
 
   build:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    # not ubuntu-latest: Playwright's system libraries (install-deps) are for the Ubuntu versions it
+    # supports, and ubuntu-latest moving to Ubuntu 26 left install-deps hanging
+    runs-on: ubuntu-24.04
     steps:
       # the docs of main, the released state
       - uses: actions/checkout@v7
