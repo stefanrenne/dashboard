@@ -42,7 +42,6 @@ browser; widgets run in a worker with a timeout, so one broken service never tak
 `widgets.yaml`, Docker labels and `{{HOMEPAGE_VAR_*}}` variables work as they are (see
 [From homepage](configuration/homepage.md)). Dark and
 light themes, 22 accent colours, tabs, 17 languages, and it installs as an app on your phone.
-How it stacks up against homepage, Homarr, Dashy and others: [Compared](comparison.md).
 
 ## Get started in a minute
 
