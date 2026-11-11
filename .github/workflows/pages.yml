@@ -36,9 +36,7 @@ jobs:
 
   build:
     if: github.ref == 'refs/heads/main'
-    # not ubuntu-latest: Playwright's system libraries (install-deps) are for the Ubuntu versions it
-    # supports, and ubuntu-latest moving to Ubuntu 26 left install-deps hanging
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       # the docs of main, the released state
       - uses: actions/checkout@v7
@@ -47,34 +45,6 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --omit=dev --no-audit --no-fund
-      # for the widget images (scripts/widget-images.mjs); not in package.json on purpose
-      - run: npm install --no-save --no-audit --no-fund playwright
-      # Chromium is cached per Playwright version; the system libraries it needs come from apt
-      - id: playwright
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - id: browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      # apt can hang on a slow mirror: short network timeouts with retries, every attempt cut off
-      # after 4 minutes and tried again, instead of one attempt that hangs until it fails
-      - name: Chromium and its system libraries
-        timeout-minutes: 15
-        env:
-          CACHED: ${{ steps.browsers.outputs.cache-hit }}
-        run: |
-          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
-          if [ "$CACHED" = true ]; then step="install-deps chromium"; else step="install --with-deps chromium"; fi
-          for attempt in 1 2 3; do
-            timeout 240 npx playwright $step && exit 0
-            echo "::warning::playwright $step: attempt $attempt failed"
-            # a cut-off attempt can leave apt running and holding its lock
-            sudo pkill -x apt-get || true
-            sudo dpkg --configure -a || true
-            sleep $((attempt * 15))
-          done
-          exit 1
       - name: Newest release of the widgets collection
         id: collection
         env:
@@ -85,7 +55,19 @@ jobs:
           repository: stefanrenne/dashboard-widgets
           ref: ${{ steps.collection.outputs.tag }}
           path: collection
-      - run: scripts/pages.sh site-src "$GITHUB_REPOSITORY" collection "${{ steps.collection.outputs.tag }}"
+      # The widget images need Chromium and its system libraries. Installing those with apt on the
+      # runner hung again and again, so the site is staged in Playwright's own image, which has
+      # them; Playwright from npm at the image's version (not in package.json on purpose).
+      - name: Site, with the widget images
+        timeout-minutes: 20
+        env:
+          TAG: ${{ steps.collection.outputs.tag }}
+        run: |
+          v=$(npm view playwright version)
+          docker run --rm --ipc=host -u "$(id -u):$(id -g)" -e HOME=/tmp -e REPO="$GITHUB_REPOSITORY" -e TAG -e V="$v" \
+            -v "$PWD:/work" -w /work "mcr.microsoft.com/playwright:v$v-noble" \
+            sh -c 'npm install --no-save --no-audit --no-fund "playwright@$V" && scripts/pages.sh site-src "$REPO" collection "$TAG"'
+          test -n "$(ls site-src/widgets/collection/images)"   # images made, not skipped
       # every code block through Rouge, at the version GitHub Pages highlights with: a block it
       # marks red fails the build (the runner has Ruby)
       - name: Code blocks highlight without errors
