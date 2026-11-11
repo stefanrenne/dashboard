@@ -20,6 +20,12 @@
   --dash-ok: light-dark(var(--light-ok, #047857), var(--dark-ok, #34d399));
   --dash-warn: light-dark(var(--light-warn, #92400e), var(--dark-warn, #fbbf24));
   --dash-error: light-dark(var(--light-error, #be123c), var(--dark-error, #fb7185));
+  /* the surfaces and shapes the form pages share, so the pages read as one product */
+  --dash-hairline: light-dark(color-mix(in srgb, var(--t800) 10%, transparent), color-mix(in srgb, var(--t200) 10%, transparent));
+  --dash-hover: light-dark(color-mix(in srgb, var(--t800) 5%, transparent), color-mix(in srgb, var(--t100) 6%, transparent));
+  --dash-tint: color-mix(in srgb, var(--dash-accent) 12%, transparent);
+  --dash-shade: light-dark(rgb(15 23 42 / .06), rgb(0 0 0 / .3));
+  --radius-s: 6px; --radius: 8px; --radius-l: 12px;
 }
 :root[data-theme="dark"] { color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }

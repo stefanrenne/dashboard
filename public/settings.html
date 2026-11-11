@@ -11,73 +11,105 @@
 <link rel="stylesheet" href="forms.css">
 <style>
   body { overflow-x: clip; }
-  main { max-width: 52rem; margin: 0 auto; padding: 0 16px 64px; }
-  main:has(.saved) { padding-bottom: 0; } /* the save bar ends the page, with nothing below it */
-  label > .hint { display: block; margin-top: 4px; font-size: .8125rem; color: var(--dash-muted); }
-  label > .hint.error { color: var(--dash-error); }
-  .card header .order { display: flex; gap: 4px; margin-inline-start: auto; }
-  .card header .order button { min-width: 32px; min-height: 32px; padding: 4px 8px; }
-  .item.line { padding: 8px 0; }
-  .item.line code { font: .875rem ui-monospace, Menlo, Consolas, monospace; color: var(--dash-text); overflow-wrap: anywhere; }
-  .item.line { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  section.panel { margin-bottom: 16px; }
-  fieldset.ask { margin: 16px 0 0; padding: 0; border: 0; min-width: 0; }
-  fieldset.ask > legend { padding: 0; font-weight: 600; color: var(--dash-heading); }
-  .panel hr { margin: 20px 0 16px; border: 0; border-top: 1px solid var(--dash-border); }
-  /* the header and the save bar stick to the edges; the page shows through them, blurred */
-  .top, .saved { position: sticky; z-index: 2; display: flex; align-items: center; gap: 12px; padding-block: 12px;
-    /* full page width; the padding keeps the buttons on the column of the page */
+  main { max-width: 66rem; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+  main:has(.saved) { padding-bottom: 16px; }
+
+  /* the header sticks to the top; the page shows through it, blurred */
+  .top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 16px; min-height: 60px; padding-block: 10px; margin-bottom: 28px;
+    /* full page width; the padding keeps its content on the column of the page */
     margin-inline: calc(50% - 50vw); padding-inline: calc(50vw - 50%);
-    background: color-mix(in srgb, var(--dash-bg) 30%, transparent);
-    -webkit-backdrop-filter: blur(12px) saturate(1.5); backdrop-filter: blur(12px) saturate(1.5); }
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .top, .saved { background: var(--dash-bg); } }
-  .top { top: 0; margin-bottom: 16px; border-bottom: 1px solid var(--dash-border); }
-  .top h1 { margin: 0; font-size: 1.35rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .back { flex: none; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--dash-field);
-    background: var(--dash-card); color: var(--dash-heading); font-weight: 600; text-decoration: none; }
-  .back:hover { border-color: var(--dash-accent); }
-  .back:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
-  .saved { bottom: 0; justify-content: flex-end; }
-  nav.sections { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 16px; }
-  .nav-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-  /* the group names only for a screen reader on a wide screen; the select on a narrow one shows them */
-  .nav-title { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-  .nav-choose { display: none; }
-  @media (pointer: coarse) {
-    nav.sections a, .back, .card header .order button, header.group .order button { min-height: 44px; min-width: 44px; }
-  }
-  @media (max-width: 40rem) {
-    .nav-group { display: none; }
-    .nav-choose { display: block; flex: 1 1 100%; }
-  }
-  nav.sections a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 999px;
-    background: var(--dash-card); color: var(--dash-text); font-size: .875rem; text-decoration: none; }
-  nav.sections a:hover { color: var(--dash-heading); }
-  nav.sections a[aria-current="page"] { background: var(--dash-accent); color: var(--dash-on-accent); font-weight: 600; }
+    border-bottom: 1px solid var(--dash-hairline);
+    background: color-mix(in srgb, var(--dash-bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
+  .top h1 { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .back { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 10px; margin-inline-start: -10px; border-radius: var(--radius-s);
+    color: var(--dash-muted); font-size: .875rem; font-weight: 500; text-decoration: none; transition: background .12s, color .12s; }
+  .back:hover { color: var(--dash-heading); background: var(--dash-hover); }
+  .back:dir(rtl) svg { transform: scaleX(-1); }
+  .top h1::before { content: ""; display: inline-block; width: 1px; height: 1.1em; margin-inline-end: 16px; vertical-align: -.2em; background: var(--dash-border); }
+
+  /* the sections: a column of their own on a wide screen, one list to choose from on a narrow one */
+  #panel:has(> nav.sections) { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); column-gap: 48px; align-items: start; }
+  #panel:has(> nav.sections) > :not(nav, datalist) { grid-column: 2; }
+  nav.sections { grid-column: 1; grid-row: 1 / span 40; position: sticky; top: 88px; display: flex; flex-direction: column; gap: 20px; margin: 0; }
+  .nav-group { display: flex; flex-direction: column; gap: 1px; }
+  .nav-title { margin: 0 0 6px; padding-inline: 10px; font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--dash-muted); }
+  nav.sections a { display: flex; align-items: center; min-height: 32px; padding: 5px 10px; border-radius: var(--radius-s);
+    color: var(--dash-text); font-size: .875rem; font-weight: 500; text-decoration: none; transition: background .12s, color .12s; }
+  nav.sections a:hover { color: var(--dash-heading); background: var(--dash-hover); }
+  nav.sections a[aria-current="page"] { background: var(--dash-tint); color: var(--dash-heading); font-weight: 600; }
   nav.sections a:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 1px; }
-  textarea.code { display: block; width: 100%; min-height: 24rem; margin: 12px 0; resize: vertical; tab-size: 2;
-    font: .8125rem/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: auto; }
-  #file-choose { display: block; width: 100%; margin-top: 4px; }
-  .row.mode { justify-content: flex-end; margin: 0 0 12px; }
-  header.group { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin-bottom: 8px; }
+  .nav-choose { display: none; }
+  @media (max-width: 56rem) {
+    #panel:has(> nav.sections) { display: block; }
+    nav.sections { position: static; margin-bottom: 20px; }
+    .nav-group { display: none; }
+    .nav-choose { display: block; }
+  }
+
+  section.panel { margin-bottom: 20px; }
+  .panel > h2 { margin-bottom: 4px; }
+  fieldset.ask { margin: 24px 0 0; padding: 0; border: 0; min-width: 0; }
+  fieldset.ask > legend { padding: 0; margin-bottom: 4px; font-weight: 600; color: var(--dash-heading); }
+  .panel hr { margin: 24px 0 20px; border: 0; border-top: 1px solid var(--dash-hairline); }
+  .item.line { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; }
+  .item.line code { font-size: .875rem; color: var(--dash-heading); overflow-wrap: anywhere; }
+  .hosts { margin: 12px 0; padding: 4px 16px; border: 1px solid var(--dash-border); border-radius: var(--radius); }
+  .hosts .item.line:first-child { padding-top: 8px; }
+
+  /* "Edit as text": a quiet switch in the corner of the panel below it */
+  .row.mode { position: relative; z-index: 1; justify-content: flex-end; height: 0; margin: 0; }
+  .row.mode button { margin-top: 18px; margin-inline-end: 18px; min-height: 30px; padding: 4px 10px; font-size: .8125rem; font-weight: 500;
+    background: none; border-color: transparent; box-shadow: none; color: var(--dash-muted); }
+  .row.mode button:hover:not(:disabled) { color: var(--dash-heading); background: var(--dash-hover); border-color: transparent; }
+  .row.mode + .panel > h2 { padding-inline-end: 9rem; }
+
+  /* the save bar floats at the bottom of the column */
+  .saved { position: sticky; bottom: 16px; z-index: 2; display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 24px;
+    padding: 10px 10px 10px 18px; border-radius: var(--radius-l); border: 1px solid var(--dash-border);
+    background: color-mix(in srgb, var(--dash-bg) 80%, transparent); box-shadow: 0 8px 28px var(--dash-shade);
+    -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
+  .saved:dir(rtl) { padding: 10px 18px 10px 10px; }
+  .saved > [role=status] { margin-inline-end: auto; font-size: .875rem; }
+  .saved > [role=status]:empty { display: none; }
+  .saved > button:not(.primary) { margin-inline-start: auto; }
+  .saved > [role=status]:not(:empty) ~ button:not(.primary) { margin-inline-start: 0; }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .top, .saved { background: var(--dash-bg); } }
+
+  /* lists of entries */
+  .card header .order, header.group .order { display: flex; gap: 2px; margin-inline-start: auto; }
+  header.group { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin-bottom: 4px; }
   header.group > label { flex: 1 1 14rem; }
-  header.group .order { display: flex; gap: 4px; margin-inline-start: auto; }
-  header.group .order button { min-width: 32px; min-height: 32px; padding: 4px 8px; }
-  .icon-field { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  /* a card in a card (a service in its group): a framed list inside the row */
+  .card .cards { background: var(--dash-bg); }
+  .card .card { background: transparent; }
+  .card .body > label, .card .body > fieldset, .card .body > .row { margin-top: 16px; }
+  section.nested { margin: 8px 0; padding: 12px 0 4px; padding-inline-start: 16px; border-inline-start: 2px solid var(--dash-border); }
+  .row:has(> button.add) { margin-top: 12px; }
+
+  textarea.code { display: block; width: 100%; min-height: 26rem; margin: 16px 0; padding: 14px 16px; resize: vertical; tab-size: 2;
+    font: .8125rem/1.65 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: auto; background: var(--dash-block); }
+  #file-choose { display: block; width: 100%; margin-top: 6px; }
+  .icon-field { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
   .icon-field > input { flex: 1 1 auto; width: auto; margin: 0; }
-  .icon-preview { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; background: var(--dash-block); }
-  .icon-preview img { width: 24px; height: 24px; object-fit: contain; }
-  .icon-preview .mask { width: 24px; height: 24px; background: var(--dash-heading); mask-size: contain; mask-repeat: no-repeat; mask-position: center;
+  .icon-preview { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--radius-s); background: var(--dash-block);
+    border: 1px solid var(--dash-hairline); }
+  .icon-preview img { width: 22px; height: 22px; object-fit: contain; }
+  .icon-preview .mask { width: 22px; height: 22px; background: var(--dash-heading); mask-size: contain; mask-repeat: no-repeat; mask-position: center;
     -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; }
-  /* a card in a card (a service in its group): the page's card colour, so the two stand apart */
-  .card .card { background: var(--dash-card); border-color: var(--dash-border); }
-  section.nested { margin: 4px 0; padding: 12px 0 4px; padding-inline-start: 14px; border-inline-start: 2px solid var(--dash-border); }
+
+  @media (pointer: coarse) {
+    nav.sections a, .back { min-height: 44px; }
+    .icon-preview { width: 44px; height: 44px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .back, nav.sections a { transition: none; } }
+  @media (prefers-contrast: more) { .top, .saved, .hosts { border-color: var(--dash-field); } }
 </style>
 </head>
 <body>
 <main>
   <header class="top">
-    <a href="./" id="back" class="back">← Dashboard</a>
+    <a href="./" id="back" class="back">Dashboard</a>
     <h1 id="heading">Settings</h1>
   </header>
   <div id="panel"><p class="muted">…</p></div>

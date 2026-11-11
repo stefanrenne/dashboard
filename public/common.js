@@ -71,6 +71,25 @@ function el(tag, attrs, ...children) {
   return node;
 }
 
+// The form pages' few icons (24×24 strokes in the text colour); the button around one carries its name.
+const ICONS = {
+  up: 'M12 19V5M5 12l7-7 7 7',
+  down: 'M12 5v14M19 12l-7 7-7-7',
+  remove: 'M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3',
+  add: 'M12 5v14M5 12h14',
+  back: 'M19 12H5M12 19l-7-7 7-7',
+  check: 'M5 12l5 5L20 7',
+};
+function icon(name) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' })) svg.setAttribute(k, v);
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', ICONS[name]);
+  svg.append(path);
+  return svg;
+}
+
 function translator(I18N, currentLang) {
   const text = (dict, key) => (dict[currentLang()] ?? {})[key] ?? dict.en[key];
   return (key, vars = {}) => String(text(I18N, key) ?? text(SHARED_I18N, key) ?? key).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));

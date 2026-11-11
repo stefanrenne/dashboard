@@ -129,3 +129,5 @@ Finished work, newest first.
   finished wizard steps get a ✓; 44 px targets on touch screens; the pages follow the system's
   appearance before the script runs (`light-dark()` tokens); Manrope and IBM Plex Mono served from
   `public/fonts/`, the CSP no longer allows Google Fonts.
+- 2026-11-11: Settings page, setup wizard and login page redesigned: shared tokens, sidebar
+  navigation, divided lists, icon actions, floating save bar, step marks.

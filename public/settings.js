@@ -43,7 +43,7 @@ function applyTheme(v) {
   applyAppearance(v.theme);
   document.title = t('heading');
   document.getElementById('heading').textContent = t('heading');
-  document.getElementById('back').textContent = `← ${t('back')}`;
+  document.getElementById('back').replaceChildren(icon('back'), t('back'));
 }
 
 function show(...nodes) {
@@ -176,8 +176,8 @@ function listField(key, legend, help) {
     ...rows.map((row, i) => el('div', { class: 'row' },
       ...columns.map(([k, label]) => field(`${key}-${i}-${k}`, t(label), el('input', { type: 'text', id: `${key}-${i}-${k}`, value: row[k] ?? '', spellcheck: 'false', autocapitalize: 'off',
         oninput: (e) => { row[k] = e.target.value; } }))),
-      el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeRow', { n: i + 1 }), onclick: () => { state.values[key] = rows.filter((_, j) => j !== i); render(); } }))),
-    el('div', { class: 'row' }, el('button', { type: 'button', text: t('addRow'), onclick: () => { state.values[key] = [...rows, blank()]; render(); document.getElementById(`${key}-${rows.length}-${columns[0][0]}`)?.focus(); } })));
+      el('button', { type: 'button', class: 'icon danger', 'aria-label': t('removeRow', { n: i + 1 }), title: t('removeRow', { n: i + 1 }), onclick: () => { state.values[key] = rows.filter((_, j) => j !== i); render(); } }, icon('remove')))),
+    el('div', { class: 'row' }, el('button', { type: 'button', class: 'add', text: t('addRow'), onclick: () => { state.values[key] = [...rows, blank()]; render(); document.getElementById(`${key}-${rows.length}-${columns[0][0]}`)?.focus(); } })));
 }
 
 const saveBar = () => statusBar(state, save);
@@ -339,10 +339,12 @@ function orderButtons(list, i, name, id, { remove = true } = {}) {
     const same = document.getElementById(`${by < 0 ? 'up' : 'down'}-${key}`);
     (same?.disabled ? document.getElementById(`${by < 0 ? 'down' : 'up'}-${key}`) : same)?.focus();
   };
+  // icons, named for a screen reader and in a tooltip; an entry alone in its list has nowhere to move
+  const button = (attrs, name) => el('button', { type: 'button', class: `icon${name === 'remove' ? ' danger' : ''}`, title: attrs['aria-label'], ...attrs }, icon(name));
   return el('span', { class: 'order' },
-    el('button', { type: 'button', id: `up-${id}`, text: '↑', 'aria-label': t('moveUp', { name }), disabled: i === 0, onclick: () => move(-1) }),
-    el('button', { type: 'button', id: `down-${id}`, text: '↓', 'aria-label': t('moveDown', { name }), disabled: i === list.length - 1, onclick: () => move(1) }),
-    remove ? el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeHost', { host: name }), onclick: () => { list.splice(i, 1); render(); } }) : null);
+    list.length > 1 ? button({ id: `up-${id}`, 'aria-label': t('moveUp', { name }), disabled: i === 0, onclick: () => move(-1) }, 'up') : null,
+    list.length > 1 ? button({ id: `down-${id}`, 'aria-label': t('moveDown', { name }), disabled: i === list.length - 1, onclick: () => move(1) }, 'down') : null,
+    remove ? button({ 'aria-label': t('removeHost', { host: name }), onclick: () => { list.splice(i, 1); render(); } }, 'remove') : null);
 }
 
 // ---------------------------------------------------------------- the groups (settings.yaml layout)
@@ -431,7 +433,7 @@ function pluginsSection() {
               field(`pl-${i}-only`, t('pluginOnly'), input(e, i, 'only'), t('pluginOnlyHelp'))),
             e.error ? el('p', { class: 'error', text: e.error }) : null));
       })) : el('p', { class: 'muted', text: t('pluginsNone') }),
-      el('div', { class: 'row' }, el('button', { type: 'button', text: t('pluginAdd'), onclick: () => {
+      el('div', { class: 'row' }, el('button', { type: 'button', class: 'add', text: t('pluginAdd'), onclick: () => {
         state.pluginEntries = [...list, { kind: 'git', value: '', subdir: '', only: '', index: null, pin: null, error: null }];
         render();
         document.getElementById(`pl-${list.length}-value`)?.focus();
@@ -624,8 +626,8 @@ function groupPanel(g, list, i, depth = 0) {
       ? el('p', { class: 'muted' }, t('svcIncluded', { file: g.include }), ' ', el('button', { type: 'button', class: 'link', text: t('svcOpenFile', { file: g.include }), onclick: () => openFile('services.yaml', g.include) }))
       : el('div', { class: 'cards' }, ...itemsOf(g.items, depth)),
     g.include ? null : el('div', { class: 'row' },
-      el('button', { type: 'button', text: t('svcAddService'), onclick: () => add({ kind: 'service', id: null, name: t('svcNewService'), ...copy(services().blank) }) }),
-      el('button', { type: 'button', text: t('svcAddNested'), onclick: () => add({ kind: 'group', id: null, name: t('svcNewGroup'), items: [] }) })));
+      el('button', { type: 'button', class: 'add', text: t('svcAddService'), onclick: () => add({ kind: 'service', id: null, name: t('svcNewService'), ...copy(services().blank) }) }),
+      el('button', { type: 'button', class: 'add', text: t('svcAddNested'), onclick: () => add({ kind: 'group', id: null, name: t('svcNewGroup'), items: [] }) })));
 }
 
 /** The head of a section: its name (as in the navigation), what it holds, then `children`. */
@@ -633,7 +635,7 @@ const sectionHead = (help, ...children) => el('section', { class: 'panel' },
   el('h2', { text: t(SECTIONS.find((x) => x.id === state.section).label) }), el('p', { class: 'muted', text: t(help) }), ...children);
 
 /** "Add a group", below a file's groups. */
-const addGroupRow = (items) => el('div', { class: 'row' }, el('button', { type: 'button', text: t('svcAddGroup'), onclick: () => {
+const addGroupRow = (items) => el('div', { class: 'row' }, el('button', { type: 'button', class: 'add', text: t('svcAddGroup'), onclick: () => {
   const g = { kind: 'group', id: null, name: t('svcNewGroup'), items: [] };
   items.push(g);
   render();
@@ -762,7 +764,7 @@ function bookmarksSection() {
         g.include
           ? el('p', { class: 'muted' }, t('bIncluded', { file: g.include }), ' ', el('button', { type: 'button', class: 'link', text: t('svcOpenFile', { file: g.include }), onclick: () => openFile('bookmarks.yaml', g.include) }))
           : el('div', { class: 'cards' }, ...g.items.map((b, j) => (b.kind === 'bookmark' ? bookmarkCard(b, g.items, j) : b.kind === 'include' ? includeCard(b, g.items, j, 'bookmarks.yaml') : el('div', { class: 'card invalid' }, el('pre', { text: b.text }), orderButtons(g.items, j, b.text.split('\n')[0], kid(b)))))),
-        g.include ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('bAdd'), onclick: () => {
+        g.include ? null : el('div', { class: 'row' }, el('button', { type: 'button', class: 'add', text: t('bAdd'), onclick: () => {
           const b = { kind: 'bookmark', id: null, name: t('bNew'), ...copy(d.blank) };
           g.items.push(b);
           render();
@@ -851,7 +853,7 @@ function serversSection(file) {
           serverFields(file, d.form, e, `sv${kid(e)}`),
           other(e),
           e.id !== null ? testButton(file, e) : null)),
-        d.flat ? null : el('div', { class: 'row' }, el('button', { type: 'button', text: t('srvAdd'), onclick: () => {
+        d.flat ? null : el('div', { class: 'row' }, el('button', { type: 'button', class: 'add', text: t('srvAdd'), onclick: () => {
           const e = { id: null, name: '', fields: copy(d.blank), hidden: [], other: [] };
           d.entries.push(e);
           render();
@@ -1172,7 +1174,7 @@ function hostsSection() {
     v.allowedHosts.length
       ? el('div', { class: 'hosts' }, ...v.allowedHosts.map((host) => el('div', { class: 'item line' },
         el('code', { text: host }),
-        el('button', { type: 'button', text: t('remove'), 'aria-label': t('removeHost', { host }), onclick: () => { v.allowedHosts = v.allowedHosts.filter((h) => h !== host); render(); } }))))
+        el('button', { type: 'button', class: 'icon danger', 'aria-label': t('removeHost', { host }), title: t('removeHost', { host }), onclick: () => { v.allowedHosts = v.allowedHosts.filter((h) => h !== host); render(); } }, icon('remove')))))
       : el('p', { class: 'muted', text: t('hostsNone') }),
     el('div', { class: 'row' },
       field('new-host', t('hostName'), el('input', { type: 'text', id: 'new-host', value: state.newHost ?? '', spellcheck: 'false', autocapitalize: 'off', placeholder: 'dash.example.com',

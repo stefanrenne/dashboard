@@ -76,7 +76,7 @@ function render(newStep = false) {
   const steps = document.getElementById('steps');
   steps.hidden = false;
   steps.replaceChildren(...STEPS.map((key, i) => el('li', { class: i < state.step ? 'done' : null, 'aria-current': i === state.step ? 'step' : null },
-    i < state.step ? el('span', { 'aria-hidden': 'true', text: '✓ ' }) : null, `${i + 1}. ${t(key)}`,
+    el('span', { class: 'mark', 'aria-hidden': 'true' }, i < state.step ? icon('check') : String(i + 1)), el('span', { class: 'name', text: t(key) }),
     i < state.step ? el('span', { class: 'sr-only', text: ` (${t('stepFinished')})` }) : null)));
   const panel = document.getElementById('panel');
   replacePanel(panel, [renderBasics, renderDocker, renderServices, renderSecurity, renderDone][state.step]());
@@ -146,8 +146,8 @@ function renderBasics() {
       el('label', { for: 'title' }, t('titleLabel'), el('input', { type: 'text', id: 'title', value: s.title, maxlength: '100', oninput: (e) => { s.title = e.target.value; } })),
       el('label', { for: 'language' }, t('languageLabel'), select('language', s.language, Object.entries(LANGUAGE_NAMES), (v) => { s.language = v; lang = I18N[v] ? v : 'en'; render(); })),
       el('label', { for: 'theme' }, t('themeLabel'), select('theme', s.theme, state.themes.map((th) => [th, t(`theme${th[0].toUpperCase()}${th.slice(1)}`)]), (v) => { s.theme = v; render(); }))),
-    el('div', {}, el('span', { class: 'muted', text: t('colorLabel') }), swatches),
-    actions(el('button', { type: 'button', class: 'link', text: t('skipSetup'), onclick: () => { state.skip = true; go(STEP.security); } })),
+    el('div', { class: 'colour' }, el('span', { class: 'muted', text: t('colorLabel') }), swatches),
+    actions(el('button', { type: 'button', class: 'link quiet', text: t('skipSetup'), onclick: () => { state.skip = true; go(STEP.security); } })),
   ];
 }
 
@@ -295,7 +295,7 @@ function renderServices() {
     state.homepage?.used && state.homepage.files['services.yaml'] ? el('p', { class: 'warn', text: t('homepageReplaces') }) : null,
     el('div', { class: 'cards' }, ...list.map(renderCard)),
     el('div', { class: 'row' },
-      el('button', { type: 'button', text: t('addService'), onclick: () => { state.cards.push({ on: true, name: '', group: 'Services', href: '', type: '', options: {} }); render(); } }),
+      el('button', { type: 'button', class: 'add', text: t('addService'), onclick: () => { state.cards.push({ on: true, name: '', group: 'Services', href: '', type: '', options: {} }); render(); } }),
       el('button', { type: 'button', 'aria-expanded': String(state.showHomepage), text: t('migrateHomepage'), onclick: () => {
         state.showHomepage = !state.showHomepage;
         render();
@@ -498,7 +498,7 @@ function renderDone() {
   return [
     el('h2', { text: t('stepDone'), tabindex: '-1' }),
     el('p', { text: t('doneText') }),
-    el('ul', { class: 'plain' }, ...[...new Set([...files, ...fromHomepage])].map((f) => el('li', {},
+    el('ul', { class: 'files' }, ...[...new Set([...files, ...fromHomepage])].map((f) => el('li', {},
       el('code', { text: f }),
       fromHomepage.includes(f) ? ` (${t('fromHomepage')})` : f === 'services.yaml' ? ` (${t('services', { count: p.services.length })})` : f === 'docker.yaml' && p.docker.length ? ` (${t('dockerServers', { count: p.docker.length })})` : null))),
     status,

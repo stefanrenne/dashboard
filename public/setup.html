@@ -10,17 +10,52 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="forms.css">
 <style>
-  main { max-width: 52rem; margin: 0 auto; padding: 32px 16px 64px; }
-  .steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 20px 0 16px; padding: 0; list-style: none; }
-  .steps li { padding: 4px 12px; border-radius: 999px; font-size: .8125rem; color: var(--dash-muted); background: var(--dash-card); }
-  .steps li[aria-current="step"] { background: var(--dash-accent); color: var(--dash-on-accent); font-weight: 600; }
+  main { max-width: 44rem; margin: 0 auto; padding: clamp(32px, 8vh, 72px) max(16px, env(safe-area-inset-right)) 64px max(16px, env(safe-area-inset-left)); }
+  header.intro { margin-bottom: 28px; }
+  header.intro h1 { font-size: 1.75rem; }
+  header.intro p { max-width: 56ch; margin: 6px 0 0; font-size: .9375rem; }
+  /* the steps: numbered marks on a line; a finished one gets a check, the current one the accent */
+  .steps { display: flex; margin: 0 0 20px; padding: 0; list-style: none; }
+  .steps li { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0;
+    font-size: .8125rem; font-weight: 500; color: var(--dash-muted); text-align: center; }
+  .steps li::before { content: ""; position: absolute; top: 13px; inset-inline-end: 50%; width: 100%; height: 2px; background: var(--dash-border); z-index: 0; }
+  .steps li:first-child::before { display: none; }
+  .steps li.done::before, .steps li[aria-current="step"]::before { background: var(--dash-accent); }
+  .steps .mark { position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--dash-bg); border: 2px solid var(--dash-border); color: var(--dash-muted); font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    transition: background .2s, border-color .2s, color .2s; }
+  .steps .mark svg { width: 14px; height: 14px; stroke-width: 3; }
   .steps li.done { color: var(--dash-text); }
+  .steps li.done .mark { background: var(--dash-accent); border-color: var(--dash-accent); color: var(--dash-on-accent); }
+  .steps li[aria-current="step"] { color: var(--dash-heading); font-weight: 600; }
+  .steps li[aria-current="step"] .mark { border-color: var(--dash-accent); color: var(--dash-heading); box-shadow: 0 0 0 4px var(--dash-tint); }
+  .steps .name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 30rem) {
+    .steps .name { display: none; }
+    .steps li[aria-current="step"] .name { display: block; position: absolute; top: 36px; }
+    .steps { margin-bottom: 40px; }
+  }
+  #panel { padding: 32px; }
+  #panel > h2 { font-size: 1.25rem; letter-spacing: -.01em; }
+  #panel > h2 + p.muted { margin-bottom: 20px; }
+  #panel form > label { margin-bottom: 6px; }
+  #panel #setup-code { width: 100%; max-width: 16rem; font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+  .colour { margin: 20px 0 4px; }
+  .colour > .muted { font-size: .8125rem; font-weight: 500; color: var(--dash-text); }
+  ul.files { margin: 12px 0; padding: 0; list-style: none; border: 1px solid var(--dash-border); border-radius: var(--radius); }
+  ul.files li { padding: 10px 14px; font-size: .875rem; color: var(--dash-muted); }
+  ul.files code { font-size: .8125rem; color: var(--dash-heading); }
+  ul.files li + li { border-top: 1px solid var(--dash-hairline); }
+  @media (max-width: 30rem) { #panel { padding: 20px; } }
+  @media (prefers-reduced-motion: reduce) { .steps .mark { transition: none; } }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="heading">Set up your dashboard</h1>
-  <p class="muted" id="intro"></p>
+  <header class="intro">
+    <h1 id="heading">Set up your dashboard</h1>
+    <p class="muted" id="intro"></p>
+  </header>
   <ol class="steps" id="steps" hidden></ol>
   <section class="panel" id="panel"><p class="muted">…</p></section>
 </main>

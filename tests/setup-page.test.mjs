@@ -86,7 +86,7 @@ test('the steps: basics, containers with a generated form, test, security lines,
   await tick();
   // 2. Docker: what answers, and a server added here
   const done = doc.querySelector('#steps li.done');
-  assert.equal(done.textContent, '✓ 1. Basis (klaar)', 'a finished step says so, not only by its colour');
+  assert.equal(done.textContent, 'Basis (klaar)', 'a finished step says so, not only by its colour');
   assert.equal(done.firstChild.getAttribute('aria-hidden'), 'true');
   assert.match(doc.getElementById('panel').textContent, /local \(\/var\/run\/docker\.sock\): Docker 27\.3\.1, 32 containers/);
   doc.getElementById('docker-address').value = 'nas.lan:2375';
