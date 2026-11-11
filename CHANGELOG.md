@@ -12,7 +12,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - New look for the settings page, the setup wizard and the login page, one design across the three:
   the settings sections in a sidebar (one list to choose from on a narrow screen), lists of entries
   in one frame with hairlines between them, icons to move or remove an entry (named in a tooltip and
-  for screen readers), a floating save bar, quieter fields and buttons, and the wizard's steps as
+  for screen readers), quieter fields and buttons, and the wizard's steps as
   numbered marks on a line.
 - The fonts (Manrope, and IBM Plex Mono for `font: plex`) come from the dashboard itself instead
   of Google Fonts: no page loads anything from outside, and they work without internet access.

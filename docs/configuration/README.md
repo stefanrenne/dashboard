@@ -161,7 +161,7 @@ Settings of the container rather than of the page.
 
 ### Settings page
 
-![The settings page in dark mode, General section: a sidebar with the sections in four groups (Look: General, Groups; Content: Services, Header widgets, Bookmarks; Sources: Docker, Kubernetes, Proxmox, Widgets; System: Security, Advanced), next to it Appearance with the title, language, theme, colour swatches and the styles for the header, links, status labels, cards, values, font, icons and bookmarks, then Background, with a floating save bar at the bottom](../images/settings-general.png)
+![The settings page in dark mode, General section: a sidebar with the sections in four groups (Look: General, Groups; Content: Services, Header widgets, Bookmarks; Sources: Docker, Kubernetes, Proxmox, Widgets; System: Security, Advanced), next to it Appearance with the title, language, theme, colour swatches and the styles for the header, links, status labels, cards, values, font, icons and bookmarks, then Background, with a Save button at the bottom](../images/settings-general.png)
 
 The gear in the footer opens `/settings`. General has the page's look (title, language, theme,
 colour, the header, cards, fonts and icons, the background), its layout, quick launch, the page
