@@ -47,6 +47,7 @@ defaults:
   - { scope: { path: widgets/README.md }, values: { title: Widgets, nav_order: 3, has_children: true, permalink: /widgets/ } }
   - { scope: { path: widgets/catalogue.md }, values: { title: Catalogue, parent: Widgets, nav_order: 3 } }
   - { scope: { path: extend/README.md }, values: { title: Extend, nav_order: 4, has_children: true, permalink: /extend/ } }
+  - { scope: { path: comparison.md }, values: { title: Compared, nav_order: 5 } }
   - { scope: { path: extend/local.md }, values: { title: A local widget, parent: Extend, nav_order: 1, redirect_from: [/widgets/authoring.html] } }
   - { scope: { path: extend/remote.md }, values: { title: A remote widget, parent: Extend, nav_order: 2 } }
   - { scope: { path: extend/api-reference.md }, values: { title: API reference, parent: Extend, nav_order: 3, redirect_from: [/widgets/api-reference.html] } }
