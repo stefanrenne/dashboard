@@ -73,6 +73,8 @@ for (const scheme of only === 'settings' ? [] : ['dark', 'light']) {
     globalThis.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } };
   });
   const page = await ctx.newPage();
+  // the live-reload stream stays open and the page would never be idle; a screenshot needs no reload
+  await page.route('**/api/events', (route) => route.abort());
   await page.route('**/api/widgets/*', (route) => {
     const id = route.request().url().split('?')[0].split('/').pop();
     const stub = fake[byType[id]];
