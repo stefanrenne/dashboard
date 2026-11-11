@@ -5,7 +5,7 @@
 <h1>Dashboard</h1>
 
 <p>A fast, self-hosted start page for your homelab, configured in YAML,<br>
-with 170+ widgets and room for the ones <strong>you</strong> publish.</p>
+with 180+ widgets and room for the ones <strong>you</strong> publish.</p>
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/images/screenshot-light.png">
@@ -20,7 +20,7 @@ with 170+ widgets and room for the ones <strong>you</strong> publish.</p>
 
 ## Features
 
-- **170+ widgets** for the services you run: Radarr, Sonarr, Plex, Proxmox, Unraid, Pi-hole,
+- **180+ widgets** for the services you run: Radarr, Sonarr, Plex, Proxmox, Unraid, Pi-hole,
   Home Assistant, Immich and many more, installed and kept up to date by themselves.
 - **Widgets anyone can publish**: a manifest and one function in your own git repository or npm
   package, added by others with one line of YAML.
@@ -68,7 +68,7 @@ How Dashboard compares with other self-hosted start pages, as far as their own d
 |---|---|---|---|---|---|---|
 | Configuration | YAML files, and a settings page in the browser | YAML files | In the browser (drag and drop), no YAML | YAML file, and an editor in the browser | YAML file | YAML file |
 | Setup wizard on first start | ✓ (finds running containers) | – | ✓ (onboarding in the browser) | – | – | – |
-| Service widgets | 180, in a separate collection | 100+ | 90+ | 50+ | about 30 widget types, plus a custom API widget | a few dozen "smart cards" |
+| Service widgets | 180+, in a separate collection | 100+ | 90+ | 50+ | about 30 widget types, plus a custom API widget | a few dozen "smart cards" |
 | Widgets from third parties | ✓ packages from git, npm or a folder, sandboxed | – (custom API widget) | – | – (custom widgets in the config) | – (custom API and extension widgets) | – |
 | Docker discovery | ✓ labels, also homepage's | ✓ labels | containers as an integration | – | containers widget | – |
 | Kubernetes discovery | ✓ Ingress, IngressRoute and HTTPRoute | ✓ Ingress annotations | Kubernetes as an integration | – | – | – |

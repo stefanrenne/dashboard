@@ -13,7 +13,7 @@ Pi-hole, the photos in Immich. And when a widget for your service does not exist
 
 ## Why you will like it
 
-**170+ widgets, ready to go.** Radarr, Sonarr, Plex, Jellyfin, Proxmox, Unraid, TrueNAS,
+**180+ widgets, ready to go.** Radarr, Sonarr, Plex, Jellyfin, Proxmox, Unraid, TrueNAS,
 Pi-hole, AdGuard, Home Assistant, Immich, Portainer, UniFi, Traefik and many more, plus the
 weather, stocks and a generic JSON mapper for anything with an API. They are installed with the
 dashboard and keep themselves up to date. [See them all](widgets/README.md).
