@@ -661,6 +661,7 @@ test('settings page: a YAML file in colour, checked as it is typed, with the lin
     'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true }, { file: 'custom.css', root: 'custom.css', from: null, at: '', exists: false }] },
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text, history: [] },
     'GET /api/settings/files/custom.css': { ok: true, file: 'custom.css', exists: false, hash: 'c1', text: '', history: [] },
+    'POST /api/settings/files/settings.yaml': { ok: true, changed: true, warnings: [] },
     'POST /api/settings/files/settings.yaml/check': (init) => (JSON.parse(init.body).text.includes('purple')
       ? { ok: true, errors: [], warnings: [{ file: 'settings.yaml', path: 'theme', message: 'unknown theme "purple"', line: 3 }] }
       : { ok: true, errors: [], warnings: [] }),
@@ -686,10 +687,41 @@ test('settings page: a YAML file in colour, checked as it is typed, with the lin
   for (let i = 0; i < 40 && doc.getElementById('file-check').textContent.includes('purple'); i++) await tick();
   assert.equal(doc.getElementById('file-check').textContent, '✓ Geen problemen gevonden.');
   assert.equal(view.querySelectorAll('.line.warn').length, 0);
+  // keys: Cmd/Ctrl+/ comments the selected lines out and in again, Tab and Shift+Tab indent
+  const key = (init) => area.dispatchEvent(new w.KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+  area.value = 'a: 1\n  b: 2\nc: 3\n';
+  area.dispatchEvent(new w.Event('input'));
+  area.setSelectionRange(0, 11);
+  key({ key: '/', metaKey: true });
+  assert.equal(area.value, '# a: 1\n#   b: 2\nc: 3\n');
+  key({ key: '/', ctrlKey: true });
+  assert.equal(area.value, 'a: 1\n  b: 2\nc: 3\n');
+  area.setSelectionRange(14, 14);
+  key({ key: '/', metaKey: true });
+  assert.equal(area.value, 'a: 1\n  b: 2\n# c: 3\n', 'the caret\'s line');
+  assert.equal(area.selectionStart, 16);
+  area.setSelectionRange(0, 11);
+  key({ key: 'Tab' });
+  assert.equal(area.value, '  a: 1\n    b: 2\n# c: 3\n');
+  key({ key: 'Tab', shiftKey: true });
+  key({ key: 'Tab', shiftKey: true });
+  assert.equal(area.value, 'a: 1\nb: 2\n# c: 3\n');
+  key({ key: 's', metaKey: true });
+  await tick();
+  assert.equal(calls.filter((c) => c.p === '/api/settings/files/settings.yaml' && c.init.method === 'POST').at(-1)?.body.text, 'a: 1\nb: 2\n# c: 3\n', 'Cmd+S saves');
   // custom.css stays plain text
   doc.getElementById('file-choose').value = 'custom.css';
   doc.getElementById('file-choose').dispatchEvent(new w.Event('change'));
   await tick();
   assert.equal(doc.getElementById('file-view'), null);
   assert.equal(doc.getElementById('file-check'), null);
+  // and comments as CSS
+  const css = doc.getElementById('file-text');
+  css.value = 'a { color: red; }';
+  css.dispatchEvent(new w.Event('input'));
+  css.setSelectionRange(0, 0);
+  css.dispatchEvent(new w.KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true }));
+  assert.equal(css.value, '/* a { color: red; } */');
+  css.dispatchEvent(new w.KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true }));
+  assert.equal(css.value, 'a { color: red; }');
 });

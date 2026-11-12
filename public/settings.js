@@ -1056,6 +1056,74 @@ function goToLine(area, n) {
   area.setSelectionRange(at, at + (area.value.split('\n')[n - 1] ?? '').length);
 }
 
+// ---------------------------------------------------------------- the file editor's keys
+// Cmd/Ctrl+/ comments the selected lines in or out (# for YAML, // for JS, /* */ for CSS), Tab and
+// Shift+Tab indent and outdent them, Cmd/Ctrl+S saves. Escape lets the next Tab leave the editor.
+// A change goes in as typing would, so the browser's undo takes it back.
+const COMMENTS = { yaml: ['#', ''], js: ['//', ''], css: ['/*', '*/'] };
+
+/** The comment marks for a file name: [open, close]. */
+const commentFor = (name) => COMMENTS[/\.css$/.test(name) ? 'css' : /\.js$/.test(name) ? 'js' : 'yaml'];
+
+/** Replaces the whole lines under the selection with `change(lines)`, keeping them selected (or the caret on its line). */
+function editLines(area, change) {
+  const { value, selectionStart: from, selectionEnd: to } = area;
+  const start = value.lastIndexOf('\n', from - 1) + 1;
+  // a selection that ends at the start of a line leaves that line out
+  const last = to > from && value[to - 1] === '\n' ? to - 1 : to;
+  const end = value.indexOf('\n', last) === -1 ? value.length : value.indexOf('\n', last);
+  const before = value.slice(start, end);
+  const after = change(before.split('\n')).join('\n');
+  if (after === before) return;
+  area.focus();
+  area.setSelectionRange(start, end);
+  // execCommand keeps the undo history; where it is missing the text is set and input is sent
+  if (!document.execCommand?.('insertText', false, after) || area.value.slice(start, start + after.length) !== after) {
+    area.setRangeText(after, start, end, 'end');
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  if (from === to && !before.includes('\n')) {
+    const at = Math.max(start, from + after.length - before.length);
+    area.setSelectionRange(at, at);
+  } else area.setSelectionRange(start, start + after.length);
+}
+
+/** Comments the lines out, or in when every line with text already is a comment. */
+function toggleComment(lines, [open, close]) {
+  const filled = lines.filter((line) => line.trim());
+  if (!filled.length) return lines;
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const commented = new RegExp(`^(\\s*)${esc(open)} ?(.*?)${close ? ` ?${esc(close)}\\s*` : ''}$`);
+  if (filled.every((line) => commented.test(line))) return lines.map((line) => line.replace(commented, '$1$2'));
+  const indent = Math.min(...filled.map((line) => /^\s*/.exec(line)[0].length));
+  return lines.map((line) => (line.trim() ? `${line.slice(0, indent)}${open} ${line.slice(indent)}${close ? ` ${close}` : ''}` : line));
+}
+
+function editorKeys(e, name, save) {
+  const area = e.target;
+  const mod = (e.metaKey || e.ctrlKey) && !e.altKey;
+  if (e.key === 'Escape') { area.dataset.tabOut = '1'; return; }
+  if (e.key === 'Tab' && area.dataset.tabOut) { delete area.dataset.tabOut; return; }
+  delete area.dataset.tabOut;
+  if (mod && !e.shiftKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    save();
+  } else if (mod && (e.key === '/' || e.code === 'Slash')) {
+    e.preventDefault();
+    editLines(area, (lines) => toggleComment(lines, commentFor(name)));
+  } else if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    const { selectionStart: from, selectionEnd: to, value } = area;
+    if (e.shiftKey) editLines(area, (lines) => lines.map((line) => line.replace(/^ {1,2}/, '')));
+    else if (from === to || !value.slice(from, to).includes('\n')) {
+      if (!document.execCommand?.('insertText', false, '  ')) {
+        area.setRangeText('  ', from, to, 'end');
+        area.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else editLines(area, (lines) => lines.map((line) => (line ? `  ${line}` : line)));
+  }
+}
+
 /** Checks the draft a moment after typing stops; an answer for an older draft is dropped. */
 function checkLater(name) {
   const f = state.file[name];
@@ -1144,6 +1212,7 @@ function fileSection({ file: root }) {
   const yaml = /\.ya?ml$/.test(name);
   const area = el('textarea', { id: 'file-text', class: 'code', rows: '24', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', wrap: 'off', 'aria-label': name,
     oninput: (e) => { f.draft = e.target.value; if (yaml) { paintFile(name); checkLater(name); } },
+    onkeydown: (e) => editorKeys(e, name, () => saveFile(name)),
     onscroll: (e) => { const view = document.getElementById('file-view'); if (view) { view.scrollTop = e.target.scrollTop; view.scrollLeft = e.target.scrollLeft; } } });
   area.value = f.draft;
   if (yaml && f.live === undefined) { f.live = null; checkLater(name); }
