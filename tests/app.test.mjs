@@ -1697,7 +1697,7 @@ test('settings page files: included files are listed, masked by the rules of the
   const post = (p, body) => fetch(`${t.base}/api/settings/files${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth }, body: JSON.stringify(body) });
   try {
     const { files } = await (await get('')).json();
-    assert.deepEqual(files.filter((f) => f.from).map((f) => [f.file, f.root, f.at]), [['private/providers.yaml', 'settings.yaml', 'providers'], ['media.yaml', 'services.yaml', '[0].Media']]);
+    assert.deepEqual(files.filter((f) => f.from).map((f) => [f.file, f.from, f.at]), [['private/providers.yaml', 'settings.yaml', 'providers'], ['media.yaml', 'services.yaml', '[0].Media']]);
     const providers = await (await get(`/${encodeURIComponent('private/providers.yaml')}`)).json();
     assert.match(providers.text, /^weather: __SECRET_[0-9a-f]{10}__$/m);
     const media = await (await get('/media.yaml')).json();

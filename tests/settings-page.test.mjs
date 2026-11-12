@@ -177,9 +177,9 @@ test('settings page: passkeys over https (add, list, remove), a notice over http
 
 test('settings page: sections by the URL, and a config file as text: save, problems, conflict, an earlier version', async () => {
   const FILES = [
-    { file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true },
-    { file: 'services.yaml', root: 'services.yaml', from: null, at: '', exists: true },
-    { file: 'media.yaml', root: 'services.yaml', from: 'services.yaml', at: '[0].Media', exists: true },
+    { file: 'settings.yaml', from: null, at: '', exists: true },
+    { file: 'services.yaml', from: null, at: '', exists: true },
+    { file: 'media.yaml', from: 'services.yaml', at: '[0].Media', exists: true },
   ];
   let text = '- Media: !include media.yaml\n- Apps:\n    - App:\n        widget: { type: x, key: __SECRET_0123456789__ }\n';
   let hash = 'h1';
@@ -208,14 +208,19 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   assert.equal(doc.querySelector('nav.sections [aria-current=page]').textContent, 'Services');
   assert.deepEqual([...doc.querySelectorAll('.nav-title')].map((x) => x.textContent), ['Weergave', 'Inhoud', 'Bronnen', 'Systeem']);
   assert.equal(doc.getElementById('nav-choose').value, 'services', 'the select for a narrow screen follows');
-  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Als tekst bewerken').click();
+  // Advanced edit: the section's file, under Advanced
+  [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Geavanceerd bewerken').click();
   await tick();
   await tick();
-  assert.equal(doc.getElementById('title'), null, 'the general form is in its own section');
+  assert.equal(w.location.hash, '#advanced');
+  assert.equal(doc.querySelector('nav.sections [aria-current=page]').textContent, 'Geavanceerd');
+  assert.equal(doc.getElementById('file-choose').value, 'services.yaml');
+  assert.equal(doc.querySelector('#panel h2').textContent, 'services.yaml');
   const area = doc.getElementById('file-text');
   assert.equal(area.value, text);
   assert.match(doc.getElementById('panel').textContent, /Waarden als __SECRET_…__ zijn verborgen/);
-  assert.deepEqual([...doc.querySelectorAll('#file-choose option')].map((o) => o.textContent), ['services.yaml', 'media.yaml (ingevoegd vanuit services.yaml)']);
+  // every file the page may edit, to choose from
+  assert.deepEqual([...doc.querySelectorAll('#file-choose option')].map((o) => o.textContent), ['settings.yaml', 'services.yaml', 'media.yaml (ingevoegd vanuit services.yaml)']);
   // a save sends the text with the hash it was read with; remarks are shown
   area.value = `${text}- Infra: []\n`;
   area.dispatchEvent(new w.Event('input'));
@@ -246,12 +251,12 @@ test('settings page: sections by the URL, and a config file as text: save, probl
   await tick();
   assert.equal(doc.getElementById('file-text').value, '- Plex: {}\n');
   assert.match(doc.getElementById('panel').textContent, /Ingevoegd vanuit services\.yaml bij \[0\]\.Media/);
-  // Advanced: settings.yaml as a file
-  w.location.hash = '#advanced';
+  // settings.yaml, with what it holds besides
+  doc.getElementById('file-choose').value = 'settings.yaml';
+  doc.getElementById('file-choose').dispatchEvent(new w.Event('change'));
   await tick();
   assert.equal(doc.querySelector('#panel h2').textContent, 'settings.yaml');
-  // ... and every other file the page may edit, to choose from
-  assert.deepEqual([...doc.querySelectorAll('#file-choose option')].map((o) => o.value), ['settings.yaml', 'services.yaml', 'media.yaml']);
+  assert.match(doc.getElementById('panel').textContent, /Elk configuratiebestand als tekst/);
 });
 
 test('settings page: the other settings.yaml keys as fields: background, layout, quick launch, app icons and shortcuts', async () => {
@@ -544,7 +549,7 @@ test('settings page: Docker, Proxmox and Kubernetes as forms', async () => {
 test('settings page: Advanced imports homepage files after a check', async () => {
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true }] },
+    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', from: null, at: '', exists: true }] },
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text: 'title: Lab\n', history: [] },
     'POST /api/settings/import/check': { ok: true, files: ['services.yaml'], services: [{ name: 'Plex' }], bookmarks: 0, header: 0, errors: [], warnings: [], replaces: ['services.yaml'] },
     'POST /api/settings/import': { ok: true, files: ['services.yaml'] },
@@ -658,7 +663,7 @@ test('settings page: a YAML file in colour, checked as it is typed, with the lin
   const text = '# lab\ntitle: Lab\ntheme: purple\nlayout:\n  Media: { columns: 2 }\nkey: __SECRET_0123456789__\n';
   const { doc, w, calls } = await page({
     'GET /api/settings': data(),
-    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', root: 'settings.yaml', from: null, at: '', exists: true }, { file: 'custom.css', root: 'custom.css', from: null, at: '', exists: false }] },
+    'GET /api/settings/files': { ok: true, files: [{ file: 'settings.yaml', from: null, at: '', exists: true }, { file: 'custom.css', from: null, at: '', exists: false }] },
     'GET /api/settings/files/settings.yaml': { ok: true, file: 'settings.yaml', exists: true, hash: 's1', text, history: [] },
     'GET /api/settings/files/custom.css': { ok: true, file: 'custom.css', exists: false, hash: 'c1', text: '', history: [] },
     'POST /api/settings/files/settings.yaml': { ok: true, changed: true, warnings: [] },

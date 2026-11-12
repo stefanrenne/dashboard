@@ -1,6 +1,6 @@
 # Bookmarks
 
-The settings page edits this file under Bookmarks, as a form or as text.
+The settings page edits this file under Bookmarks as a form; "Advanced edit" opens it as text under Advanced.
 
 `bookmarks.yaml` holds groups of plain links, shown below the service groups (or between them,
 with `layout` in [settings.yaml](settings.md)).

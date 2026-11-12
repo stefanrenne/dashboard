@@ -9,6 +9,11 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   selected lines out or back in (`#` in YAML, `//` in `custom.js`, `/* */` in `custom.css`), Tab and
   Shift+Tab or Cmd/Ctrl+] and Cmd/Ctrl+[ move them right and left, Cmd/Ctrl+S saves. Escape, then Tab, leaves the editor.
 
+### Changed
+- Settings page: "Edit as text" on Services, Header widgets, Bookmarks, Docker, Kubernetes and
+  Proxmox is now "Advanced edit", which opens the file under Advanced (as do the links to an
+  included file) instead of a text view inside the section.
+
 ## [0.25.0] - 2026-11-11
 
 ### Added

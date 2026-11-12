@@ -1,6 +1,6 @@
 # Kubernetes
 
-The settings page edits this file under Kubernetes, as a form or as text.
+The settings page edits this file under Kubernetes as a form; "Advanced edit" opens it as text under Advanced.
 
 `kubernetes.yaml` connects the dashboard to a cluster: to [discover](#discovery) services from
 Ingress, IngressRoute and HTTPRoute annotations, for `app:` pod status labels on a service, and

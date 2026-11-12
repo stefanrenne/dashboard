@@ -1,6 +1,6 @@
 # Docker
 
-The settings page edits this file under Docker, as a form or as text.
+The settings page edits this file under Docker as a form; "Advanced edit" opens it as text under Advanced.
 
 `docker.yaml` lists the Docker servers: for `container:` status labels on a service, and to
 [discover](#discovery) services from container labels.

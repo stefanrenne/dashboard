@@ -63,11 +63,11 @@
   .hosts .item.line:first-child { padding-top: 8px; }
 
   /* "Edit as text": a quiet switch in the corner of the panel below it */
-  .row.mode { position: relative; z-index: 1; justify-content: flex-end; height: 0; margin: 0; }
-  .row.mode button { margin-top: 18px; margin-inline-end: 18px; min-height: 30px; padding: 4px 10px; font-size: .8125rem; font-weight: 500;
+  .row.edit-advanced { position: relative; z-index: 1; justify-content: flex-end; height: 0; margin: 0; }
+  .row.edit-advanced button { margin-top: 18px; margin-inline-end: 18px; min-height: 30px; padding: 4px 10px; font-size: .8125rem; font-weight: 500;
     background: none; border-color: transparent; box-shadow: none; color: var(--dash-muted); }
-  .row.mode button:hover:not(:disabled) { color: var(--dash-heading); background: var(--dash-hover); border-color: transparent; }
-  .row.mode + .panel > h2 { padding-inline-end: 9rem; }
+  .row.edit-advanced button:hover:not(:disabled) { color: var(--dash-heading); background: var(--dash-hover); border-color: transparent; }
+  .row.edit-advanced + .panel > h2 { padding-inline-end: 9rem; }
 
   /* the save bar sticks to the bottom; the page shows through it, blurred, over the full page width
      (a layer behind it), while its buttons stay on the column of the page */

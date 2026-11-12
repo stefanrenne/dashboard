@@ -181,7 +181,7 @@ check and the rest of a service's keys) and their widgets (a form per widget fro
 with a test button; secret options stay hidden, lists and keys a widget does not declare stay
 as written), renamed, moved to another group, added and removed; a
 group or list that comes from an `!include` is a block with a link to its file, and the services
-found by discovery are listed (their labels are their source). "Edit as text" shows the file.
+found by discovery are listed (their labels are their source). "Advanced edit" opens the file as text under Advanced.
 Header widgets is a form too: the widgets in the header, each with the form of its options, added,
 reordered and removed.
 Bookmarks is a form as well: groups and bookmarks (link, abbreviation, icon, description).

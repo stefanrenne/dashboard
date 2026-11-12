@@ -157,7 +157,7 @@ export function settingsRoutes(app) {
       ok: true,
       files: editableFiles(configDir).map((e) => {
         const read = readConfigFile(configDir, e.file);
-        return { file: e.file, root: e.root, from: e.from, at: e.at, exists: read.exists, hash: read.hash, size: read.text.length };
+        return { file: e.file, from: e.from, at: e.at, exists: read.exists, hash: read.hash, size: read.text.length };
       }),
     })],
     ['GET', /^\/files\/(.+)\/history\/([^/]+)$/, (ctx, file, id) => ({ ok: true, file, id, text: masked(file, readHistory(configDir, file, id)).text })],
