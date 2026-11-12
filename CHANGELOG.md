@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-12
+
 ### Added
 - Settings page, the file editor: keyboard shortcuts. Cmd+/ (Ctrl+/ elsewhere) comments the
   selected lines out or back in (`#` in YAML, `//` in `custom.js`, `/* */` in `custom.css`), Tab and
