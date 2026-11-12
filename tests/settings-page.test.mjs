@@ -706,6 +706,17 @@ test('settings page: a YAML file in colour, checked as it is typed, with the lin
   key({ key: 'Tab', shiftKey: true });
   key({ key: 'Tab', shiftKey: true });
   assert.equal(area.value, 'a: 1\nb: 2\n# c: 3\n');
+  // Cmd/Ctrl+] and Cmd/Ctrl+[ move the lines right and left, the caret's line too
+  area.setSelectionRange(1, 1);
+  key({ key: ']', code: 'BracketRight', metaKey: true });
+  assert.equal(area.value, '  a: 1\nb: 2\n# c: 3\n');
+  assert.equal(area.selectionStart, 3, 'the caret moves with its line');
+  area.setSelectionRange(0, 10);
+  key({ key: ']', code: 'BracketRight', ctrlKey: true });
+  assert.equal(area.value, '    a: 1\n  b: 2\n# c: 3\n');
+  key({ key: '[', code: 'BracketLeft', metaKey: true });
+  key({ key: '[', code: 'BracketLeft', ctrlKey: true });
+  assert.equal(area.value, 'a: 1\nb: 2\n# c: 3\n');
   key({ key: 's', metaKey: true });
   await tick();
   assert.equal(calls.filter((c) => c.p === '/api/settings/files/settings.yaml' && c.init.method === 'POST').at(-1)?.body.text, 'a: 1\nb: 2\n# c: 3\n', 'Cmd+S saves');

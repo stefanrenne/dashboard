@@ -1058,7 +1058,8 @@ function goToLine(area, n) {
 
 // ---------------------------------------------------------------- the file editor's keys
 // Cmd/Ctrl+/ comments the selected lines in or out (# for YAML, // for JS, /* */ for CSS), Tab and
-// Shift+Tab indent and outdent them, Cmd/Ctrl+S saves. Escape lets the next Tab leave the editor.
+// Shift+Tab indent and outdent them, as do Cmd/Ctrl+] and Cmd/Ctrl+[ (also on the caret's line),
+// Cmd/Ctrl+S saves. Escape lets the next Tab leave the editor.
 // A change goes in as typing would, so the browser's undo takes it back.
 const COMMENTS = { yaml: ['#', ''], js: ['//', ''], css: ['/*', '*/'] };
 
@@ -1099,6 +1100,9 @@ function toggleComment(lines, [open, close]) {
   return lines.map((line) => (line.trim() ? `${line.slice(0, indent)}${open} ${line.slice(indent)}${close ? ` ${close}` : ''}` : line));
 }
 
+const indent = (lines) => lines.map((line) => (line ? `  ${line}` : line));
+const outdent = (lines) => lines.map((line) => line.replace(/^ {1,2}/, ''));
+
 function editorKeys(e, name, save) {
   const area = e.target;
   const mod = (e.metaKey || e.ctrlKey) && !e.altKey;
@@ -1111,16 +1115,19 @@ function editorKeys(e, name, save) {
   } else if (mod && (e.key === '/' || e.code === 'Slash')) {
     e.preventDefault();
     editLines(area, (lines) => toggleComment(lines, commentFor(name)));
+  } else if (mod && !e.shiftKey && (e.code === 'BracketRight' || e.code === 'BracketLeft' || e.key === ']' || e.key === '[')) {
+    e.preventDefault();
+    editLines(area, e.code === 'BracketRight' || e.key === ']' ? indent : outdent);
   } else if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) {
     e.preventDefault();
     const { selectionStart: from, selectionEnd: to, value } = area;
-    if (e.shiftKey) editLines(area, (lines) => lines.map((line) => line.replace(/^ {1,2}/, '')));
+    if (e.shiftKey) editLines(area, outdent);
     else if (from === to || !value.slice(from, to).includes('\n')) {
       if (!document.execCommand?.('insertText', false, '  ')) {
         area.setRangeText('  ', from, to, 'end');
         area.dispatchEvent(new Event('input', { bubbles: true }));
       }
-    } else editLines(area, (lines) => lines.map((line) => (line ? `  ${line}` : line)));
+    } else editLines(area, indent);
   }
 }
 

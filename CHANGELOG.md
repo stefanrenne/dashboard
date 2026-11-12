@@ -7,7 +7,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ### Added
 - Settings page, the file editor: keyboard shortcuts. Cmd+/ (Ctrl+/ elsewhere) comments the
   selected lines out or back in (`#` in YAML, `//` in `custom.js`, `/* */` in `custom.css`), Tab and
-  Shift+Tab indent and outdent them, Cmd/Ctrl+S saves. Escape, then Tab, leaves the editor.
+  Shift+Tab or Cmd/Ctrl+] and Cmd/Ctrl+[ move them right and left, Cmd/Ctrl+S saves. Escape, then Tab, leaves the editor.
 
 ## [0.25.0] - 2026-11-11
 
