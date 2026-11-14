@@ -3,13 +3,14 @@ The version menu: the release at the root, develop under /develop/. Nothing here
 version a page is built for (it is read from the address, the release's number from /version.json,
 which the site's build writes), so a release can be a copy of develop's site
 (scripts/pages-promote.sh). Another version opens on the same page, or on its home page when that
-page is not there. On develop a banner says what is being read.
+page is not there. On develop a banner says what is being read. On a narrow screen, where the
+theme folds this header into its menu, the menu moves next to the menu button.
 {%- endcomment -%}
 {%- if site.docs_channel -%}
 <div class="version-menu">
   <label for="docs-version" class="version-label">Version</label>
   <select id="docs-version">
-    <option value="release">release</option>
+    <option value="release">latest</option>
     <option value="develop">develop</option>
   </select>
 </div>
@@ -24,7 +25,7 @@ page is not there. On develop a banner says what is being read.
   /* this page's path without its version's base: /develop/configuration/tabs.html -> /configuration/tabs.html */
   const page = (channel === 'develop' ? location.pathname.slice(bases.develop.length) : location.pathname) || '/';
   const release = fetch('/version.json').then((r) => (r.ok ? r.json() : {})).then((v) => v.release ?? null, () => null);
-  release.then((v) => { if (v) select.options[0].textContent = `${v} (release)`; });
+  release.then((v) => { if (v) select.options[0].textContent = `${v} (latest)`; });
   select.addEventListener('change', async () => {
     const base = bases[select.value];
     const target = base + page;
@@ -34,6 +35,18 @@ page is not there. On develop a banner says what is being read.
     } catch { /* offline: the home page */ }
     location.href = to;
   });
+  /* the theme's narrow layout (below 50rem) shows the header only with its menu open: next to the menu button instead */
+  const menu = select.closest('.version-menu');
+  const home = { parent: menu.parentNode, next: menu.nextSibling };
+  const narrow = window.matchMedia('(max-width: 49.99rem)');
+  const place = () => {
+    const button = document.getElementById('menu-button');
+    if (narrow.matches && button) button.before(menu);
+    else if (!narrow.matches && menu.parentNode !== home.parent) home.parent.insertBefore(menu, home.next);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', place);
+  else place();
+  narrow.addEventListener('change', place);
   if (channel !== 'develop') return;
   /* develop: what is read here is not released yet */
   const banner = document.createElement('div');
