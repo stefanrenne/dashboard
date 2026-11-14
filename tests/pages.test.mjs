@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
 import { attributeRows, displayFields, movedLinks, optionRows, widgetPage, withFieldsInExample, writeWidgetPages } from '../scripts/pages-widgets.mjs';
-import { exampleEntry, showsData, splitFiles } from '../scripts/widget-images.mjs';
+import { exampleEntry, showsData, splitFiles, widgetHashes, useCache } from '../scripts/widget-images.mjs';
 import { tmpDir, COLLECTION_DIR } from './helpers.mjs';
 
 test('optionRows: type, required, default, secret and the line comment', () => {
@@ -175,13 +175,13 @@ test('pages.sh: links that leave docs/ go to GitHub, from every depth', () => {
 test('pages.sh: the release at the root, develop under /develop/ with its own GitHub links', () => {
   const stage = (channel) => {
     const out = path.join(tmpDir('hd-pages-'), 'site');
-    execFileSync('sh', ['scripts/pages.sh', out, 'someone/repo'], { env: { ...process.env, ...(channel ? { DOCS_CHANNEL: channel } : {}), DOCS_RELEASE: '1.2.3' } });
+    execFileSync('sh', ['scripts/pages.sh', out, 'someone/repo'], { env: { ...process.env, ...(channel ? { DOCS_CHANNEL: channel } : {}) } });
     return { config: YAML.parse(fs.readFileSync(path.join(out, '_config.yml'), 'utf8')), home: fs.readFileSync(path.join(out, 'README.md'), 'utf8') };
   };
   const release = stage(null);
   assert.equal(release.config.docs_channel, 'release');
-  assert.equal(release.config.docs_release, '1.2.3');
-  assert.equal(release.config.baseurl, undefined, 'the root: the base path of the Pages settings');
+  assert.equal(release.config.baseurl, '', 'the root, whatever the Pages settings of the building repository');
+  assert.equal(release.config.url, 'https://getdashboard.dev');
   assert.equal(release.config.gh_edit_branch, 'main');
   const develop = stage('develop');
   assert.equal(develop.config.docs_channel, 'develop');
@@ -192,11 +192,82 @@ test('pages.sh: the release at the root, develop under /develop/ with its own Gi
   assert.throws(() => stage('nightly'));
 });
 
-test('docs: the version menu and develop\'s noindex come from the staged channel', () => {
+test('docs: the version menu reads its version from the address, so a copy of develop is the release', () => {
   const header = fs.readFileSync('docs/_includes/header_custom.html', 'utf8');
   assert.match(header, /\{%- if site\.docs_channel -%\}/, 'no menu on a site staged without a channel');
-  assert.match(header, /develop: '\/develop'/);
-  assert.match(fs.readFileSync('docs/_includes/head_custom.html', 'utf8'), /site\.docs_channel == "develop" %\}\n<meta name="robots" content="noindex">/);
+  assert.ok(!/site\.docs_channel ==|site\.docs_release|selected/.test(header), 'nothing baked in for one version');
+  assert.ok(!/["'(]\/develop\//.test(header), 'nothing the release copy rewrites');
+  assert.ok(!/^\s*\/\/|[;{}]\s*\/\//m.test(header.split('<script>')[1]), 'no line comments: the theme puts the page on one line');
+  assert.ok(!fs.readFileSync('docs/_includes/head_custom.html', 'utf8').includes('noindex'), 'robots.txt keeps develop out of search engines');
+  // no page links to develop's address: the release copy would point it at the root
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+  for (const file of walk('docs').filter((f) => f.endsWith('.md'))) assert.ok(!fs.readFileSync(file, 'utf8').includes('getdashboard.dev/develop'), file);
+});
+
+test('pages-promote.sh: develop\'s site at the root, its links, assets and search index pointed there', () => {
+  const site = tmpDir('hd-promote-');
+  const write = (p, text) => { fs.mkdirSync(path.dirname(path.join(site, p)), { recursive: true }); fs.writeFileSync(path.join(site, p), text); };
+  write('CNAME', 'getdashboard.dev\n');
+  write('robots.txt', 'User-agent: *\nDisallow: /develop/\n');
+  write('old.html', 'gone');
+  write('develop/index.html', '<link rel="canonical" href="https://getdashboard.dev/develop/"><link href="/develop/assets/css/a.css"><a href="/develop/configuration/tabs.html">Tabs</a> <a href="https://github.com/me/dash/edit/develop/docs/README.md">Edit</a> <a href="https://github.com/me/dash/tree/develop/CHANGELOG.md">c</a> <p>run the develop branch of /develop/x</p>');
+  write('develop/widgets/collection/sonarr.html', '<a href="https://github.com/me/widgets">Widget collection</a> develop · <a href="https://github.com/me/widgets/tree/develop/widgets/sonarr">source</a>');
+  write('develop/assets/js/search-data.json', '{"0": {"url": "/develop/widgets/"}}');
+  write('develop/assets/js/x.js', "fetch('/develop/assets/js/search-data.json')");
+  write('develop/widgets/collection/images/sonarr.png', 'png');
+  execFileSync('sh', ['scripts/pages-promote.sh', site, 'v1.2.3'], { env: { ...process.env, DOCS_REPO: 'me/dash', DOCS_COLLECTION: 'me/widgets' } });
+  const read = (p) => fs.readFileSync(path.join(site, p), 'utf8');
+  assert.equal(read('index.html'), '<link rel="canonical" href="https://getdashboard.dev/"><link href="/assets/css/a.css"><a href="/configuration/tabs.html">Tabs</a> <a href="https://github.com/me/dash/edit/main/docs/README.md">Edit</a> <a href="https://github.com/me/dash/tree/main/CHANGELOG.md">c</a> <p>run the develop branch of /develop/x</p>');
+  assert.equal(read('widgets/collection/sonarr.html'), '<a href="https://github.com/me/widgets">Widget collection</a> v1.2.3 · <a href="https://github.com/me/widgets/tree/v1.2.3/widgets/sonarr">source</a>');
+  assert.equal(read('assets/js/search-data.json'), '{"0": {"url": "/widgets/"}}');
+  assert.equal(read('assets/js/x.js'), "fetch('/assets/js/search-data.json')");
+  assert.equal(read('widgets/collection/images/sonarr.png'), 'png');
+  assert.ok(!fs.existsSync(path.join(site, 'old.html')), 'the old root goes');
+  assert.equal(read('CNAME'), 'getdashboard.dev\n');
+  assert.match(read('robots.txt'), /Disallow: \/develop\//);
+  assert.match(read('develop/index.html'), /href="\/develop\/configuration\/tabs\.html"/, 'develop itself stays as it was');
+
+  // from another build than develop/ (a collection release: main's docs)
+  const other = tmpDir('hd-promote-from-');
+  fs.writeFileSync(path.join(other, 'index.html'), '<a href="/develop/x.html">x</a>');
+  execFileSync('sh', ['scripts/pages-promote.sh', site, 'v2', other]);
+  assert.equal(read('index.html'), '<a href="/x.html">x</a>');
+  assert.ok(fs.existsSync(path.join(site, 'develop/index.html')));
+  assert.throws(() => execFileSync('sh', ['scripts/pages-promote.sh', site, 'v2', tmpDir('hd-empty-')], { stdio: 'pipe' }));
+});
+
+test('widget images: a hash per widget, the cache used while it matches', () => {
+  const collection = tmpDir('hd-hash-col-');
+  const widget = (id, text) => { fs.mkdirSync(path.join(collection, 'widgets', id), { recursive: true }); fs.writeFileSync(path.join(collection, 'widgets', id, 'widget.yaml'), text); };
+  widget('a', 'id: a\n');
+  widget('b', 'id: b\n');
+  fs.mkdirSync(path.join(collection, 'widgets', 'not-a-widget'));
+  const before = widgetHashes(collection);
+  assert.deepEqual(Object.keys(before), ['a', 'b']);
+  widget('b', 'id: b\nname: B\n');
+  const after = widgetHashes(collection);
+  assert.equal(after.a, before.a, 'another widget\'s change leaves a alone');
+  assert.notEqual(after.b, before.b);
+  fs.mkdirSync(path.join(collection, 'scripts'));
+  fs.writeFileSync(path.join(collection, 'scripts/mock-homelab.mjs'), 'x');
+  assert.notEqual(widgetHashes(collection).a, after.a, 'the mock draws every widget');
+
+  const hashes = widgetHashes(collection);
+  const cache = tmpDir('hd-hash-cache-');
+  fs.writeFileSync(path.join(cache, 'a.png'), 'A');
+  fs.writeFileSync(path.join(cache, 'a.hash'), `${hashes.a}\n`);
+  fs.writeFileSync(path.join(cache, 'b.png'), 'old B');
+  fs.writeFileSync(path.join(cache, 'b.hash'), 'stale\n');
+  const out = path.join(tmpDir('hd-hash-out-'), 'images');
+  assert.deepEqual(useCache(hashes, cache, out), ['b']);
+  assert.equal(fs.readFileSync(path.join(out, 'a.png'), 'utf8'), 'A');
+  assert.ok(!fs.existsSync(path.join(out, 'b.png')), 'a changed widget does not keep its old image');
+  // a widget tried before without an image: its .hash alone, not tried again
+  fs.rmSync(path.join(cache, 'a.png'));
+  const again = path.join(tmpDir('hd-hash-out-'), 'images');
+  assert.deepEqual(useCache(hashes, cache, again), ['b']);
+  assert.ok(!fs.existsSync(path.join(again, 'a.png')) && fs.existsSync(path.join(again, 'a.hash')));
+  assert.deepEqual(useCache(hashes, null, again).sort(), ['a', 'b'], 'without a cache: all of them');
 });
 
 test('docs: every page has an entry in _config.yml, and relative links point at files', () => {

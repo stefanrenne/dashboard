@@ -1,8 +1,10 @@
 # GitHub Pages site for these docs: https://getdashboard.dev/
-# Built by .github/workflows/pages.yml after scripts/pages.sh staged docs/ and the widget pages.
+# Built by stefanrenne/dashboard-site (its site.yml) after scripts/pages.sh staged docs/ and the widget pages.
 # Titles, the menu order and the redirects from old addresses live here, so the Markdown files
 # stay clean on GitHub.
 title: Dashboard
+# absolute links (canonical, redirects) point here, whichever repository builds the site
+url: https://getdashboard.dev
 logo: /images/logo.svg
 description: A self-hosted start page for your homelab, configured in YAML, with widgets anyone can publish.
 remote_theme: just-the-docs/just-the-docs@v0.10.1

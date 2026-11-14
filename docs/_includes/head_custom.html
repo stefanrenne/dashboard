@@ -1,9 +1,6 @@
 <link rel="icon" type="image/svg+xml" href="{{ '/images/logo.svg' | relative_url }}">
-{%- if site.docs_channel == "develop" %}
-<meta name="robots" content="noindex">
-{%- endif %}
 <style>
-  /* the version menu (header_custom.html) and develop's banner */
+  /* the version menu (header_custom.html) and develop's banner; /robots.txt keeps /develop/ out of search engines */
   .version-menu { display: flex; align-items: center; gap: .375rem; padding: 0 1rem; font-size: .8125rem; white-space: nowrap; }
   .version-label { color: #5c5962; }
   .version-menu select { font: inherit; padding: .25rem .5rem; border: 1px solid #eeebee; border-radius: 4px; background: #fff; color: #27262b; cursor: pointer; }

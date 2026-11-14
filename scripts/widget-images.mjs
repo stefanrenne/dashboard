@@ -5,12 +5,74 @@
 // its page then has no image.
 // Playwright is deliberately not in package.json, as for scripts/screenshots.mjs:
 //   npm install --no-save playwright && npx playwright install chromium
-//   node scripts/widget-images.mjs <out dir> [<collection checkout>]
+//   node scripts/widget-images.mjs <out dir> [<collection checkout>] [--cache <dir>]
+//   node scripts/widget-images.mjs --stale <collection checkout> --cache <dir>   (how many to take)
+//
+// With a cache (the images of an earlier run), a widget is photographed only when its hash
+// changed: its folder in the collection, the collection's mock, and what draws it here (see
+// RENDER_FILES). Next to each image goes <id>.hash; a widget without an image gets the .hash alone,
+// so it is not tried again for the same hash.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
+
+// what draws a widget image, besides the widget itself: a change here takes every image again
+const RENDER_FILES = ['scripts/widget-images.mjs', 'public/index.html', 'public/common.js', 'public/fonts', 'src/plugins'];
+const COLLECTION_FILES = ['scripts/mock-homelab.mjs', 'scripts/fakes.mjs'];
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+
+/** The files under `p` (a file or a folder), sorted, with their contents hashed into `hash`. */
+function hashPath(hash, base, p) {
+  const full = path.join(base, p);
+  if (!fs.existsSync(full)) return;
+  if (fs.statSync(full).isDirectory()) {
+    for (const name of fs.readdirSync(full).sort()) if (name !== 'node_modules') hashPath(hash, base, path.join(p, name));
+    return;
+  }
+  hash.update(`${p}\0`).update(fs.readFileSync(full)).update('\0');
+}
+
+/** { id: hash } for every widget of the collection: what its image depends on. */
+export function widgetHashes(collectionDir, root = ROOT) {
+  const shared = crypto.createHash('sha256');
+  for (const p of RENDER_FILES) hashPath(shared, root, p);
+  for (const p of COLLECTION_FILES) hashPath(shared, collectionDir, p);
+  const common = shared.digest('hex');
+  const widgetsDir = path.join(collectionDir, 'widgets');
+  const out = {};
+  for (const id of fs.readdirSync(widgetsDir).sort()) {
+    if (!fs.existsSync(path.join(widgetsDir, id, 'widget.yaml'))) continue;
+    const h = crypto.createHash('sha256').update(common);
+    hashPath(h, widgetsDir, id);
+    out[id] = h.digest('hex').slice(0, 16);
+  }
+  return out;
+}
+
+/**
+ * Takes what `cache` has for the current hashes into `out` (the image and its .hash, or the .hash
+ * alone for a widget without one). Returns the ids still to photograph.
+ */
+export function useCache(hashes, cache, out) {
+  const stale = [];
+  fs.mkdirSync(out, { recursive: true });
+  for (const [id, hash] of Object.entries(hashes)) {
+    const was = cache ? path.join(cache, `${id}.hash`) : null;
+    if (!was || !fs.existsSync(was) || fs.readFileSync(was, 'utf8').trim() !== hash) {
+      stale.push(id);
+      continue;
+    }
+    const image = path.join(cache, `${id}.png`);
+    if (path.resolve(cache) !== path.resolve(out)) {
+      if (fs.existsSync(image)) fs.copyFileSync(image, path.join(out, `${id}.png`));
+      fs.writeFileSync(path.join(out, `${id}.hash`), `${hash}\n`);
+    }
+  }
+  return stale;
+}
 
 /** The YAML files in a README code block that holds several (`# settings.yaml` ... `# services.yaml` ...). */
 export function splitFiles(block) {
@@ -132,8 +194,11 @@ export function showsData(result) {
   return !(data.blocks ?? []).some((b) => (b?.key ?? b?.label) === 'status' && b.status === 'error');
 }
 
-/** Writes `<out>/<id>.png` per widget that shows data; returns the ids with an image. */
-export async function writeWidgetImages({ out, collectionDir, log = console }) {
+/**
+ * Writes `<out>/<id>.png` per widget that shows data, and `<id>.hash`; `only` limits it to those ids.
+ * Returns the ids with a new image.
+ */
+export async function writeWidgetImages({ out, collectionDir, only = null, hashes = widgetHashes(collectionDir), log = console }) {
   const { chromium } = await import('playwright');
   const http = await import('node:http');
   const { createApp } = await import('../src/app.js');
@@ -151,7 +216,7 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   const demoUrl = `http://127.0.0.1:${demo.address().port}`;
 
   const widgetsDir = path.join(collectionDir, 'widgets');
-  const ids = fs.readdirSync(widgetsDir).filter((d) => fs.existsSync(path.join(widgetsDir, d, 'widget.yaml'))).sort();
+  const ids = fs.readdirSync(widgetsDir).filter((d) => fs.existsSync(path.join(widgetsDir, d, 'widget.yaml')) && (!only || only.includes(d))).sort();
   const hasServer = (id) => fs.existsSync(path.join(widgetsDir, id, 'server.js'));
   const services = new Map(); // id -> { name, href, icon, widget }
   const names = new Set();
@@ -252,15 +317,38 @@ export async function writeWidgetImages({ out, collectionDir, log = console }) {
   fakes?.close();
   demo.close();
   fs.rmSync(configDir, { recursive: true, force: true });
+  // tried: the hash, with or without an image, so the same widget is not tried again
+  for (const id of ids) if (hashes[id]) fs.writeFileSync(path.join(out, `${id}.hash`), `${hashes[id]}\n`);
   log.info?.(`widget images: ${written.length} of ${ids.length} widgets`);
   return written;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [out, collection] = process.argv.slice(2);
-  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-  const collectionDir = path.resolve(collection ?? process.env.DASHBOARD_COLLECTION_DIR ?? path.join(root, '../dashboard-widgets'));
-  const written = await writeWidgetImages({ out: path.resolve(out), collectionDir });
-  console.log(`widget images: ${written.length} written to ${out}`);
+  const args = process.argv.slice(2);
+  const flag = (name) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : null);
+  const cache = flag('--cache');
+  const staleOf = flag('--stale');
+  const [out, collection] = args;
+  const collectionDir = path.resolve(staleOf ?? collection ?? process.env.DASHBOARD_COLLECTION_DIR ?? path.join(ROOT, '../dashboard-widgets'));
+  const hashes = widgetHashes(collectionDir);
+  if (staleOf) {
+    // only counts: nothing is copied
+    const stale = Object.entries(hashes).filter(([id, h]) => !cache || !fs.existsSync(path.join(cache, `${id}.hash`)) || fs.readFileSync(path.join(cache, `${id}.hash`), 'utf8').trim() !== h);
+    console.log(stale.length);
+    process.exit(0);
+  }
+  const stale = useCache(hashes, cache && path.resolve(cache), path.resolve(out));
+  if (!stale.length) {
+    console.log(`widget images: all ${Object.keys(hashes).length} from the cache`);
+    process.exit(0);
+  }
+  try {
+    await import('playwright');
+  } catch {
+    console.log(`no Playwright: ${stale.length} widgets without a new image`);
+    process.exit(0);
+  }
+  const written = await writeWidgetImages({ out: path.resolve(out), collectionDir, only: stale, hashes });
+  console.log(`widget images: ${written.length} new of ${stale.length} to take, ${Object.keys(hashes).length - stale.length} from the cache, in ${out}`);
   process.exit(0);
 }

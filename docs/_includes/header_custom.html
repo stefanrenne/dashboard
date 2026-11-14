@@ -1,15 +1,16 @@
 {%- comment -%}
-The version menu: the release at the root, develop under /develop/ (scripts/pages.sh stages each
-with its docs_channel and the release's version). Another version opens on the same page, or on
-its home page when that page is not there. On develop a banner says what is being read.
+The version menu: the release at the root, develop under /develop/. Nothing here depends on the
+version a page is built for (it is read from the address, the release's number from /version.json,
+which the site's build writes), so a release can be a copy of develop's site
+(scripts/pages-promote.sh). Another version opens on the same page, or on its home page when that
+page is not there. On develop a banner says what is being read.
 {%- endcomment -%}
 {%- if site.docs_channel -%}
-{%- assign release = site.docs_release | default: "release" -%}
 <div class="version-menu">
   <label for="docs-version" class="version-label">Version</label>
-  <select id="docs-version" data-channel="{{ site.docs_channel }}" data-release="{{ release }}">
-    <option value="release"{% if site.docs_channel == "release" %} selected{% endif %}>{{ release }} (release)</option>
-    <option value="develop"{% if site.docs_channel == "develop" %} selected{% endif %}>develop</option>
+  <select id="docs-version">
+    <option value="release">release</option>
+    <option value="develop">develop</option>
   </select>
 </div>
 <script>
@@ -17,10 +18,13 @@ its home page when that page is not there. On develop a banner says what is bein
 (() => {
   const select = document.getElementById('docs-version');
   const bases = { release: '', develop: '/develop' };
-  const channel = select.dataset.channel;
-  const here = bases[channel];
-  /* this page's path without this version's base: /develop/configuration/tabs.html -> /configuration/tabs.html */
-  const page = (here && location.pathname.startsWith(here) ? location.pathname.slice(here.length) : location.pathname) || '/';
+  /* no quoted base path with a slash after it in this file: a release copy rewrites those */
+  const channel = location.pathname === bases.develop || location.pathname.startsWith(`${bases.develop}/`) ? 'develop' : 'release';
+  select.value = channel;
+  /* this page's path without its version's base: /develop/configuration/tabs.html -> /configuration/tabs.html */
+  const page = (channel === 'develop' ? location.pathname.slice(bases.develop.length) : location.pathname) || '/';
+  const release = fetch('/version.json').then((r) => (r.ok ? r.json() : {})).then((v) => v.release ?? null, () => null);
+  release.then((v) => { if (v) select.options[0].textContent = `${v} (release)`; });
   select.addEventListener('change', async () => {
     const base = bases[select.value];
     const target = base + page;
@@ -37,13 +41,14 @@ its home page when that page is not there. On develop a banner says what is bein
   banner.setAttribute('role', 'note');
   const link = document.createElement('a');
   link.href = page;
+  link.textContent = 'the release';
+  release.then((v) => { if (v) link.textContent = `the ${v} release`; });
   /* as the menu does: the same page when the release has it, else its home page */
   link.addEventListener('click', (e) => {
     e.preventDefault();
     select.value = 'release';
     select.dispatchEvent(new Event('change'));
   });
-  link.textContent = `the ${select.dataset.release} release`;
   banner.append('You are reading the docs of develop: what is described here is not released yet. See ', link, '.');
   const start = () => document.querySelector('.main-content')?.prepend(banner);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

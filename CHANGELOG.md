@@ -13,7 +13,7 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   one that opens first. A rename or removal follows into the groups and the header widgets. A
   group's tab is now chosen from the tabs, and a header widget gets "Shown on" boxes.
 - The documentation site has a version menu: the release at getdashboard.dev, and what is on
-  develop at getdashboard.dev/develop/.
+  develop at getdashboard.dev/develop/. It is published by its own repository, dashboard-site.
 
 ### Changed
 - Widgets on a tab that is not shown no longer ask for data; they do once their tab opens.

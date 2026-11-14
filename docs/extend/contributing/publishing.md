@@ -46,40 +46,51 @@ A change to the widget API is a release note of its own: say which `apiVersion` 
 
 ## Documentation site
 
-`.github/workflows/pages.yml` publishes `docs/` as
-[getdashboard.dev](https://getdashboard.dev/) in two versions, with a menu in the header to switch
-(`docs/_includes/header_custom.html`): the release (`main`) at the root, and `develop` under
-[`/develop/`](https://getdashboard.dev/develop/), with a banner and `noindex` on its pages and the widgets
-collection's `develop` for its widget pages. Only `main` may deploy, so a push to `develop` that touches
-the docs, a run by hand and the schedule start the workflow on `main`, which builds both. The menu opens
-the same page in the other version, or its home page when that page is not there. The
-domain is set under the repository's Settings > Pages, not in a `CNAME` file; the build takes
-the site's base path from there, so after a change of domain run the workflow once by hand,
-or every link still points at the old path (the old `stefanrenne.github.io/homelab-dashboard/`
-addresses redirect to the domain). Jekyll builds it with the just-the-docs theme; the Markdown
-stays plain (no front matter), titles, the menu order and redirects from old addresses
-are in `docs/_config.yml`. The menu has four parts: Home (`docs/README.md`), Configuration
-(`docs/configuration/`, a page per file as in homepage), Widgets and Extend (`docs/extend/`).
+[getdashboard.dev](https://getdashboard.dev/) is built from `docs/` here, and published by a
+repository of its own, [dashboard-site](https://github.com/stefanrenne/dashboard-site): its workflow
+`site.yml` builds the site and commits it to its `gh-pages` branch, which GitHub Pages serves
+(the domain is set there). It has two versions, with a menu in the header to switch
+(`docs/_includes/header_custom.html`): the release at the root, and `develop` under `/develop/`, with
+a banner on its pages, its widget pages from the collection's `develop`, and `robots.txt` keeping it
+out of search engines. The menu opens the same page in the other version, or its home page when
+that page is not there.
 
-`scripts/pages.sh` stages the site, one version at a time (`DOCS_CHANNEL=release` or `develop`, and
-`DOCS_RELEASE` for the menu; develop gets `baseurl: /develop` and its GitHub links at `develop`): it points links outside `docs/` at GitHub and wraps each
-page in `{% raw %}` so `{{DASHBOARD_VAR_*}}` examples stay literal. For the widgets collection at its
-newest release (checked out by the workflow), `scripts/widget-images.mjs` then photographs every
-widget with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its
-`README.md` and `widget.yaml` (with that image), split into service and header widgets, and the
-list of all of them on the Widgets page. `scripts/check-highlight.rb` then runs every code
-block through Rouge, at the version GitHub Pages uses, and fails the build on one it would mark
-red (`tests/pages.test.mjs` catches the known cases locally, without Ruby). Widget pages stay at `widgets/collection/<id>.html`,
-whatever their section: other sites link there. A collection release starts a run itself (its release job, with a token in the
-collection's secret `PAGES_DISPATCH_TOKEN`); the daily run is the fallback.
+`.github/workflows/site.yml` here starts that workflow (with a fine-grained token in the secret
+`PAGES_DISPATCH_TOKEN`, Actions read and write on dashboard-site; without it, it only says so):
+
+- **a push to `develop`**: `/develop/` is built again;
+- **a push to `main`** (a release): `/develop/` is built again and **copied** to the root
+  (`scripts/pages-promote.sh`), and `/version.json` gets the release's version for the menu. No
+  page is built for the release itself: what was on `/develop/` is what is released;
+- **a release of the widgets collection** (its release job, with the same secret): the root is built
+  from `main`'s docs with the collection at that release, and copied to the root the same way.
+
+A copy works because nothing on a page depends on the version it was built for, apart from what
+Jekyll writes for the base path: the menu and the banner read the version from the address, and
+`pages-promote.sh` points the base path (links, assets, the search index, canonical and redirect
+addresses) and the links to the `develop` branch at the root and `main`. So a page never links to
+develop's address of the site itself (`tests/pages.test.mjs` checks).
+
+Jekyll builds it with the just-the-docs theme; the Markdown stays plain (no front matter), titles,
+the menu order and redirects from old addresses are in `docs/_config.yml`. The menu has four
+parts: Home (`docs/README.md`), Configuration (`docs/configuration/`, a page per file as in
+homepage), Widgets and Extend (`docs/extend/`).
+
+`scripts/pages.sh` stages one version (`DOCS_CHANNEL=develop` gives `baseurl: /develop` and GitHub
+links at `develop`): it points links outside `docs/` at GitHub and wraps each page in `{% raw %}` so
+`{{DASHBOARD_VAR_*}}` examples stay literal. `scripts/widget-images.mjs` then photographs the widgets
+with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its `README.md` and
+`widget.yaml` (with that image), split into service and header widgets, and the list of all of
+them on the Widgets page. Only a widget whose hash changed is photographed again: its folder in
+the collection, the collection's mock, and what draws it here (`RENDER_FILES` in the script). The
+published images, with their `<id>.hash` files, are the cache (`DOCS_IMAGE_CACHE`); when every hash
+matches, Playwright does not even start. `scripts/check-highlight.rb` then runs every code block
+through Rouge, at the version GitHub Pages uses, and fails the build on one it would mark red
+(`tests/pages.test.mjs` catches the known cases locally, without Ruby). Widget pages stay at
+`widgets/collection/<id>.html`, whatever their section: other sites link there.
 
 A new page gets an entry under `defaults:` in `docs/_config.yml`; a moved page a `redirect_from`
 with its old address.
-
-A deploy is named after its commit. When one hangs at GitHub (`updating_pages` until the
-timeout, then "Deployment cancelled" for every new try), a run for the same commit does not help,
-the daily one neither: push a new commit that touches `docs/` to `develop` and move `main` to it, and its deploy
-goes through.
 
 ## Dependabot
 
