@@ -73,7 +73,7 @@ write on dashboard-site; without it, they only say so):
 
 | Started by | Mode | Does |
 |---|---|---|
-| a push to `develop` here | `dashboard-develop` | builds `/develop/` again |
+| a push to `develop` here | `dashboard-develop`, `widgets-develop` | builds `/develop/` again, and `/widgets/develop/` (its theme, menus and scripts are here) |
 | a push to `main` here (a release) | `dashboard-release` | builds `/develop/` again and **copies** it to `/` |
 | a push to the collection's `develop` (widgets, its mock) | `widgets-develop` | builds `/widgets/develop/` again |
 | a collection release | `widgets-release` | builds `/widgets/develop/` again and **copies** it to `/widgets/` |
