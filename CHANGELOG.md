@@ -4,6 +4,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- The documentation site has two parts with their own releases and version menus: the
+  dashboard's docs (getdashboard.dev, develop at /develop/) and the widgets (getdashboard.dev/widgets/,
+  develop at /widgets/develop/). The widgets' home page and the catalogue moved to the widgets
+  collection's repository.
+
 ## [0.27.0] - 2026-11-14
 
 ### Added

@@ -2,7 +2,8 @@ name: Docs site
 
 # The documentation site (https://getdashboard.dev/) is built and published by
 # stefanrenne/dashboard-site (its site.yml; see docs/extend/contributing/publishing.md): a push to
-# develop builds /develop/ again, a push to main (a release) copies it to the root.
+# develop builds /develop/ again, a push to main (a release) copies it to the root. The widgets
+# part (/widgets/) is the collection's: its own pushes and releases start it.
 # PAGES_DISPATCH_TOKEN: a fine-grained token with Actions read and write on dashboard-site; without
 # it this only says so.
 on:
@@ -17,7 +18,7 @@ jobs:
     steps:
       - env:
           GH_TOKEN: ${{ secrets.PAGES_DISPATCH_TOKEN }}
-          MODE: ${{ github.ref_name == 'main' && 'release' || 'develop' }}
+          MODE: ${{ github.ref_name == 'main' && 'dashboard-release' || 'dashboard-develop' }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "::notice::no PAGES_DISPATCH_TOKEN: run site.yml in stefanrenne/dashboard-site by hand ($MODE)"; exit 0; fi
           gh workflow run site.yml --repo stefanrenne/dashboard-site -f mode="$MODE"

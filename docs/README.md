@@ -7,7 +7,7 @@ Pi-hole, the photos in Immich. And when a widget for your service does not exist
 {: .fs-6 .fw-300 }
 
 [Get started](#get-started-in-a-minute){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[Browse the widgets](widgets/README.md){: .btn .fs-5 .mb-4 .mb-md-0 }
+[Browse the widgets](https://getdashboard.dev/widgets/){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ![The dashboard in dark mode: a header with a greeting, the time, CPU, memory and disk meters, the weather and a search box; three groups of cards (Media, Infrastructure, Home) with live numbers from Plex, Radarr with its download queue, Sonarr, SABnzbd, Seerr, Proxmox, Unraid, Pi-hole, What's up Docker, Traefik, Immich, Paperless-ngx, Nextcloud, Uptime Kuma and Speedtest, green status dots, buttons on the cards (Import finished downloads, Pause downloads for an hour, Reboot node, Stop the array, Pause blocking for 5 minutes, Update all containers, Back up now, Run a speed test now) and a row of bookmark icons](images/screenshot-dark.png)
 
@@ -16,7 +16,7 @@ Pi-hole, the photos in Immich. And when a widget for your service does not exist
 **180+ widgets, ready to go.** Radarr, Sonarr, Plex, Jellyfin, Proxmox, Unraid, TrueNAS,
 Pi-hole, AdGuard, Home Assistant, Immich, Portainer, UniFi, Traefik and many more, plus the
 weather, stocks and a generic JSON mapper for anything with an API. They are installed with the
-dashboard and keep themselves up to date. [See them all](widgets/README.md).
+dashboard and keep themselves up to date. [See them all](https://getdashboard.dev/widgets/).
 
 **Widgets anyone can publish.** Every widget is a small package: a manifest and one function.
 Put it in a git repository or on npm, and others add it with one line of YAML. No pull request
@@ -32,7 +32,7 @@ too. [Docker](configuration/docker.md) · [Kubernetes](configuration/kubernetes.
 
 **Buttons for the jobs you repeat.** Pull new images, pause downloads, start a backup, reboot a
 node: a button on a card runs a script or command on the server, and shows the output when it
-fails. [Button widget](widgets/collection/button.html).
+fails. [Button widget](https://getdashboard.dev/widgets/collection/button.html).
 
 **Your keys stay on your server.** API keys and passwords go in variables and never reach the
 browser; widgets run in a worker with a timeout, so one broken service never takes the page down.
@@ -100,7 +100,7 @@ What changed in each release is in the [CHANGELOG](../CHANGELOG.md).
 | | |
 |---|---|
 | [Configuration](configuration/README.md) | Every file and key: settings, services, bookmarks, Docker, Kubernetes, Proxmox, images |
-| [Widgets](widgets/README.md) | Every widget, with its options, fields, an example and how it looks |
+| [Widgets](https://getdashboard.dev/widgets/) | Every widget, with its options, fields, an example and how it looks |
 | [Extend](extend/README.md) | Write a widget of your own, locally or as a package for others |
 
 ![The same dashboard in light mode](images/screenshot-light.png)

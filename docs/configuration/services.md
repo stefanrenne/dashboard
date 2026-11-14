@@ -1,7 +1,7 @@
 # Services
 
 `services.yaml` holds the cards: groups of services, each with a link, an icon, a status check
-and any number of [widgets](../widgets/README.md). Services can also be
+and any number of [widgets](https://getdashboard.dev/widgets/). Services can also be
 [discovered](docker.md#discovery) from Docker labels and [Kubernetes](kubernetes.md#discovery) annotations.
 
 ```yaml

@@ -1,8 +1,10 @@
-// Writes one documentation page per widget into the staged Pages site (see scripts/pages.sh):
-// the widget's README.md (intro, fields, example) with its version, source, an example image
-// (made by scripts/widget-images.mjs, when there is one) and an options table taken from
-// widget.yaml. Widgets are split, as in homepage, into service widgets and header widgets (those
-// whose example is a widgets.yaml entry), and all of them are listed on the Widgets page.
+// Writes one documentation page per widget into the staged widgets part of the Pages site (see
+// scripts/pages.sh, DOCS_PART=widgets; it is served under /widgets/): the widget's README.md
+// (intro, fields, example) with its version, source, an example image (made by
+// scripts/widget-images.mjs, when there is one) and an options table taken from widget.yaml.
+// Widgets are split, as in homepage, into service widgets and header widgets (those whose
+// example is a widgets.yaml entry), and all of them are listed on the part's home page. Links to
+// the dashboard's docs are absolute (/configuration/...): they go to its latest version.
 //   node scripts/pages-widgets.mjs <site> <collection repo dir> <tag>
 
 import fs from 'node:fs';
@@ -61,7 +63,8 @@ const MOVED = [
   [/\]\(\.\.\/\.\.\/discovery\.html#docker[a-z-]*\)/g, () => '](../../configuration/docker.html#discovery)'],
   [/\]\(\.\.\/\.\.\/discovery\.html#kubernetes\)/g, () => '](../../configuration/kubernetes.html#discovery)'],
 ];
-export const movedLinks = (markdown) => MOVED.reduce((md, [re, to]) => md.replace(re, to), markdown);
+/** A README's links, fixed for moved pages, then pointed at the dashboard's docs from wherever the widgets part is served. */
+export const movedLinks = (markdown) => MOVED.reduce((md, [re, to]) => md.replace(re, to), markdown).replace(/\]\(\.\.\/\.\.\//g, '](/');
 
 const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 const code = (value) => (value === undefined ? '' : `\`${cell(typeof value === 'string' ? value : JSON.stringify(value))}\``);
@@ -113,10 +116,10 @@ export function widgetPage(dir, source, image = null) {
 
   const attributes = attributeRows(yamlText);
   const filterAttributes = attributes.length || readmeAttributes
-    ? `\n## Filter attributes\n\nPublic values a service's \`filter:\` can read, as \`widget.<attribute>\`; see [Filters](../../configuration/filters.html).\n\n` +
+    ? `\n## Filter attributes\n\nPublic values a service's \`filter:\` can read, as \`widget.<attribute>\`; see [Filters](/configuration/filters.html).\n\n` +
       (readmeAttributes ? `${readmeAttributes}\n\n` : '') + (attributes.length ? attributesTable(attributes) : '')
     : '';
-  const options = `## Configuration options\n\n${optionsTable(optionRows(yamlText))}\nEvery widget also takes \`refresh\` (or \`refreshInterval\` in ms), \`fields\` and \`hideErrors\`; see [Services](../../configuration/services.html).\n${filterAttributes}`;
+  const options = `## Configuration options\n\n${optionsTable(optionRows(yamlText))}\nEvery widget also takes \`refresh\` (or \`refreshInterval\` in ms), \`fields\` and \`hideErrors\`; see [Services](/configuration/services.html).\n${filterAttributes}`;
 
   const example = body.search(/^## Example/m);
   body = example === -1 ? `${body.trimEnd()}\n\n${options}` : `${body.slice(0, example)}${options}\n${body.slice(example)}`;
@@ -172,23 +175,24 @@ function table(pages, prefix) {
   return rows.join('\n');
 }
 
-// Pages stay at widgets/collection/<id>.html whatever their section: other sites link there.
+// Pages stay at collection/<id>.html of the part (/widgets/collection/<id>.html) whatever their
+// section: other sites link there.
 function section(site, { folder, title, navOrder, intro, pages }) {
-  writePage(path.join(site, 'widgets', folder, 'index.md'),
-    { title, parent: 'Widgets', nav_order: navOrder, has_children: true, permalink: `/widgets/${folder}/` },
+  writePage(path.join(site, folder, 'index.md'),
+    { title, nav_order: navOrder, has_children: true, permalink: `/${folder}/` },
     `# ${title}\n\n${intro}\n\n${table(pages, '../collection/')}`);
   for (const p of pages) {
-    writePage(path.join(site, 'widgets', 'collection', `${p.id}.md`),
-      { title: p.name, parent: title, grand_parent: 'Widgets', permalink: `/widgets/collection/${p.id}.html` }, p.markdown);
+    writePage(path.join(site, 'collection', `${p.id}.md`),
+      { title: p.name, parent: title, permalink: `/collection/${p.id}.html` }, p.markdown);
   }
 }
 
 /**
- * The widget pages, their two sections and the list on the Widgets page (`widgets/README.md` of
- * the staged site, when there). `<site>/widgets/collection/images/<id>.png` is a widget's image.
+ * The widget pages, their two sections and the list on the part's home page (`README.md` of the
+ * staged part, when there). `<site>/collection/images/<id>.png` is a widget's image.
  */
 export function writeWidgetPages({ site, collectionDir, collectionTag }) {
-  const images = path.join(site, 'widgets', 'collection', 'images');
+  const images = path.join(site, 'collection', 'images');
   const all = widgetFolders(path.join(collectionDir, 'widgets')).map((d) => {
     const id = path.basename(d);
     const image = fs.existsSync(path.join(images, `${id}.png`)) ? `images/${id}.png` : null;
@@ -197,12 +201,12 @@ export function writeWidgetPages({ site, collectionDir, collectionTag }) {
   const service = all.filter((p) => p.kind === 'service');
   const header = all.filter((p) => p.kind === 'header');
   const from = `From the [widgets collection](${COLLECTION}) ${collectionTag}, always installed.`;
-  section(site, { folder: 'collection', title: 'Service widgets', navOrder: 1, pages: service,
-    intro: `Widgets on a service's card, under \`widget:\` in [services.yaml](../../configuration/services.html). ${from}` });
-  section(site, { folder: 'header', title: 'Header widgets', navOrder: 2, pages: header,
-    intro: `Widgets in the page's header, in [widgets.yaml](../../configuration/header-widgets.html). ${from}` });
+  section(site, { folder: 'collection', title: 'Service widgets', navOrder: 2, pages: service,
+    intro: `Widgets on a service's card, under \`widget:\` in [services.yaml](/configuration/services.html). ${from}` });
+  section(site, { folder: 'header', title: 'Header widgets', navOrder: 3, pages: header,
+    intro: `Widgets in the page's header, in [widgets.yaml](/configuration/header-widgets.html). ${from}` });
 
-  const index = path.join(site, 'widgets', 'README.md');
+  const index = path.join(site, 'README.md');
   if (fs.existsSync(index)) {
     const list = `\n{% raw %}\n## Service widgets\n\n${table(service, 'collection/')}\n\n## Header widgets\n\n${table(header, 'collection/')}\n{% endraw %}\n`;
     fs.appendFileSync(index, list);

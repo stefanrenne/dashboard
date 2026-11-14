@@ -398,7 +398,7 @@ through its options, not every one.
 
 ### Scripts as root
 
-The [button](../widgets/collection/button.html)
+The [button](https://getdashboard.dev/widgets/collection/button.html)
 widget runs its script as the dashboard's user (`node`, uid 1000). A button with `user: root`
 runs it as root inside the container, for scripts that write files owned by root. That only works
 with `DASHBOARD_ALLOW_ROOT_SCRIPTS: "true"` on the container: the image then lets `node` start one fixed

@@ -48,8 +48,8 @@ Bump `version` on every release; the dashboard installs each version in its own 
 
 ## 4. Get listed
 
-Add a row to the [Catalogue](../../widgets/catalogue.md) with a pull request on the
-[dashboard repository](https://github.com/stefanrenne/dashboard) (`docs/widgets/catalogue.md`,
+Add a row to the [Catalogue](https://getdashboard.dev/widgets/catalogue.html) with a pull request on the
+[widgets collection](https://github.com/stefanrenne/dashboard-widgets) (`docs/catalogue.md`,
 in alphabetical order). A package is listed when it:
 
 - is public: a git repository with release tags, or an npm package;

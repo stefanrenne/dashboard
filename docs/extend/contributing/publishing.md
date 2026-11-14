@@ -46,51 +46,67 @@ A change to the widget API is a release note of its own: say which `apiVersion` 
 
 ## Documentation site
 
-[getdashboard.dev](https://getdashboard.dev/) is built from `docs/` here, and published by a
-repository of its own, [dashboard-site](https://github.com/stefanrenne/dashboard-site): its workflow
-`site.yml` builds the site and commits it to its `gh-pages` branch, which GitHub Pages serves
-(the domain is set there). It has two versions, with a menu in the header to switch
-(`docs/_includes/header_custom.html`): the release at the root, and `develop` under `/develop/`, with
-a banner on its pages, its widget pages from the collection's `develop`, and `robots.txt` keeping it
-out of search engines. The menu opens the same page in the other version, or its home page when
-that page is not there.
+[getdashboard.dev](https://getdashboard.dev/) is published by a repository of its own,
+[dashboard-site](https://github.com/stefanrenne/dashboard-site): its workflow `site.yml` builds the
+site and commits it to its `gh-pages` branch, which GitHub Pages serves (the domain is set there).
+The site has two parts, each with its own releases and its own version menu in the header
+(`docs/_includes/header_custom.html`):
 
-`.github/workflows/site.yml` here starts that workflow (with a fine-grained token in the secret
-`PAGES_DISPATCH_TOKEN`, Actions read and write on dashboard-site; without it, it only says so):
+| Part | Latest | Develop | Its pages |
+|---|---|---|---|
+| Dashboard | `/` | `/develop/` | `docs/` in this repository |
+| Widgets | `/widgets/` | `/widgets/develop/` | `docs/` in the widgets collection (its home and the catalogue) and a page per widget |
 
-- **a push to `develop`**: `/develop/` is built again;
-- **a push to `main`** (a release): `/develop/` is built again and **copied** to the root
-  (`scripts/pages-promote.sh`), and `/version.json` gets the release's version for the menu. No
-  page is built for the release itself: what was on `/develop/` is what is released;
-- **a release of the widgets collection** (its release job, with the same secret): the root is built
-  from `main`'s docs with the collection at that release, and copied to the root the same way.
+A part's menu opens the same page in its other version, or its home page when that page is not
+there; the other part's menu opens that part's home page. Develop pages get a banner, and
+`robots.txt` keeps them out of search engines. `/version.json` has the latest version of each
+part, for the menus. Each part has its own Jekyll build, so its own side menu (the other part is
+a link in it) and its own search. Links between the parts are absolute and go to the latest
+version: `https://getdashboard.dev/widgets/...` in `docs/` here, `https://getdashboard.dev/...`
+in the collection's `docs/`, and `/configuration/...` in a page per widget (its README's
+`../../` links are made so).
 
-A copy works because nothing on a page depends on the version it was built for, apart from what
-Jekyll writes for the base path: the menu and the banner read the version from the address, and
-`pages-promote.sh` points the base path (links, assets, the search index, canonical and redirect
-addresses) and the links to the `develop` branch at the root and `main`. So a page never links to
-develop's address of the site itself (`tests/pages.test.mjs` checks).
+`.github/workflows/site.yml` here, and `site.yml` and the release job in the collection, start
+that workflow (with a fine-grained token in the secret `PAGES_DISPATCH_TOKEN`, Actions read and
+write on dashboard-site; without it, they only say so):
 
-Jekyll builds it with the just-the-docs theme; the Markdown stays plain (no front matter), titles,
-the menu order and redirects from old addresses are in `docs/_config.yml`. The menu has four
-parts: Home (`docs/README.md`), Configuration (`docs/configuration/`, a page per file as in
-homepage), Widgets and Extend (`docs/extend/`).
+| Started by | Mode | Does |
+|---|---|---|
+| a push to `develop` here | `dashboard-develop` | builds `/develop/` again |
+| a push to `main` here (a release) | `dashboard-release` | builds `/develop/` again and **copies** it to `/` |
+| a push to the collection's `develop` (widgets, its mock) | `widgets-develop` | builds `/widgets/develop/` again |
+| a collection release | `widgets-release` | builds `/widgets/develop/` again and **copies** it to `/widgets/` |
+| by hand | `bootstrap` | all four, the latest ones from `main` and the newest collection release |
 
-`scripts/pages.sh` stages one version (`DOCS_CHANNEL=develop` gives `baseurl: /develop` and GitHub
-links at `develop`): it points links outside `docs/` at GitHub and wraps each page in `{% raw %}` so
-`{{DASHBOARD_VAR_*}}` examples stay literal. `scripts/widget-images.mjs` then photographs the widgets
-with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its `README.md` and
-`widget.yaml` (with that image), split into service and header widgets, and the list of all of
-them on the Widgets page. Only a widget whose hash changed is photographed again: its folder in
-the collection, the collection's mock, and what draws it here (`RENDER_FILES` in the script). The
-published images, with their `<id>.hash` files, are the cache (`DOCS_IMAGE_CACHE`); when every hash
-matches, Playwright does not even start. `scripts/check-highlight.rb` then runs every code block
-through Rouge, at the version GitHub Pages uses, and fails the build on one it would mark red
-(`tests/pages.test.mjs` catches the known cases locally, without Ruby). Widget pages stay at
-`widgets/collection/<id>.html`, whatever their section: other sites link there.
+A release is a copy: what was on a part's develop address is what is released, and the other part
+is not touched. It works because nothing on a page depends on the version it was built for, apart
+from what Jekyll writes for the base path: the menus and the banner read the version from the
+address, and `scripts/pages-promote.sh` points the base path (links, assets, the search index,
+canonical and redirect addresses) and the links to the `develop` branch at the latest address and
+`main` (the widget pages at the collection's release). So a page never links to a develop address
+of the site itself (`tests/pages.test.mjs` checks).
 
-A new page gets an entry under `defaults:` in `docs/_config.yml`; a moved page a `redirect_from`
-with its old address.
+Jekyll builds both parts with the just-the-docs theme; the Markdown stays plain (no front
+matter). The theme's settings, the includes and the logo are this repository's (`docs/_config.yml`
+up to `defaults:`, `docs/_includes/`); titles, the menu order and redirects from old addresses are
+in each part's `docs/_config.yml`.
+
+`scripts/pages.sh` stages one part in one version (`DOCS_PART`, `DOCS_CHANNEL`): it points links
+outside the docs folder at GitHub and wraps each page in `{% raw %}` so `{{DASHBOARD_VAR_*}}`
+examples stay literal. For the widgets part, `scripts/widget-images.mjs` then photographs the
+widgets with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its
+`README.md` and `widget.yaml` (with that image), split into service and header widgets, and the
+list of all of them on the part's home page. Only a widget whose hash changed is photographed
+again: its folder in the collection, the collection's mock, and what draws it here
+(`RENDER_FILES` in the script). The published images, with their `<id>.hash` files, are the cache
+(`DOCS_IMAGE_CACHE`); when every hash matches, Playwright does not even start.
+`scripts/check-highlight.rb` then runs every code block through Rouge, at the version GitHub Pages
+uses, and fails the build on one it would mark red (`tests/pages.test.mjs` catches the known cases
+locally, without Ruby). Widget pages stay at `/widgets/collection/<id>.html`, whatever their
+section: other sites link there.
+
+A new page gets an entry under `defaults:` in its part's `docs/_config.yml`; a moved page a
+`redirect_from` with its old address.
 
 ## Dependabot
 

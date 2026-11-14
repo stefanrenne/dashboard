@@ -4,7 +4,7 @@ The settings page edits this file under Kubernetes as a form; "Advanced edit" op
 
 `kubernetes.yaml` connects the dashboard to a cluster: to [discover](#discovery) services from
 Ingress, IngressRoute and HTTPRoute annotations, for `app:` pod status labels on a service, and
-for the [Kubernetes](../widgets/collection/kubernetes.html) header widget.
+for the [Kubernetes](https://getdashboard.dev/widgets/collection/kubernetes.html) header widget.
 
 ```yaml
 mode: cluster              # in the cluster (its service account); default: a kubeconfig; disabled (when unset)
@@ -97,7 +97,7 @@ kubernetes.yaml lists (`true`: all), and options that run or frame something com
 services.yaml only.
 
 **Pod status.** As in homepage, a discovered Ingress or route gets the state of its app's pods
-as a label (the [Kubernetes pods](../widgets/collection/kubernetes-pods.html) widget): the pods
+as a label (the [Kubernetes pods](https://getdashboard.dev/widgets/collection/kubernetes-pods.html) widget): the pods
 labelled `app.kubernetes.io/name=<its name>` in its namespace. `getdashboard.dev/app` names another
 app, `getdashboard.dev/pod-selector` takes a label selector, and `getdashboard.dev/external: "true"` leaves
 the label out. This needs `list` on `pods` (and `pods.metrics.k8s.io` for CPU and memory).

@@ -4,7 +4,7 @@ The settings page edits this file under Header widgets as a form; "Advanced edit
 
 `widgets.yaml` holds the widgets in the page's header, above the groups: the date and time,
 system resources, a search box, the weather, and so on. Each list item is one widget, with its
-type as the key and its options below it. Every type is listed under [Widgets](../widgets/README.md).
+type as the key and its options below it. Every type is listed under [Widgets](https://getdashboard.dev/widgets/).
 
 ```yaml
 - datetime:
@@ -27,7 +27,7 @@ without it, the widget is on every tab.
 
 These widgets of the [widgets collection](https://github.com/stefanrenne/dashboard-widgets)
 are not tied to a service. Each widget has its own page with fields and an example under
-[Widgets](../widgets/README.md).
+[Widgets](https://getdashboard.dev/widgets/).
 
 | Type | Options |
 |---|---|

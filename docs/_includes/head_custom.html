@@ -1,11 +1,12 @@
 <link rel="icon" type="image/svg+xml" href="{{ '/images/logo.svg' | relative_url }}">
 <style>
-  /* the version menu (header_custom.html) and develop's banner; /robots.txt keeps /develop/ out of search engines */
+  /* the version menus (header_custom.html) and develop's banner; /robots.txt keeps develop out of search engines */
   .version-menu { display: flex; align-items: center; gap: .375rem; padding: 0 1rem; font-size: .8125rem; white-space: nowrap; }
-  .version-label { color: #5c5962; }
+  /* the labels are for screen readers: each select says its part */
+  .version-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .version-menu select { font: inherit; padding: .25rem .5rem; border: 1px solid #eeebee; border-radius: 4px; background: #fff; color: #27262b; cursor: pointer; }
-  /* narrow screens: in the site header, next to the menu button, without its label */
-  .site-header .version-menu { margin-left: auto; padding: 0 .25rem; }
-  .site-header .version-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* narrow screens: in the site header, next to the menu button, smaller */
+  .site-header .version-menu { margin-left: auto; padding: 0 .25rem; gap: .25rem; font-size: .75rem; }
+  .site-header .version-menu select { padding: .125rem .25rem; }
   .develop-banner { margin: 1rem 0 0; padding: .75rem 1rem; border-left: 4px solid #e94c4c; border-radius: 4px; background: #fdf3f3; color: #27262b; font-size: .875rem; }
 </style>

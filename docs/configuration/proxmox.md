@@ -15,8 +15,8 @@ pve:                                   # the node name, as in proxmoxNode
 
 homepage's older form, one `url`, `token` and `secret` at the top for every node, works too.
 Make the token under **Datacenter > Permissions > API Tokens** and give it the role
-**PVEAuditor** on `/`; see the [Proxmox VM](../widgets/collection/proxmoxvm.html) widget page.
+**PVEAuditor** on `/`; see the [Proxmox VM](https://getdashboard.dev/widgets/collection/proxmoxvm.html) widget page.
 `token` and `secret` stay on the server.
 
 For a whole node or cluster on one card (VMs, containers, CPU, memory), use the
-[Proxmox](../widgets/collection/proxmox.html) widget.
+[Proxmox](https://getdashboard.dev/widgets/collection/proxmox.html) widget.

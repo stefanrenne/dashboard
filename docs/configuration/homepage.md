@@ -45,7 +45,7 @@ container needs to reach github.com. It reads only from Docker: give it a
 
 Every homepage service widget has a counterpart in the widgets collection under the same name,
 also homepage's own spellings such as `customapi`, `overseerr`, `jellyseerr`, `unifi_console` and
-`unifi_drive`. Each [widget's page](../widgets/README.md) lists its options.
+`unifi_drive`. Each [widget's page](https://getdashboard.dev/widgets/) lists its options.
 
 ## What is different
 

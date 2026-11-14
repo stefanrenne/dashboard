@@ -3,7 +3,7 @@
 `filter:` on a service in [`services.yaml`](services.md) hides its card while an expression is
 true; on one of its widgets it hides that widget. The expression reads the **attributes** its
 widgets and status checks publish: public values a widget declares for this (the Filter
-attributes table on each [widget's page](../widgets/README.md) lists them), apart from the blocks
+attributes table on each [widget's page](https://getdashboard.dev/widgets/) lists them), apart from the blocks
 it shows. For example, a Shelly device that only appears while a firmware update is waiting:
 
 ```yaml

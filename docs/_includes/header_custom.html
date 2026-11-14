@@ -1,45 +1,69 @@
 {%- comment -%}
-The version menu: the release at the root, develop under /develop/. Nothing here depends on the
-version a page is built for (it is read from the address, the release's number from /version.json,
-which the site's build writes), so a release can be a copy of develop's site
-(scripts/pages-promote.sh). Another version opens on the same page, or on its home page when that
-page is not there. On develop a banner says what is being read. On a narrow screen, where the
-theme folds this header into its menu, the menu moves next to the menu button.
+The version menus: one for the dashboard's docs (latest at the root, develop under /develop/) and
+one for the widgets (latest under /widgets/, develop under /widgets/develop/). The two parts are
+built and released apart (scripts/pages.sh, DOCS_PART). Nothing here depends on the version a page
+is built for: it is read from the address, the latest versions from /version.json, which the
+site's build writes. So a release is a copy of develop's site (scripts/pages-promote.sh). A menu of
+this part opens the same page in the other version, or its home page when that page is not there;
+the other part's menu opens that part's home page. On develop a banner says what is being read.
+On a narrow screen, where the theme folds this header into its menu, the menus move next to the
+menu button.
 {%- endcomment -%}
 {%- if site.docs_channel -%}
-<div class="version-menu">
-  <label for="docs-version" class="version-label">Version</label>
-  <select id="docs-version">
-    <option value="release">latest</option>
-    <option value="develop">develop</option>
+<div class="version-menu" data-part="{{ site.docs_part | default: 'dashboard' }}">
+  <label for="docs-version-dashboard" class="version-label">Dashboard version</label>
+  <select id="docs-version-dashboard" data-part="dashboard">
+    <option value="latest">Dashboard latest</option>
+    <option value="develop">Dashboard develop</option>
+  </select>
+  <label for="docs-version-widgets" class="version-label">Widgets version</label>
+  <select id="docs-version-widgets" data-part="widgets">
+    <option value="latest">Widgets latest</option>
+    <option value="develop">Widgets develop</option>
   </select>
 </div>
 <script>
 /* just-the-docs compresses the page onto one line: no // comments here */
 (() => {
-  const select = document.getElementById('docs-version');
-  const bases = { release: '', develop: '/develop' };
+  const menu = document.querySelector('.version-menu');
   /* no quoted base path with a slash after it in this file: a release copy rewrites those */
-  const channel = location.pathname === bases.develop || location.pathname.startsWith(`${bases.develop}/`) ? 'develop' : 'release';
-  select.value = channel;
+  const bases = { dashboard: { latest: '', develop: '/develop' }, widgets: { latest: '/widgets', develop: '/widgets/develop' } };
+  const names = { dashboard: 'Dashboard', widgets: 'the widgets collection' };
+  const titles = { dashboard: 'Dashboard', widgets: 'Widgets' };
+  const part = menu.dataset.part;
+  const under = (base) => location.pathname === base || location.pathname.startsWith(`${base}/`);
+  const channel = under(bases[part].develop) ? 'develop' : 'latest';
   /* this page's path without its version's base: /develop/configuration/tabs.html -> /configuration/tabs.html */
-  const page = (channel === 'develop' ? location.pathname.slice(bases.develop.length) : location.pathname) || '/';
-  const release = fetch('/version.json').then((r) => (r.ok ? r.json() : {})).then((v) => v.release ?? null, () => null);
-  release.then((v) => { if (v) select.options[0].textContent = `${v} (latest)`; });
-  select.addEventListener('change', async () => {
-    const base = bases[select.value];
-    const target = base + page;
-    let to = `${base}/`;
-    try {
-      if ((await fetch(target, { method: 'HEAD' })).ok) to = target + location.hash;
-    } catch { /* offline: the home page */ }
-    location.href = to;
-  });
-  /* the theme's narrow layout (below 50rem) shows the header only with its menu open: next to the menu button instead */
-  const menu = select.closest('.version-menu');
-  const home = { parent: menu.parentNode, next: menu.nextSibling };
+  const page = location.pathname.slice(bases[part][channel].length) || '/';
+  const versions = fetch('/version.json').then((r) => (r.ok ? r.json() : {})).then((v) => v, () => ({}));
   const narrow = window.matchMedia('(max-width: 49.99rem)');
+  const wide = window.matchMedia('(min-width: 87.5rem)');
+  /* the latest option: "Dashboard 0.27.0 (latest)", without (latest) where there is less room */
+  const label = () => versions.then((v) => {
+    for (const select of menu.querySelectorAll('select')) {
+      const n = v[select.dataset.part];
+      const title = titles[select.dataset.part];
+      select.options[0].textContent = n ? `${title} ${n}${wide.matches ? ' (latest)' : ''}` : `${title} latest`;
+    }
+  });
+  for (const select of menu.querySelectorAll('select')) {
+    const of = select.dataset.part;
+    select.value = of === part ? channel : 'latest';
+    select.addEventListener('change', async () => {
+      const base = bases[of][select.value];
+      let to = `${base}/`;
+      if (of === part) {
+        try {
+          if ((await fetch(base + page, { method: 'HEAD' })).ok) to = base + page + location.hash;
+        } catch { /* offline: the home page */ }
+      }
+      location.href = to;
+    });
+  }
+  /* the theme's narrow layout (below 50rem) shows the header only with its menu open: next to the menu button instead */
+  const home = { parent: menu.parentNode, next: menu.nextSibling };
   const place = () => {
+    label();
     const button = document.getElementById('menu-button');
     if (narrow.matches && button) button.before(menu);
     else if (!narrow.matches && menu.parentNode !== home.parent) home.parent.insertBefore(menu, home.next);
@@ -47,22 +71,24 @@ theme folds this header into its menu, the menu moves next to the menu button.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', place);
   else place();
   narrow.addEventListener('change', place);
+  wide.addEventListener('change', label);
   if (channel !== 'develop') return;
   /* develop: what is read here is not released yet */
   const banner = document.createElement('div');
   banner.className = 'develop-banner';
   banner.setAttribute('role', 'note');
   const link = document.createElement('a');
-  link.href = page;
-  link.textContent = 'the release';
-  release.then((v) => { if (v) link.textContent = `the ${v} release`; });
+  link.href = bases[part].latest + page;
+  link.textContent = 'the latest release';
+  versions.then((v) => { if (v[part]) link.textContent = `the latest release (${v[part]})`; });
   /* as the menu does: the same page when the release has it, else its home page */
   link.addEventListener('click', (e) => {
     e.preventDefault();
-    select.value = 'release';
+    const select = menu.querySelector(`select[data-part="${part}"]`);
+    select.value = 'latest';
     select.dispatchEvent(new Event('change'));
   });
-  banner.append('You are reading the docs of develop: what is described here is not released yet. See ', link, '.');
+  banner.append(`You are reading the develop version of the docs of ${names[part]}: what is described here is not released yet. See `, link, '.');
   const start = () => document.querySelector('.main-content')?.prepend(banner);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

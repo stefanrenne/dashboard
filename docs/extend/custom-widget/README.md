@@ -20,7 +20,7 @@ are listed under `plugins:` in [settings.yaml](../../configuration/settings.md#p
 | | Where | For |
 |---|---|---|
 | [Local widget](local.md) | A folder next to your config, `path: ./my-widgets/x` | Something only you need, or trying out a widget while you write it. Start here: it walks through writing one. |
-| [Remote widget](remote.md) | A git repository or an npm package, `source: git+https://...#v1.0.0` | Sharing it: others install it with one line, pinned to a version, and it can be listed in the [Catalogue](../../widgets/catalogue.md). |
+| [Remote widget](remote.md) | A git repository or an npm package, `source: git+https://...#v1.0.0` | Sharing it: others install it with one line, pinned to a version, and it can be listed in the [Catalogue](https://getdashboard.dev/widgets/catalogue.html). |
 
 The [API reference](../api-reference.md) has every field of `widget.yaml`, `ctx` and the result;
 [Security](../security.md) what a widget can reach.

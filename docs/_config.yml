@@ -47,14 +47,12 @@ defaults:
   - { scope: { path: configuration/images.md }, values: { title: Images, parent: Configuration, nav_order: 11 } }
   - { scope: { path: configuration/custom-css-js.md }, values: { title: Custom CSS & JS, parent: Configuration, nav_order: 12 } }
   - { scope: { path: configuration/homepage.md }, values: { title: From homepage, parent: Configuration, nav_order: 13 } }
-  - { scope: { path: widgets/README.md }, values: { title: Widgets, nav_order: 3, has_children: true, permalink: /widgets/ } }
-  - { scope: { path: widgets/catalogue.md }, values: { title: Catalogue, parent: Widgets, nav_order: 3 } }
   - { scope: { path: extend/README.md }, values: { title: Extend, nav_order: 4, has_children: true, permalink: /extend/ } }
   - { scope: { path: extend/custom-widget/README.md }, values: { title: Custom widget, parent: Extend, nav_order: 1, has_children: true, permalink: /extend/custom-widget/ } }
-  - { scope: { path: extend/custom-widget/local.md }, values: { title: Local widget, parent: Custom widget, grand_parent: Extend, nav_order: 1, redirect_from: [/widgets/authoring.html, /extend/local.html] } }
+  - { scope: { path: extend/custom-widget/local.md }, values: { title: Local widget, parent: Custom widget, grand_parent: Extend, nav_order: 1, redirect_from: [/extend/local.html] } }
   - { scope: { path: extend/custom-widget/remote.md }, values: { title: Remote widget, parent: Custom widget, grand_parent: Extend, nav_order: 2, redirect_from: [/extend/remote.html] } }
-  - { scope: { path: extend/api-reference.md }, values: { title: API reference, parent: Extend, nav_order: 3, redirect_from: [/widgets/api-reference.html] } }
-  - { scope: { path: extend/security.md }, values: { title: Security, parent: Extend, nav_order: 4, redirect_from: [/widgets/security.html] } }
+  - { scope: { path: extend/api-reference.md }, values: { title: API reference, parent: Extend, nav_order: 3 } }
+  - { scope: { path: extend/security.md }, values: { title: Security, parent: Extend, nav_order: 4 } }
   - { scope: { path: extend/contributing/README.md }, values: { title: Contributing, parent: Extend, nav_order: 5, has_children: true, permalink: /extend/contributing/ } }
   - { scope: { path: extend/contributing/architecture.md }, values: { title: Architecture, parent: Contributing, grand_parent: Extend, nav_order: 1, redirect_from: [/architecture.html] } }
   - { scope: { path: extend/contributing/development.md }, values: { title: Development, parent: Contributing, grand_parent: Extend, nav_order: 2, redirect_from: [/development.html] } }
