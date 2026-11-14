@@ -47,8 +47,12 @@ A change to the widget API is a release note of its own: say which `apiVersion` 
 ## Documentation site
 
 `.github/workflows/pages.yml` publishes `docs/` as
-[getdashboard.dev](https://getdashboard.dev/) on every push to `main` that touches it (so at a release: `develop`'s docs wait for it). Runs
-by hand and on the schedule build `main` too, whatever branch they start on. The
+[getdashboard.dev](https://getdashboard.dev/) in two versions, with a menu in the header to switch
+(`docs/_includes/header_custom.html`): the release (`main`) at the root, and `develop` under
+[`/develop/`](https://getdashboard.dev/develop/), with a banner and `noindex` on its pages and the widgets
+collection's `develop` for its widget pages. Only `main` may deploy, so a push to `develop` that touches
+the docs, a run by hand and the schedule start the workflow on `main`, which builds both. The menu opens
+the same page in the other version, or its home page when that page is not there. The
 domain is set under the repository's Settings > Pages, not in a `CNAME` file; the build takes
 the site's base path from there, so after a change of domain run the workflow once by hand,
 or every link still points at the old path (the old `stefanrenne.github.io/homelab-dashboard/`
@@ -57,7 +61,8 @@ stays plain (no front matter), titles, the menu order and redirects from old add
 are in `docs/_config.yml`. The menu has four parts: Home (`docs/README.md`), Configuration
 (`docs/configuration/`, a page per file as in homepage), Widgets and Extend (`docs/extend/`).
 
-`scripts/pages.sh` stages the site: it points links outside `docs/` at GitHub and wraps each
+`scripts/pages.sh` stages the site, one version at a time (`DOCS_CHANNEL=release` or `develop`, and
+`DOCS_RELEASE` for the menu; develop gets `baseurl: /develop` and its GitHub links at `develop`): it points links outside `docs/` at GitHub and wraps each
 page in `{% raw %}` so `{{DASHBOARD_VAR_*}}` examples stay literal. For the widgets collection at its
 newest release (checked out by the workflow), `scripts/widget-images.mjs` then photographs every
 widget with example data, and `scripts/pages-widgets.mjs` adds a page per widget from its

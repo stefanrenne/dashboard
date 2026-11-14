@@ -172,6 +172,33 @@ test('pages.sh: links that leave docs/ go to GitHub, from every depth', () => {
   assert.match(home, /^---\n---\n\{% raw %\}\n/);
 });
 
+test('pages.sh: the release at the root, develop under /develop/ with its own GitHub links', () => {
+  const stage = (channel) => {
+    const out = path.join(tmpDir('hd-pages-'), 'site');
+    execFileSync('sh', ['scripts/pages.sh', out, 'someone/repo'], { env: { ...process.env, ...(channel ? { DOCS_CHANNEL: channel } : {}), DOCS_RELEASE: '1.2.3' } });
+    return { config: YAML.parse(fs.readFileSync(path.join(out, '_config.yml'), 'utf8')), home: fs.readFileSync(path.join(out, 'README.md'), 'utf8') };
+  };
+  const release = stage(null);
+  assert.equal(release.config.docs_channel, 'release');
+  assert.equal(release.config.docs_release, '1.2.3');
+  assert.equal(release.config.baseurl, undefined, 'the root: the base path of the Pages settings');
+  assert.equal(release.config.gh_edit_branch, 'main');
+  const develop = stage('develop');
+  assert.equal(develop.config.docs_channel, 'develop');
+  assert.equal(develop.config.baseurl, '/develop');
+  assert.equal(develop.config.gh_edit_branch, 'develop');
+  assert.ok(develop.home.includes('](https://github.com/someone/repo/tree/develop/CHANGELOG.md)'));
+  assert.ok(develop.config.defaults.length > 10, 'the rest of _config.yml stays');
+  assert.throws(() => stage('nightly'));
+});
+
+test('docs: the version menu and develop\'s noindex come from the staged channel', () => {
+  const header = fs.readFileSync('docs/_includes/header_custom.html', 'utf8');
+  assert.match(header, /\{%- if site\.docs_channel -%\}/, 'no menu on a site staged without a channel');
+  assert.match(header, /develop: '\/develop'/);
+  assert.match(fs.readFileSync('docs/_includes/head_custom.html', 'utf8'), /site\.docs_channel == "develop" %\}\n<meta name="robots" content="noindex">/);
+});
+
 test('docs: every page has an entry in _config.yml, and relative links point at files', () => {
   const config = YAML.parse(fs.readFileSync('docs/_config.yml', 'utf8'));
   const scopes = new Set(config.defaults.map((d) => d.scope.path));

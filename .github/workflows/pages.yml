@@ -1,11 +1,13 @@
 name: Pages
 
 # The documentation site (https://getdashboard.dev/): docs/ and a page
-# per widget, with an example image (of the widgets collection at its newest release), built with
-# Jekyll and the just-the-docs theme (docs/_config.yml).
+# per widget, with an example image, built with Jekyll and the just-the-docs theme
+# (docs/_config.yml). Two versions, with a menu between them: the release (main, with the widgets
+# collection at its newest release) at the root, and develop (with the collection's develop)
+# under /develop/.
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths: [docs/**, scripts/pages.sh, scripts/pages-widgets.mjs, scripts/widget-images.mjs, .github/workflows/pages.yml]
   workflow_dispatch:
   # picks up a new release of the widgets collection
@@ -18,8 +20,9 @@ permissions:
   id-token: write
   actions: write
 
-# Only main deploys (the github-pages environment allows main only). A scheduled run, or one by
-# hand, starts on the default branch (develop): it starts this workflow on main and builds nothing.
+# Only main deploys (the github-pages environment allows main only). A push to develop, a scheduled
+# run, or one by hand on develop starts this workflow on main and builds nothing itself; the run on
+# main builds both versions.
 
 concurrency:
   group: pages
@@ -38,13 +41,22 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      # the docs of main, the released state
+      # the docs of main, the released state; develop's in develop/
       - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+          path: develop
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
       - run: npm ci --omit=dev --no-audit --no-fund
+      - run: npm ci --omit=dev --no-audit --no-fund
+        working-directory: develop
+      - name: The release's version
+        id: release
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Newest release of the widgets collection
         id: collection
         env:
@@ -55,30 +67,47 @@ jobs:
           repository: stefanrenne/dashboard-widgets
           ref: ${{ steps.collection.outputs.tag }}
           path: collection
+      - uses: actions/checkout@v7
+        with:
+          repository: stefanrenne/dashboard-widgets
+          ref: develop
+          path: collection-develop
       # The widget images need Chromium and its system libraries. Installing those with apt on the
       # runner hung again and again, so the site is staged in Playwright's own image, which has
       # them; Playwright from npm at the image's version (not in package.json on purpose).
-      - name: Site, with the widget images
-        timeout-minutes: 20
+      # develop's site is staged by develop's own scripts (Playwright resolves from /work).
+      - name: Sites, with the widget images
+        timeout-minutes: 30
         env:
           TAG: ${{ steps.collection.outputs.tag }}
+          DOCS_RELEASE: ${{ steps.release.outputs.version }}
         run: |
           v=$(npm view playwright version)
-          docker run --rm --ipc=host -u "$(id -u):$(id -g)" -e HOME=/tmp -e REPO="$GITHUB_REPOSITORY" -e TAG -e V="$v" \
+          docker run --rm --ipc=host -u "$(id -u):$(id -g)" -e HOME=/tmp -e REPO="$GITHUB_REPOSITORY" -e TAG -e DOCS_RELEASE -e V="$v" \
             -v "$PWD:/work" -w /work "mcr.microsoft.com/playwright:v$v-noble" \
-            sh -c 'npm install --no-save --no-audit --no-fund "playwright@$V" && scripts/pages.sh site-src "$REPO" collection "$TAG"'
-          test -n "$(ls site-src/widgets/collection/images)"   # images made, not skipped
+            sh -c 'npm install --no-save --no-audit --no-fund "playwright@$V" &&
+              DOCS_CHANNEL=release scripts/pages.sh site-src "$REPO" collection "$TAG" &&
+              cd develop && DOCS_CHANNEL=develop scripts/pages.sh ../site-develop "$REPO" ../collection-develop develop'
+          test -n "$(ls site-src/widgets/collection/images)"       # images made, not skipped
+          test -n "$(ls site-develop/widgets/collection/images)"
       # every code block through Rouge, at the version GitHub Pages highlights with: a block it
       # marks red fails the build (the runner has Ruby)
       - name: Code blocks highlight without errors
         run: |
           gem install --user-install --no-document rouge -v 3.30.0
           ruby scripts/check-highlight.rb site-src
+          ruby scripts/check-highlight.rb site-develop
       - uses: actions/configure-pages@v6
       - uses: actions/jekyll-build-pages@v1
         with:
           source: site-src
           destination: _site
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: site-develop
+          destination: _site_develop
+      # one artifact: develop's site under /develop/ (the builds write as root)
+      - run: sudo mv _site_develop _site/develop
       - uses: actions/upload-pages-artifact@v5
 
   deploy:
