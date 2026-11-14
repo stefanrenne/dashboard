@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-14
+
 ### Added
 - Tabs, more of them: `tabs:` in settings.yaml sets the tab bar's order, an icon per tab and the
   tab that opens without a `#` (`default: true`). Header widgets take `tab:` (a name or a list)
