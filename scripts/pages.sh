@@ -41,7 +41,8 @@ case "$part" in
     rm -rf "$out/widgets"
     sed -i.bak -E -e 's#/widgets/[a-z.-]+\.html, ##g' -e 's#, redirect_from: \[/widgets/[a-z.-]+\.html\]##g' "$out/_config.yml" && rm "$out/_config.yml.bak"
     base=/develop
-    other="Widgets"; other_url="$site/widgets/"
+    # the other part's place in the menu (title, nav_order, address)
+    others="widgets|Widgets|3|$site/widgets/"
     ;;
   widgets)
     repo=${2:?the collection owner/repo}
@@ -57,19 +58,17 @@ case "$part" in
     mv "$out/_config.yml.new" "$out/_config.yml"
     sed -i.bak "s#^gh_edit_repository: .*#gh_edit_repository: https://github.com/$repo#" "$out/_config.yml" && rm "$out/_config.yml.bak"
     base=/widgets/develop
-    other="Dashboard docs"; other_url="$site/"
+    others="home|Home|1|$site/ configuration|Configuration|2|$site/configuration/ extend|Extend|4|$site/extend/"
     ;;
   *) echo "DOCS_PART: dashboard or widgets, not $part" >&2; exit 1 ;;
 esac
 tree="https://github.com/$repo/tree/$branch"
 if [ "$channel" = release ]; then base=${base%/develop}; fi
 
-# its base path, whatever the Pages settings of the repository that builds it would give; a link
-# in the menu to the other part (absolute: the theme would put this part's base path before it)
+# its base path, whatever the Pages settings of the repository that builds it would give
 {
   printf '\n# staged by scripts/pages.sh\ndocs_part: %s\ndocs_channel: %s\nbaseurl: "%s"\n' "$part" "$channel" "$base"
   grep -q '^url:' "$out/_config.yml" || printf 'url: %s\n' "$site"
-  printf 'nav_external_links:\n  - title: %s\n    url: %s\n    hide_icon: true\n    opens_in_new_tab: false\n' "$other" "$other_url"
 } >> "$out/_config.yml"
 sed -i.bak "s#^gh_edit_branch: .*#gh_edit_branch: $branch#" "$out/_config.yml" && rm "$out/_config.yml.bak"
 find "$out" -name '*.md' | while read -r f; do
@@ -89,6 +88,14 @@ done
 # empty front matter makes each file a page; raw keeps {{...}} literal
 find "$out" -name '*.md' | while read -r f; do
   { printf -- '---\n---\n{%% raw %%}\n'; cat "$f"; printf '\n{%% endraw %%}\n'; } > "$f.tmp" && mv "$f.tmp" "$f"
+done
+# the other part's sections in this part's menu, in their place: a page per section that sends
+# on to it (part-<name>.html; the menus' script points the menu link straight there)
+for other in $others; do
+  IFS='|' read -r name title order url <<EOF2
+$other
+EOF2
+  printf -- '---\ntitle: %s\nnav_order: %s\npermalink: /part-%s.html\nredirect_to: %s\n---\n' "$title" "$order" "$name" "$url" > "$out/part-$name.md"
 done
 # widget pages carry their own front matter and raw wrapping, so they come last
 if [ "$part" = widgets ]; then

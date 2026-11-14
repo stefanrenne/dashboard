@@ -179,11 +179,11 @@ function table(pages, prefix) {
 // section: other sites link there.
 function section(site, { folder, title, navOrder, intro, pages }) {
   writePage(path.join(site, folder, 'index.md'),
-    { title, nav_order: navOrder, has_children: true, permalink: `/${folder}/` },
+    { title, parent: 'Widgets', nav_order: navOrder, has_children: true, permalink: `/${folder}/` },
     `# ${title}\n\n${intro}\n\n${table(pages, '../collection/')}`);
   for (const p of pages) {
     writePage(path.join(site, 'collection', `${p.id}.md`),
-      { title: p.name, parent: title, permalink: `/collection/${p.id}.html` }, p.markdown);
+      { title: p.name, parent: title, grand_parent: 'Widgets', permalink: `/collection/${p.id}.html` }, p.markdown);
   }
 }
 
@@ -201,9 +201,9 @@ export function writeWidgetPages({ site, collectionDir, collectionTag }) {
   const service = all.filter((p) => p.kind === 'service');
   const header = all.filter((p) => p.kind === 'header');
   const from = `From the [widgets collection](${COLLECTION}) ${collectionTag}, always installed.`;
-  section(site, { folder: 'collection', title: 'Service widgets', navOrder: 2, pages: service,
+  section(site, { folder: 'collection', title: 'Service widgets', navOrder: 1, pages: service,
     intro: `Widgets on a service's card, under \`widget:\` in [services.yaml](/configuration/services.html). ${from}` });
-  section(site, { folder: 'header', title: 'Header widgets', navOrder: 3, pages: header,
+  section(site, { folder: 'header', title: 'Header widgets', navOrder: 2, pages: header,
     intro: `Widgets in the page's header, in [widgets.yaml](/configuration/header-widgets.html). ${from}` });
 
   const index = path.join(site, 'README.md');

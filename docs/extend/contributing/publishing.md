@@ -60,8 +60,9 @@ The site has two parts, each with its own releases and its own version menu in t
 A part's menu opens the same page in its other version, or its home page when that page is not
 there; the other part's menu opens that part's home page. Develop pages get a banner, and
 `robots.txt` keeps them out of search engines. `/version.json` has the latest version of each
-part, for the menus. Each part has its own Jekyll build, so its own side menu (the other part is
-a link in it) and its own search. Links between the parts are absolute and go to the latest
+part, for the menus. Each part has its own Jekyll build and search, but the same main menu (Home,
+Configuration, Widgets, Extend): the other part's sections are pages in it that send on to them
+(`part-<name>.html`, made by `scripts/pages.sh`; the menus' script links straight there). Links between the parts are absolute and go to the latest
 version: `https://getdashboard.dev/widgets/...` in `docs/` here, `https://getdashboard.dev/...`
 in the collection's `docs/`, and `/configuration/...` in a page per widget (its README's
 `../../` links are made so).

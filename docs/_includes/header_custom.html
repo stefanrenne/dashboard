@@ -7,7 +7,8 @@ site's build writes. So a release is a copy of develop's site (scripts/pages-pro
 this part opens the same page in the other version, or its home page when that page is not there;
 the other part's menu opens that part's home page. On develop a banner says what is being read.
 On a narrow screen, where the theme folds this header into its menu, the menus move next to the
-menu button.
+menu button. Both parts have the same main menu (Home, Configuration, Widgets, Extend): the other
+part's sections are links to it.
 {%- endcomment -%}
 {%- if site.docs_channel -%}
 <div class="version-menu" data-part="{{ site.docs_part | default: 'dashboard' }}">
@@ -60,6 +61,16 @@ menu button.
       location.href = to;
     });
   }
+  /* the other part's sections in the menu (part-<name>.html, staged by scripts/pages.sh): straight there, not through the page that sends on */
+  const sections = { home: '/', configuration: '/configuration/', extend: '/extend/', widgets: '/widgets/' };
+  const direct = () => {
+    for (const a of document.querySelectorAll('a.nav-list-link')) {
+      const m = /\/part-([a-z]+)\.html$/.exec(a.getAttribute('href') ?? '');
+      if (m && sections[m[1]]) a.href = sections[m[1]];
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', direct);
+  else direct();
   /* the theme's narrow layout (below 50rem) shows the header only with its menu open: next to the menu button instead */
   const home = { parent: menu.parentNode, next: menu.nextSibling };
   const place = () => {

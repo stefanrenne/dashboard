@@ -111,7 +111,7 @@ test('writeWidgetPages: the widgets part, its sections, menu front matter, examp
 
   const page = fs.readFileSync(path.join(site, 'collection/example-counter.md'), 'utf8');
   const [, front, body] = page.split(/^---$/m);
-  assert.deepEqual(YAML.parse(front), { title: 'Example counter', parent: 'Service widgets', permalink: '/collection/example-counter.html' }, 'under /widgets/ once served');
+  assert.deepEqual(YAML.parse(front), { title: 'Example counter', parent: 'Service widgets', grand_parent: 'Widgets', permalink: '/collection/example-counter.html' }, 'under /widgets/ once served');
   assert.ok(body.includes('](images/example-counter.png)'));
   assert.match(body, /^\n\{% raw %\}\n/);
   assert.ok(body.includes('"{{DASHBOARD_VAR_KEY}}"'));
@@ -120,7 +120,7 @@ test('writeWidgetPages: the widgets part, its sections, menu front matter, examp
   assert.ok(body.includes('see [Services](/configuration/services.html)'), 'the dashboard docs from wherever the part is served');
   assert.ok(!body.includes('](../../'));
   const index = fs.readFileSync(path.join(site, 'collection/index.md'), 'utf8');
-  assert.match(index, /^---\ntitle: Service widgets\nnav_order: 2\n/);
+  assert.match(index, /^---\ntitle: Service widgets\nparent: Widgets\nnav_order: 1\n/);
   assert.match(index, /\| \[Example counter\]\(\.\.\/collection\/example-counter\.html\) \| `example-counter` \|/);
   assert.match(fs.readFileSync(path.join(site, 'header/index.md'), 'utf8'), /^---\n[\s\S]*permalink: \/header\//);
   const all = fs.readFileSync(path.join(site, 'README.md'), 'utf8');
@@ -188,7 +188,7 @@ test('pages.sh: the dashboard part, latest at the root, develop under /develop/ 
   assert.equal(release.config.baseurl, '', 'the root, whatever the Pages settings of the building repository');
   assert.equal(release.config.url, 'https://getdashboard.dev');
   assert.equal(release.config.gh_edit_branch, 'main');
-  assert.deepEqual(release.config.nav_external_links, [{ title: 'Widgets', url: 'https://getdashboard.dev/widgets/', hide_icon: true, opens_in_new_tab: false }]);
+  assert.equal(fs.readFileSync(path.join(release.out, 'part-widgets.md'), 'utf8'), '---\ntitle: Widgets\nnav_order: 3\npermalink: /part-widgets.html\nredirect_to: https://getdashboard.dev/widgets/\n---\n', 'the widgets in their place in the menu');
   const develop = stage({ DOCS_CHANNEL: 'develop' });
   assert.equal(develop.config.docs_channel, 'develop');
   assert.equal(develop.config.baseurl, '/develop');
@@ -229,7 +229,9 @@ test('pages.sh: the widgets part, the collection\'s docs with this theme, latest
   assert.equal(latest.config.remote_theme, YAML.parse(fs.readFileSync('docs/_config.yml', 'utf8')).remote_theme, 'the theme\'s settings from the dashboard');
   assert.equal(latest.config.gh_edit_repository, 'https://github.com/me/widgets');
   assert.deepEqual(latest.config.defaults, [{ scope: { path: 'README.md' }, values: { title: 'Widgets', nav_order: 1, permalink: '/' } }], 'the menu from the collection');
-  assert.deepEqual(latest.config.nav_external_links.map((l) => [l.title, l.url]), [['Dashboard docs', 'https://getdashboard.dev/']]);
+  const front = (name) => YAML.parse(fs.readFileSync(path.join(latest.out, `part-${name}.md`), 'utf8').split('---')[1]);
+  assert.deepEqual(['home', 'configuration', 'extend'].map((n) => [front(n).title, front(n).nav_order, front(n).redirect_to]),
+    [['Home', 1, 'https://getdashboard.dev/'], ['Configuration', 2, 'https://getdashboard.dev/configuration/'], ['Extend', 4, 'https://getdashboard.dev/extend/']], 'the dashboard\'s sections around the widgets');
   assert.ok(fs.existsSync(path.join(latest.out, '_includes', 'header_custom.html')) && fs.existsSync(path.join(latest.out, 'images', 'logo.svg')));
   assert.ok(latest.home.includes('](https://github.com/me/widgets/tree/main/CLAUDE.md)') && latest.home.includes('](catalogue.md)'));
   assert.match(fs.readFileSync(path.join(latest.out, 'security.html'), 'utf8'), /url=https:\/\/getdashboard\.dev\/extend\/security\.html/, 'an old address under /widgets/');
