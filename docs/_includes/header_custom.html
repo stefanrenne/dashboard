@@ -68,6 +68,9 @@ part's sections are links to it.
       const m = /\/part-([a-z]+)\.html$/.exec(a.getAttribute('href') ?? '');
       if (m && sections[m[1]]) a.href = sections[m[1]];
     }
+    /* the logo goes to the site's home page, also from the widgets part (the theme would give that part's) */
+    const logo = document.querySelector('a.site-title');
+    if (logo && part === 'widgets') logo.href = sections.home;
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', direct);
   else direct();
