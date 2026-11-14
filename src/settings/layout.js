@@ -3,10 +3,14 @@
 // groups, and the order of the groups. A save changes only the keys and entries that changed,
 // so the block's form (a map, or homepage's list), its comments and keys the page does not know
 // stay as they are. Entries for groups that no longer exist are shown, to be removed.
+//
+// The tabs too: settings.yaml `tabs:` (order, icon, the tab that opens first) with the tabs the
+// groups and header widgets name. `tabs:` is written only when the page's tabs need it.
 
 import YAML from 'yaml';
 import { openYaml } from './yaml.js';
 import { GROUP_STYLES, MAX_COLUMNS_IN_GROUP, TRISTATE as TRI } from '../config/schema.js';
+import { headerTabNames } from './widgets.js';
 
 const FILE = 'settings.yaml';
 // The kinds of a group's settings: read (the file's value as the page has it), check (the page's
@@ -68,14 +72,31 @@ function formOf(v, nested = false) {
   return Object.fromEntries(keysOf(nested).map((k) => [k, kind(k).read(o[k])]));
 }
 
+const MAX_TAB = 100;
+const tabName = (x) => (typeof x === 'string' || typeof x === 'number' ? String(x).trim() : '');
+
+/** settings.yaml `tabs:` as the page has them: [{ name, icon, default }]. */
+function listedTabs(raw) {
+  const out = [];
+  for (const entry of Array.isArray(raw) ? raw : []) {
+    const name = tabName(isMap(entry) ? entry.name : entry);
+    if (!name || out.some((t) => t.name === name)) continue;
+    out.push({ name, icon: isMap(entry) && typeof entry.icon === 'string' ? entry.icon : '', default: isMap(entry) && entry.default === true && !out.some((t) => t.default) });
+  }
+  return out;
+}
+
 /**
  * The layout as the page edits it. `groups`: { services: [{ name, nested: [names] }],
- * bookmarks: [names] }, the groups the dashboard has now (discovered ones included).
- * Returns { form: 'map' | 'list', groups: [{ name, kind, inFile, ...settings, nested }] } in the
- * page's order: the layout block's, then the groups it does not name.
+ * bookmarks: [names], tabs: [names] }, the groups and tabs the dashboard has now (discovered
+ * ones included). Returns { form: 'map' | 'list', groups: [{ name, kind, inFile, ...settings,
+ * nested }], tabs: [{ name, icon, default, listed }] }. Groups in the page's order: the layout
+ * block's, then the groups it does not name. Tabs: `tabs:`, then those the groups, the
+ * dashboard and the header widgets name.
  */
 export function readLayout(configDir, groups) {
-  const raw = openYaml(configDir, FILE, { shape: 'map' }).doc.toJS()?.layout;
+  const settings = openYaml(configDir, FILE, { shape: 'map' }).doc.toJS();
+  const raw = settings?.layout;
   const entries = entriesOf(raw);
   const byName = new Map(entries);
   const known = new Map([
@@ -83,8 +104,11 @@ export function readLayout(configDir, groups) {
     ...groups.bookmarks.map((name) => [name, { kind: 'bookmarks', nested: [] }]),
   ]);
   const names = [...entries.map(([n]) => n), ...[...known.keys()].filter((n) => !byName.has(n))];
+  const listed = listedTabs(settings?.tabs);
+  const named = [...entries.map(([, v]) => tabName(isMap(v) ? v.tab : null)), ...(groups.tabs ?? []).map(tabName), ...headerTabNames(configDir)].filter(Boolean);
   return {
     form: Array.isArray(raw) ? 'list' : 'map',
+    tabs: [...listed.map((t) => ({ ...t, listed: true })), ...[...new Set(named)].filter((n) => !listed.some((t) => t.name === n)).map((name) => ({ name, icon: '', default: false, listed: false }))],
     groups: [...new Set(names)].map((name) => {
       const value = byName.get(name);
       const info = known.get(name);
@@ -107,6 +131,39 @@ function checkGroup(g, at, nested) {
     if (wrong) return `${at}.${k}: ${wrong}`;
   }
   return null;
+}
+
+/**
+ * Checks the page's tabs ([{ name, icon, default, was }]; `was`: the name it was read with, null
+ * for a new tab): { tabs } cleaned up, or { error }.
+ */
+export function checkTabs(input) {
+  if (!Array.isArray(input) || input.length > 50) return { error: 'expected the list of tabs' };
+  const out = [];
+  for (const [i, t] of input.entries()) {
+    const at = `tabs[${i}]`;
+    const name = typeof t?.name === 'string' ? t.name.trim() : '';
+    if (!name || name.length > MAX_TAB) return { error: `${at}.name: a name of at most ${MAX_TAB} characters` };
+    if (out.some((x) => x.name === name)) return { error: `${at}.name: "${name}" is there twice` };
+    if (typeof (t.icon ?? '') !== 'string' || (t.icon ?? '').length > 200) return { error: `${at}.icon: text of at most 200 characters` };
+    if (typeof (t.default ?? false) !== 'boolean') return { error: `${at}.default: true or false` };
+    if (t.default && out.some((x) => x.default)) return { error: `${at}.default: one tab opens first` };
+    const was = typeof t.was === 'string' && t.was ? t.was : null;
+    if (was && out.some((x) => x.was === was)) return { error: `${at}: the same tab twice` };
+    out.push({ name, icon: (t.icon ?? '').trim(), default: t.default === true, was });
+  }
+  return { tabs: out };
+}
+
+/**
+ * What the tabs' save changes for the header widgets: { old name: new name, or null when the tab
+ * is gone }. `known` is readLayout's tabs.
+ */
+export function tabChanges(tabs, known) {
+  const changes = {};
+  for (const t of tabs) if (t.was && t.was !== t.name) changes[t.was] = t.name;
+  for (const k of known) if (!tabs.some((t) => t.was === k.name)) changes[k.name] = null;
+  return changes;
 }
 
 /** Checks the page's layout: { groups } cleaned up, or { error }. */
@@ -141,12 +198,51 @@ function applyKeys(doc, map, g, keys) {
 const hasSettings = (g, keys) => keys.some((key) => key in g && kind(key).file(g[key]) !== undefined);
 
 /**
- * Writes the page's layout into settings.yaml. `groups` comes from checkLayout, `known` is what
- * readLayout returns now (for the order the page started from).
+ * settings.yaml `tabs:` from the page's tabs (checkTabs), when they need it: the file has the list
+ * already, a tab has an icon or opens first, a tab no group names, or an order the groups'
+ * would not give. Each tab keeps its node (comments); a plain tab is just its name.
  */
-export function writeLayout(configDir, groups, known, hash) {
+function applyTabs(doc, tabs, groups) {
+  let node = doc.get('tabs', true);
+  const plain = (t) => !t.icon && !t.default;
+  const byGroups = [...new Set(groups.filter((g) => !g.remove).map((g) => g.tab).filter(Boolean))];
+  const needed = YAML.isSeq(node) || !tabs.every(plain) || tabs.map((t) => t.name).join('\u0000') !== byGroups.join('\u0000');
+  if (!needed) return;
+  if (tabs.length === 0) {
+    doc.delete('tabs');
+    return;
+  }
+  const old = YAML.isSeq(node) ? node.items : [];
+  const nameOf = (item) => tabName(YAML.isMap(item) ? item.get('name') : YAML.isScalar(item) ? item.value : null);
+  const items = tabs.map((t) => {
+    const item = old.find((x) => t.was && nameOf(x) === t.was);
+    if (plain(t) && !YAML.isMap(item)) return YAML.isScalar(item) ? Object.assign(item, { value: t.name }) : doc.createNode(t.name);
+    const map = YAML.isMap(item) ? item : doc.createNode({ name: t.name });
+    if (YAML.isScalar(item) && item.commentBefore) map.commentBefore = item.commentBefore;
+    if (map.get('name') !== t.name) map.set('name', t.name);
+    if (t.icon) { if (map.get('icon') !== t.icon) map.set('icon', t.icon); } else map.delete('icon');
+    if (t.default) { if (map.get('default') !== true) map.set('default', true); } else map.delete('default');
+    return map;
+  });
+  if (!YAML.isSeq(node)) {
+    node = doc.createNode([]);
+    doc.set('tabs', node);
+  }
+  node.items = items;
+}
+
+/**
+ * Writes the page's layout into settings.yaml. `groups` comes from checkLayout, `known` is what
+ * readLayout returns now (for the order the page started from), `tabs` from checkTabs (or
+ * undefined: `tabs:` stays as it is).
+ */
+export function writeLayout(configDir, groups, known, hash, tabs) {
   const yaml = openYaml(configDir, FILE, { shape: 'map', hash });
   const { doc } = yaml;
+  if (tabs) {
+    const same = JSON.stringify(tabs.map(({ name, icon, default: d }) => [name, icon, d])) === JSON.stringify(known.tabs.map(({ name, icon, default: d }) => [name, icon, d]));
+    if (!same) applyTabs(doc, tabs, groups);
+  }
   let node = doc.get('layout', true);
   if (!YAML.isMap(node) && !YAML.isSeq(node)) {
     node = doc.createNode({});

@@ -221,13 +221,14 @@
   .api-error div { padding: 0 10px 8px; text-align: left; overflow-wrap: anywhere; font-weight: 400; }
 
   /* bookmarks */
-  /* settings.layout.<group>.tab */
+  /* settings.yaml tabs, layout.<group>.tab and a header widget's tab */
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 4px; }
   .tabs a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 14px; border-radius: 6px; font-size: .875rem;
     color: var(--dash-text); text-decoration: none; background: var(--dash-card); border: 1px solid var(--dash-card-border, transparent); }
   .tabs a:hover { background: var(--dash-card-hover); }
   .tabs a[aria-current="page"] { background: var(--dash-tab); font-weight: 700; }
-  [data-tab][hidden] { display: none !important; }
+  .tabs .tab-icon { width: 18px; height: 18px; object-fit: contain; flex: none; margin-inline-end: 6px; }
+  [data-tab][hidden], [data-tabs][hidden], header.info[hidden] { display: none !important; }
   /* quicklaunch: start typing anywhere on the page */
   .ql { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px;
     background: color-mix(in srgb, var(--dash-bg) 60%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
@@ -652,7 +653,7 @@ function applyTheme(settings) {
 
 // ---------------------------------------------------------------- widgets
 const clientModules = new Map(); // type -> Promise
-const pollers = []; // { id, run(), timer }
+const pollers = []; // { id, run(), node, stale, timer }
 const cardInstances = new WeakMap(); // card element -> ids of its instances with a server.js
 // after a button's action the other widgets on its card ask again: right away, then after these
 const SETTLE_POLLS_MS = [5000, 30000];
@@ -806,7 +807,7 @@ function mountWidget(instance, extraClass, name, onResult) {
     });
   }
   if (instance.server) {
-    const run = poll(instance, apply);
+    const run = poll(instance, apply, box);
     // a client.js sends dash-widget-params (e.g. the viewer's location) for its server.js
     box.addEventListener('dash-widget-params', (e) => {
       e.stopPropagation();
@@ -1081,7 +1082,11 @@ function showActionResult(title, out) {
   close.focus();
 }
 
-function poll(instance, onResult) {
+/**
+ * Asks the server for a widget's result now and every refreshMs. `node` is where it shows: while
+ * that is on a tab that is not shown, it waits (stale) until applyTab shows it.
+ */
+function poll(instance, onResult, node = null) {
   const run = async () => {
     try {
       const query = instance.params && Object.keys(instance.params).length ? `?${new URLSearchParams(instance.params)}` : '';
@@ -1094,8 +1099,15 @@ function poll(instance, onResult) {
     }
   };
   const every = Math.max(1000, instance.refreshMs || 30000);
-  pollers.push({ id: instance.instanceId, run, timer: setInterval(() => { if (!document.hidden) run(); }, every) });
-  run();
+  const p = { id: instance.instanceId, run, node, stale: false };
+  const due = () => {
+    if (offTab(node)) p.stale = true;
+    else run();
+  };
+  p.timer = setInterval(() => { if (!document.hidden) due(); }, every);
+  pollers.push(p);
+  // the first ask once the page is built (render runs to its end first), so the tab is known
+  queueMicrotask(due);
   return run;
 }
 
@@ -1162,7 +1174,7 @@ function statusTag(status, card, style, showStats, onResult) {
     if (!isContainer) tag.title = result.ok ? translate(s) : result.error;
     if (stats) renderResult(stats, { type: status.type }, withoutState(result), card.dataset.name);
     if (onResult) onResult(result);
-  });
+  }, tag);
   return tag;
 }
 
@@ -1658,11 +1670,17 @@ document.getElementById('ql-button').addEventListener('click', () => qlShow(''))
 
 // ---------------------------------------------------------------- tabs
 /** The tab in the URL hash (#name, lowercase and URI-encoded, as in homepage), else the first. */
+// A tab is { name, icon, default } (settings.yaml tabs, then the tabs groups name). Groups carry
+// data-tab (one tab), header widgets data-tabs (a JSON list); without either, on every tab.
+/** The tab in the URL hash (#name, lowercase and URI-encoded, as in homepage), else the default tab, else the first. */
 function currentTab(tabs) {
   let hash = '';
   try { hash = decodeURIComponent(location.hash.slice(1)).toLowerCase(); } catch { /* a malformed hash */ }
-  return tabs.find((t) => t.toLowerCase() === hash) ?? tabs[0];
+  return (tabs.find((t) => t.name.toLowerCase() === hash) ?? tabs.find((t) => t.default) ?? tabs[0])?.name;
 }
+
+/** Whether a node is on a tab that is not shown: its widgets wait with asking for data. */
+const offTab = (node) => Boolean(node?.closest('[data-tab][hidden], [data-tabs][hidden]'));
 
 function applyTab(tabs) {
   const current = currentTab(tabs);
@@ -1671,13 +1689,25 @@ function applyTab(tabs) {
     else a.removeAttribute('aria-current');
   }
   for (const section of document.querySelectorAll('[data-tab]')) section.hidden = section.dataset.tab !== current;
+  for (const box of document.querySelectorAll('[data-tabs]')) box.hidden = !JSON.parse(box.dataset.tabs).includes(current);
+  // no box when every header widget is on another tab
+  const header = document.getElementById('header-widgets');
+  header.hidden = header.children.length > 0 && [...header.children].every((c) => c.hidden);
+  // the widgets of the tab now shown ask for what they missed
+  for (const p of pollers) {
+    if (p.stale && !offTab(p.node)) {
+      p.stale = false;
+      p.run();
+    }
+  }
 }
 
 function renderTabs(tabs) {
   const nav = document.getElementById('tabs');
   nav.hidden = tabs.length === 0;
   nav.setAttribute('aria-label', translate('tabs'));
-  nav.replaceChildren(...tabs.map((t) => el('a', { href: '#' + encodeURIComponent(t.toLowerCase()), 'data-name': t, text: t })));
+  nav.replaceChildren(...tabs.map((t) => el('a', { href: '#' + encodeURIComponent(t.name.toLowerCase()), 'data-name': t.name },
+    t.icon ? iconImage(t.icon, 'tab-icon') : null, el('span', { text: t.name }))));
   applyTab(tabs);
 }
 window.addEventListener('hashchange', () => applyTab(layout?.tabs ?? []));
@@ -1699,7 +1729,11 @@ function render(data) {
 
   const header = document.getElementById('header-widgets');
   header.className = 'info' + ({ clean: '', underlined: ' underlined', boxedWidgets: ' boxed-widgets' }[s.headerStyle] ?? ' boxed shadow');
-  header.replaceChildren(...data.header.map((w) => mountWidget(w, 'hw hw-' + w.type)));
+  header.replaceChildren(...data.header.map((w) => {
+    const box = mountWidget(w, 'hw hw-' + w.type);
+    if (w.tabs) box.dataset.tabs = JSON.stringify(w.tabs);
+    return box;
+  }));
 
   renderMessages(data.messages);
 
@@ -1823,7 +1857,11 @@ document.addEventListener('dash-search-input', (e) => filterServices(e.detail &&
 document.addEventListener('dash-search-submit', onSearchSubmit);
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) for (const p of pollers) p.run();
+  if (document.hidden) return;
+  for (const p of pollers) {
+    if (offTab(p.node)) p.stale = true;
+    else p.run();
+  }
 });
 document.getElementById('refresh-btn').addEventListener('click', () => load());
 document.getElementById('logout-btn').addEventListener('click', async () => {

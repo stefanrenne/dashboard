@@ -151,9 +151,10 @@ layout:
       style: row
 ```
 
-**Tabs**, as in homepage: give layout groups a `tab` and the page shows a tab bar. Tabs come
-in the order of the `layout` block. Service and bookmark groups without a `tab` show on every
-tab. Each tab has its own address: `#` plus its name in lowercase (`http://dashboard.lan/#media`).
+**Tabs**, as in homepage: give layout groups a `tab` and the page shows a tab bar. Service and
+bookmark groups without a `tab` show on every tab. Each tab has its own address: `#` plus its
+name in lowercase (`http://dashboard.lan/#media`). `tabs:` sets their order, an icon per tab and
+the tab that opens first, and header widgets can be on a tab too: see [Tabs](tabs.md).
 
 ```yaml
 layout:

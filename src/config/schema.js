@@ -41,6 +41,8 @@ export const MAX_GROUP_COLUMNS = 8;
 export const BACKGROUND_MAX = { saturate: 200, brightness: 200, opacity: 100 };
 // a yes/no that can be left out ('': the default)
 export const TRISTATE = ['', 'true', 'false'];
+// a tab's keys in settings.yaml `tabs:` (a tab can also be just its name)
+export const TAB_KEYS = ['name', 'icon', 'default'];
 // a group's own `columns:` in settings.yaml layout
 export const MAX_COLUMNS_IN_GROUP = 12;
 

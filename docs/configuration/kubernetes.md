@@ -82,6 +82,7 @@ metadata:
     getdashboard.dev/enabled: "true"      # required
     getdashboard.dev/name: Grafana        # default: the Ingress name
     getdashboard.dev/group: Monitoring    # default: the namespace
+    getdashboard.dev/tab: Lab             # the group's tab (see Tabs)
     getdashboard.dev/icon: grafana.svg
     getdashboard.dev/href: https://grafana.example.com   # default: first rule host + path (https with TLS)
     getdashboard.dev/widget.type: http-status

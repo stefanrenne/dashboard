@@ -201,7 +201,7 @@ test('settings page: sections by the URL, and a config file as text: save, probl
     },
   });
   const links = [...doc.querySelectorAll('nav.sections a')];
-  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Groepen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Widgets', 'Beveiliging', 'Geavanceerd']);
+  assert.deepEqual(links.map((a) => a.textContent), ['Algemeen', 'Tabbladen', 'Groepen', 'Services', 'Kopwidgets', 'Bladwijzers', 'Docker', 'Kubernetes', 'Proxmox', 'Widgets', 'Beveiliging', 'Geavanceerd']);
   assert.equal(links[0].getAttribute('aria-current'), 'page');
   w.location.hash = '#services';
   await tick();
@@ -305,7 +305,7 @@ test('settings page: the groups: settings per group and nested group, the order 
     { name: 'Developer', kind: 'bookmarks', inFile: false, style: '', columns: '', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '', tab: '', nested: [] },
   ];
   const { doc, w, calls } = await page({
-    'GET /api/settings': data({ layout: { form: 'map', groups } }),
+    'GET /api/settings': data({ layout: { form: 'map', groups, tabs: [{ name: 'Home', icon: '', default: false, listed: true }] } }),
     'POST /api/settings/layout': (init) => data({ layout: { form: 'map', groups: JSON.parse(init.body).groups.filter((g) => !g.remove) } }),
   }, () => {}, 'http://dash.lan/settings#layout');
   const cards = () => [...doc.querySelectorAll('.card')].map((c) => c.querySelector('strong').textContent);
@@ -316,7 +316,8 @@ test('settings page: the groups: settings per group and nested group, the order 
   // settings, also of the nested group
   const set = (id, value, event) => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
   set('lg-0-columns', '4', 'input');
-  set('lg-0-tab', 'Home', 'input');
+  assert.deepEqual([...doc.getElementById('lg-0-tab').options].map((o) => o.textContent), ['Elk tabblad', 'Home']);
+  set('lg-0-tab', '0', 'change');
   set('lg-0-0-initiallyCollapsed', 'true', 'change');
   doc.getElementById('lg-2-header').click();
   set('lg-2-iconsOnly', 'true', 'change');
@@ -467,8 +468,65 @@ test('settings page: header widgets as a form: changed, added, reordered, saved'
   [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
   await tick();
   const sent = calls.filter((c) => c.p === '/api/settings/header' && c.init.method === 'POST').at(-1).body;
-  assert.deepEqual(sent, { hash: 'h1', widgets: [{ id: null, type: 'search', options: { provider: 'duckduckgo' } }, { id: '0', type: 'datetime', options: { format: 'long' } }] });
+  assert.deepEqual(sent, { hash: 'h1', widgets: [{ id: null, type: 'search', options: { provider: 'duckduckgo' }, tabs: [] }, { id: '0', type: 'datetime', options: { format: 'long' }, tabs: [] }] });
+  assert.equal(doc.querySelector('.tab-choice'), null, 'no tabs: nothing to choose');
   assert.equal(doc.querySelector('.saved [role=status]').textContent, 'Opgeslagen.');
+});
+
+test('settings page: tabs: renamed, added, opens first, reordered, removed; groups follow', async () => {
+  const group = (name, tab) => ({ name, kind: 'services', inFile: true, style: '', columns: '', header: true, initiallyCollapsed: '', useEqualHeights: '', iconsOnly: '', icon: '', tab, nested: [] });
+  const tabs = [{ name: 'Home', icon: '', default: false, listed: false }, { name: 'Media', icon: 'mdi-play', default: true, listed: true }];
+  const { doc, w, calls } = await page({
+    'GET /api/settings': data({ layout: { form: 'map', groups: [group('Infra', 'Home'), group('Plex', 'Media'), group('Tools', '')], tabs } }),
+    'POST /api/settings/layout': (init) => {
+      const body = JSON.parse(init.body);
+      return data({ layout: { form: 'map', groups: body.groups, tabs: body.tabs.map((t) => ({ ...t, listed: true })) } });
+    },
+  }, () => {}, 'http://dash.lan/settings#tabs');
+  const set = (id, value, event = 'input') => { const n = doc.getElementById(id); n.value = value; n.dispatchEvent(new w.Event(event)); };
+  const cards = () => [...doc.querySelectorAll('.card')].map((c) => c.querySelector('strong').textContent);
+  assert.deepEqual(cards(), ['Home', 'Media']);
+  assert.match(doc.querySelectorAll('.card')[0].textContent, /Groepen op dit tabblad: Infra/);
+  const [home, media] = [...doc.querySelectorAll('.card input[id$="-name"]')].map((n) => n.id.replace('-name', ''));
+  assert.equal(doc.getElementById(`${media}-default`).checked, true);
+  set(`${home}-name`, 'Lab');
+  doc.getElementById(`${home}-default`).click();
+  assert.equal(doc.getElementById(`${media}-default`).checked, false, 'one tab opens first');
+  doc.getElementById('tab-add').click();
+  assert.equal(doc.activeElement.value, 'Nieuw tabblad');
+  set(doc.activeElement.id, 'Extra');
+  assert.deepEqual(cards(), ['Lab', 'Media', 'Extra'], 'the title follows the name as it is typed');
+  doc.querySelector('[aria-label="Nieuw tabblad omhoog"]').click();
+  doc.querySelector('[aria-label="Media verwijderen"]').click();
+  assert.deepEqual(cards(), ['Lab', 'Extra']);
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/layout').at(-1).body;
+  assert.deepEqual(sent.tabs, [
+    { name: 'Lab', icon: '', default: true, was: 'Home' },
+    { name: 'Extra', icon: '', default: false, was: null },
+  ]);
+  assert.deepEqual(sent.groups.map((g) => [g.name, g.tab]), [['Infra', 'Lab'], ['Plex', ''], ['Tools', '']], 'a rename follows, a removed tab leaves its groups');
+  assert.ok(sent.groups.every((g) => !('tabRef' in g) && !('open' in g)));
+  assert.deepEqual(cards(), ['Lab', 'Extra'], 'the answer shows the saved tabs');
+});
+
+test('settings page: header widgets on tabs', async () => {
+  const catalog = [{ id: 'datetime', name: 'Date and time', options: {} }];
+  const { doc, calls } = await page({
+    'GET /api/settings': data({ layout: { form: 'map', groups: [], tabs: [{ name: 'Home', icon: '', default: false, listed: true }, { name: 'Media', icon: '', default: false, listed: true }] } }),
+    'GET /api/settings/header': { ok: true, hash: 'h1', widgets: [{ id: '0', type: 'datetime', options: {}, rest: [], tabs: ['Media', 'Old'] }], catalog },
+    'POST /api/settings/header': (init) => ({ ok: true, hash: 'h2', widgets: JSON.parse(init.body).widgets.map((x, i) => ({ ...x, id: String(i), rest: [] })), catalog }),
+  }, () => {}, 'http://dash.lan/settings#header');
+  await tick();
+  const boxes = [...doc.querySelectorAll('.tab-choice input')];
+  assert.deepEqual(boxes.map((b) => [b.parentElement.textContent, b.checked]), [['Home', false], ['Media', true], ['Old', true]], 'a tab the page lacks stays visible');
+  boxes[0].click();
+  boxes[2].click();
+  [...doc.querySelectorAll('.saved button')].find((b) => b.textContent === 'Opslaan').click();
+  await tick();
+  const sent = calls.filter((c) => c.p === '/api/settings/header' && c.init.method === 'POST').at(-1).body;
+  assert.deepEqual(sent.widgets[0].tabs, ['Media', 'Home']);
 });
 
 test('settings page: bookmarks as a form: fields, move to another group, add, remove', async () => {

@@ -17,12 +17,12 @@ import { homepageFiles, homepageDryRun, keepOwnSecurity } from '../homepage.js';
 import { resolveIcon } from '../icons.js';
 import { scrub } from '../util.js';
 import { readSettings, checkSettings, writeSettings, writeAdminPassword, formForPage } from './form.js';
-import { readLayout, checkLayout, writeLayout } from './layout.js';
+import { readLayout, checkLayout, checkTabs, tabChanges, writeLayout } from './layout.js';
 import { readPlugins, checkPlugins, writePlugins } from './plugins.js';
 import { readServices, writeServices } from './services.js';
 import { readBookmarks, writeBookmarks } from './bookmarks.js';
 import { readServers, writeServers } from './servers.js';
-import { readHeader, writeHeader, optionsForTest, formCatalog } from './widgets.js';
+import { readHeader, writeHeader, renameHeaderTabs, optionsForTest, formCatalog } from './widgets.js';
 import { maskConfigText, unmaskConfigText, secretsOf } from './secrets.js';
 import { testKubernetes, testProxmox } from './tests.js';
 import { iconSuggestions } from './icons.js';
@@ -41,10 +41,11 @@ export function settingsRoutes(app) {
   const knownSecrets = () => [...(state.config?.secrets ?? [])];
   const catalog = () => formCatalog(widgetCatalog(state.registry));
 
-  // the groups the dashboard has now, discovered ones included, for the Groups section
+  // the groups and tabs the dashboard has now, discovered ones included, for the Groups section
   const groupInfo = () => ({
     services: (state.layout?.groups ?? []).map((g) => ({ name: g.name, nested: (g.groups ?? []).map((n) => n.name) })),
     bookmarks: (state.layout?.bookmarks ?? []).map((g) => g.name),
+    tabs: (state.layout?.tabs ?? []).map((t) => t.name),
   });
   // the services the dashboard found by itself: shown, not edited (their labels are the source)
   const discovered = () => (state.layout?.groups ?? []).flatMap(function all(g, _, __, parent = '') {
@@ -116,7 +117,14 @@ export function settingsRoutes(app) {
     ['POST', '/layout', async ({ req, body }) => {
       const checked = checkLayout(body?.groups);
       if (checked.error) throw new ConfigEditError(checked.error, 400);
-      await saved(writeLayout(configDir, checked.groups, readLayout(configDir, groupInfo()), body.hash), 'the layout');
+      const tabs = body?.tabs === undefined ? null : checkTabs(body.tabs);
+      if (tabs?.error) throw new ConfigEditError(tabs.error, 400);
+      const known = readLayout(configDir, groupInfo());
+      const out = writeLayout(configDir, checked.groups, known, body.hash, tabs?.tabs);
+      // renamed and removed tabs in the header widgets too (after settings.yaml: its hash was checked)
+      const changes = tabs ? tabChanges(tabs.tabs, known.tabs) : {};
+      const header = Object.keys(changes).length ? renameHeaderTabs(configDir, changes, schemaFor) : { changed: false };
+      await saved({ changed: out.changed !== false || header.changed !== false }, header.changed === false ? 'the layout' : 'the layout and widgets.yaml');
       return answer(req);
     }],
     ['POST', '/plugins', async ({ req, body }) => {

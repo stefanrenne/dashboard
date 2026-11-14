@@ -1,6 +1,6 @@
 // Turns discovery labels/annotations into a service definition in services.yaml form.
 //
-//   <prefix>name, <prefix>group, <prefix>weight, <prefix>href, <prefix>icon, <prefix>description,
+//   <prefix>name, <prefix>group, <prefix>tab (the group's tab), <prefix>weight, <prefix>href, <prefix>icon, <prefix>description,
 //   <prefix>siteMonitor, <prefix>ping, <prefix>target, <prefix>statusStyle, <prefix>showStats, <prefix>filter,
 //   <prefix>widget.type, <prefix>widget.<option>, <prefix>widget.<map>.<key>,
 //   <prefix>widget.mappings[0].label, <prefix>widgets[1].type   (homepage's dot/index notation)
@@ -72,7 +72,8 @@ export function serviceFromLabels(labels, prefix, instanceName = null) {
   if (!def.widgets?.length) delete def.widgets;
   for (const key of ['href', 'icon', 'description', 'siteMonitor', 'ping', 'target']) if (def[key] !== undefined) def[key] = String(def[key]);
   const weight = Number(own.weight);
-  return { group: own.group || null, name, def, weight: Number.isFinite(weight) ? weight : 0 };
+  const tab = typeof own.tab === 'string' ? own.tab.trim() : '';
+  return { group: own.group || null, name, def, weight: Number.isFinite(weight) ? weight : 0, ...(tab ? { tab } : {}) };
 }
 
 /** Label values are strings; JSON-looking values (lists, maps, numbers, booleans) are parsed. */

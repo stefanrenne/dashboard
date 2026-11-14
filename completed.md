@@ -131,3 +131,5 @@ Finished work, newest first.
   `public/fonts/`, the CSP no longer allows Google Fonts.
 - 2026-11-11: Settings page, setup wizard and login page redesigned: shared tokens, sidebar
   navigation, divided lists, icon actions, step marks.
+- 2026-11-14: Tabs: `tabs:` (order, icon, default tab), header widgets per tab, a `tab` discovery
+  label, polling only the shown tab, a Tabs section on the settings page, and docs/configuration/tabs.md.

@@ -4,6 +4,20 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Tabs, more of them: `tabs:` in settings.yaml sets the tab bar's order, an icon per tab and the
+  tab that opens without a `#` (`default: true`). Header widgets take `tab:` (a name or a list)
+  and show on those tabs only. A `tab` label or annotation puts a discovered group on a tab.
+  See [Tabs](https://getdashboard.dev/configuration/tabs.html).
+- Settings page: a Tabs section to add, rename, reorder and remove tabs, with their icon and the
+  one that opens first. A rename or removal follows into the groups and the header widgets. A
+  group's tab is now chosen from the tabs, and a header widget gets "Shown on" boxes.
+
+### Changed
+- Widgets on a tab that is not shown no longer ask for data; they do once their tab opens.
+- `/api/layout`: `tabs` is a list of `{ name, icon, default }` instead of names (for `custom.js`
+  that reads it).
+
 ## [0.26.0] - 2026-11-12
 
 ### Added

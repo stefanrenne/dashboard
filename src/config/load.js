@@ -11,7 +11,7 @@ import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
 import { parseFilter } from '../filter.js';
-import { LANGUAGE_ALIASES, BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, MIN_DURATIONS, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS } from './schema.js';
+import { LANGUAGE_ALIASES, BOOKMARK_FIELDS, HTTP_URL, DOCKER_PORT, BACKGROUND_MAX, MIN_DURATIONS, CONFIG_FILES, DEFAULTS, LANGUAGES, THEMES, COLORS, HEADER_STYLES, CARD_STYLES, BLOCK_STYLES, FONTS, ICON_STYLES, BOOKMARK_STYLES, STATUS_STYLES, TARGETS, KUBERNETES_MODES, SEARCH_PROVIDERS, BUTTON_POSITIONS, HIGHLIGHT_LEVELS, BLUR_PX, MAX_GROUP_COLUMNS, SCRYPT_HASH, SERVICE_FIELDS, TAB_KEYS } from './schema.js';
 
 
 const DEFAULT_SETTINGS = {
@@ -276,6 +276,7 @@ function normalizeSettings(raw, ctx) {
     settings.layout = {};
   }
   for (const [name, value] of Object.entries(settings.layout)) if (value === null) settings.layout[name] = {};
+  settings.tabs = normalizeTabs(settings.tabs, file, ctx);
   if (settings.plugins === null) settings.plugins = []; // `plugins:` with every entry commented out
   if (!Array.isArray(settings.plugins)) {
     ctx.error(file, 'plugins', 'expected a list');
@@ -287,6 +288,40 @@ function normalizeSettings(raw, ctx) {
     return false;
   });
   return settings;
+}
+
+/**
+ * `tabs:`, the tab bar's order and each tab's icon and whether it opens first: a list of names, or
+ * of maps with `name`, `icon` and `default`. Tabs that layout groups name without being listed here
+ * come after these (layout.js). Returns [{ name, icon?, default? }].
+ */
+function normalizeTabs(raw, file, ctx) {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    ctx.warn(file, 'tabs', 'expected a list of tab names, or of maps with name, icon and default; ignored');
+    return [];
+  }
+  const tabs = [];
+  raw.forEach((entry, i) => {
+    const at = `tabs[${i}]`;
+    const tab = typeof entry === 'string' || typeof entry === 'number' ? { name: String(entry) } : isPlainObject(entry) ? { ...entry } : null;
+    const name = typeof tab?.name === 'string' || typeof tab?.name === 'number' ? String(tab.name).trim() : '';
+    if (!name) return ctx.warn(file, at, 'expected a tab name, or a map with name (and icon, default); ignored');
+    if (tabs.some((t) => t.name === name)) return ctx.warn(file, at, `tab "${name}" is listed twice; the first one counts`);
+    for (const key of Object.keys(tab)) if (!TAB_KEYS.includes(key)) ctx.warn(file, `${at}.${key}`, 'unknown key, ignored');
+    const out = { name };
+    if (tab.icon !== undefined && tab.icon !== null) {
+      if (typeof tab.icon === 'string' && tab.icon.trim()) out.icon = tab.icon.trim();
+      else ctx.warn(file, `${at}.icon`, 'expected an icon name or URL, ignored');
+    }
+    if (tab.default !== undefined) {
+      if (typeof tab.default !== 'boolean') ctx.warn(file, `${at}.default`, 'expected true or false, ignored');
+      else if (tab.default && tabs.some((t) => t.default)) ctx.warn(file, `${at}.default`, `"${tabs.find((t) => t.default).name}" opens first already; ignored`);
+      else if (tab.default) out.default = true;
+    }
+    tabs.push(out);
+  });
+  return tabs;
 }
 
 /** homepage's `quicklaunch:` (the launcher that opens when typing on the page). */

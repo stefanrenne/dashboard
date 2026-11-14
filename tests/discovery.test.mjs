@@ -406,3 +406,15 @@ test('labels: a service filter', () => {
     'dashboard.widgets[1].filter': 'widgets.whatsupdocker.updates == 0' }, 'dashboard.');
   assert.deepEqual(wud.def.widgets[1], { type: 'button', filter: 'widgets.whatsupdocker.updates == 0' });
 });
+
+test('a tab label is its group\'s tab; the first one counts', () => {
+  const svc = serviceFromLabels({ 'dashboard.name': 'Plex', 'dashboard.group': 'Media', 'dashboard.tab': ' Watch ' }, 'dashboard.');
+  assert.equal(svc.tab, 'Watch');
+  assert.equal(serviceFromLabels({ 'dashboard.name': 'Plex' }, 'dashboard.').tab, undefined);
+  const { groups, warnings } = mergeDiscovered([], [
+    { ...svc, origin: 'docker:local' },
+    { group: 'Media', name: 'Jellyfin', def: {}, weight: 0, origin: 'docker:nas', tab: 'Other' },
+  ]);
+  assert.equal(groups[0].discoveredTab, 'Watch');
+  assert.deepEqual(warnings.map((w) => [w.file, w.path]), [['docker:nas', 'Jellyfin.tab']]);
+});

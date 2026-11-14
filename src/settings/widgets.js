@@ -111,17 +111,73 @@ export function setServiceWidgets(doc, map, list, schemaFor, at, file) {
 
 // ---------------------------------------------------------------- widgets.yaml: the header
 
-/** The header widgets: { hash, widgets: [{ id, type, options, hidden, rest }] }; an id is a list position. */
+// A header widget's `tab:` (a name or a list of them) is the dashboard's, unless the widget declares
+// an option of that name (layout.js headerTabs).
+const ownsTab = (type, schemaFor) => (schemaFor(type) ?? {}).tab !== undefined;
+const tabNames = (node) => (YAML.isSeq(node) ? node.items : node === undefined || node === null ? [] : [node])
+  .map((n) => (YAML.isScalar(n) && (typeof n.value === 'string' || typeof n.value === 'number') ? String(n.value).trim() : ''))
+  .filter(Boolean);
+
+/** The header widgets' entries: [{ node, pair, map }] (pair and map null for an entry that is not a widget). */
+function headerEntries(doc) {
+  return doc.contents.items.map((node) => {
+    const pair = single(node);
+    return { node, pair, map: pair && YAML.isMap(pair.value) ? pair.value : null };
+  });
+}
+
+/** The tab names widgets.yaml's header widgets name (any widget: the settings page knows no schemas there). */
+export function headerTabNames(configDir) {
+  try {
+    return headerEntries(openYaml(configDir, HEADER, { shape: 'seq' }).doc).flatMap((e) => (e.map ? tabNames(e.map.get('tab', true)) : []));
+  } catch {
+    return []; // a broken widgets.yaml: its own section says so
+  }
+}
+
+/**
+ * The header widgets: { hash, widgets: [{ id, type, options, hidden, rest, tabs }] }; an id is a
+ * list position, `tabs` the tabs a widget shows on ([]: every tab).
+ */
 export function readHeader(configDir, schemaFor = () => null) {
   const { doc, hash } = openYaml(configDir, HEADER, { shape: 'seq' });
   return {
     hash,
-    widgets: doc.contents.items.map((node, i) => {
-      const pair = single(node);
-      if (!pair) return { id: String(i), type: '', options: {}, hidden: [], rest: [], other: String(node).trim() };
-      return { id: String(i), ...widgetForm(YAML.isMap(pair.value) ? pair.value : null, keyName(pair), schemaFor) };
+    widgets: headerEntries(doc).map(({ node, pair, map }, i) => {
+      if (!pair) return { id: String(i), type: '', options: {}, hidden: [], rest: [], tabs: [], other: String(node).trim() };
+      const type = keyName(pair);
+      const form = widgetForm(map, type, schemaFor);
+      if (ownsTab(type, schemaFor)) return { id: String(i), ...form, tabs: [] };
+      return { id: String(i), ...form, rest: form.rest.filter((k) => k !== 'tab'), tabs: map ? tabNames(map.get('tab', true)) : [] };
     }),
   };
+}
+
+/** Sets a header widget's `tab:` from the form's list: none (every tab), a name, or a list. */
+function applyTabs(doc, map, tabs, at) {
+  if (!Array.isArray(tabs) || tabs.length > 50 || tabs.some((t) => typeof t !== 'string' || !t.trim() || t.length > 100)) {
+    throw new ConfigEditError(`${at}.tab: a list of tab names`, 400);
+  }
+  const names = [...new Set(tabs.map((t) => t.trim()))];
+  if (names.join('\u0000') === tabNames(map.get('tab', true)).join('\u0000')) return;
+  if (names.length === 0) return void map.delete('tab');
+  if (map.flow && map.items.length === 0) map.flow = false; // `- datetime: {}` gets a block
+  map.set('tab', names.length === 1 ? names[0] : Object.assign(doc.createNode(names), { flow: true }));
+}
+
+/**
+ * Renames and removes tabs in the header widgets' `tab:` after the tabs were saved (`changes`:
+ * { old name: new name or null }). Returns the save's result.
+ */
+export function renameHeaderTabs(configDir, changes, schemaFor = () => null) {
+  const file = openYaml(configDir, HEADER, { shape: 'seq' });
+  for (const { pair, map } of headerEntries(file.doc)) {
+    if (!map || ownsTab(keyName(pair), schemaFor) || !map.has('tab')) continue;
+    const now = tabNames(map.get('tab', true));
+    const next = [...new Set(now.map((n) => (n in changes ? changes[n] : n)).filter(Boolean))];
+    if (next.join('\u0000') !== now.join('\u0000')) applyTabs(file.doc, map, next, keyName(pair));
+  }
+  return file.save();
 }
 
 /** Writes the header widgets from the form; each keeps its node (comments, other keys). */
@@ -140,10 +196,11 @@ export function writeHeader(configDir, list, hash, opts = {}, schemaFor = () => 
     const pair = single(item);
     rename(doc, pair, w.type);
     if (!YAML.isMap(pair.value)) {
-      if (!Object.values(w.options ?? {}).some((v) => v !== '')) return item;
+      if (!Object.values(w.options ?? {}).some((v) => v !== '') && !(Array.isArray(w.tabs) && w.tabs.length)) return item;
       pair.value = doc.createNode({});
     }
     warnings.push(...applyOptions(pair.value, w, schemaFor, `${at}.${w.type}`, HEADER));
+    if (w.tabs !== undefined && !ownsTab(w.type, schemaFor)) applyTabs(doc, pair.value, w.tabs, `${at}.${w.type}`);
     return item;
   });
   setItems(doc.contents, items);

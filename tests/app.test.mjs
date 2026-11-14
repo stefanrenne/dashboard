@@ -839,7 +839,7 @@ test('tabs come from layout.<group>.tab in the order of the layout block; bookma
   });
   try {
     const layout = await (await t.get('/api/layout')).json();
-    assert.deepEqual(layout.tabs, ['Second', 'First']);
+    assert.deepEqual(layout.tabs, [{ name: 'Second', icon: null }, { name: 'First', icon: null }]);
     assert.equal(layout.groups.find((g) => g.name === 'Media').layout.tab, 'First');
     assert.equal(layout.bookmarks[0].layout.tab, 'Second');
   } finally {

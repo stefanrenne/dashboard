@@ -349,7 +349,7 @@ test('background image with filters on its own layer, and card blur', async () =
 
 test('tabs: a tab bar, groups without a tab on every tab, the hash picks the tab', async () => {
   const layout = structuredClone(LAYOUT);
-  layout.tabs = ['First', 'Second Tab'];
+  layout.tabs = [{ name: 'First', icon: null }, { name: 'Second Tab', icon: null }];
   layout.groups[0].layout.tab = 'Second Tab';       // Network
   layout.groups[2].layout.tab = 'First';            // Hidden title
   layout.bookmarks[0].layout = { tab: 'First' };    // Dev
@@ -371,6 +371,59 @@ test('tabs: a tab bar, groups without a tab on every tab, the hash picks the tab
   const none = await page();
   assert.equal(none.document.getElementById('tabs').hidden, true);
   assert.ok([...none.document.querySelectorAll('#groups .group')].every((s) => !s.hidden));
+});
+
+test('tabs: the default tab opens without a hash, tab icons, header widgets per tab', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.tabs = [{ name: 'Home', icon: null }, { name: 'Media', icon: '/icons/plex.svg', default: true }];
+  layout.groups[0].layout.tab = 'Home';
+  layout.header = [
+    { instanceId: 'h-1', type: 'resources', options: {}, known: true, server: true, refreshMs: 5000, tabs: ['Home'] },
+    { instanceId: 'h-2', type: 'ping', options: {}, known: true, server: false },
+  ];
+  const w = await page({ ...RESULTS, '/api/layout': layout });
+  const doc = w.document;
+  assert.equal(doc.querySelector('#tabs a[aria-current="page"]').textContent, 'Media', 'the default tab, not the first');
+  assert.equal(doc.querySelector('#tabs a[data-name="Media"] img.tab-icon').getAttribute('src'), 'icons/plex.svg', 'relative, for settings.base');
+  assert.equal(doc.querySelector('#tabs a[data-name="Home"] img'), null);
+  const boxes = [...doc.querySelectorAll('#header-widgets > .widget')];
+  assert.deepEqual(boxes.map((b) => b.hidden), [true, false], 'a widget with tabs only on those; one without on every tab');
+  assert.equal(doc.querySelector('[data-group="Network"]').hidden, true);
+
+  w.location.hash = '#home';
+  w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+  assert.deepEqual(boxes.map((b) => b.hidden), [false, false]);
+  assert.equal(doc.querySelector('[data-group="Network"]').hidden, false);
+
+  // every header widget on another tab: no empty header box
+  layout.header = [layout.header[0]];
+  const alone = await page({ ...RESULTS, '/api/layout': layout });
+  assert.equal(alone.document.getElementById('header-widgets').hidden, true);
+});
+
+test('tabs: widgets on a tab that is not shown ask for data once it is', async () => {
+  const layout = structuredClone(LAYOUT);
+  layout.tabs = [{ name: 'Home', icon: null }, { name: 'Network', icon: null }];
+  layout.groups[0].layout.tab = 'Network';
+  layout.header = [{ instanceId: 'h-1', type: 'resources', options: {}, known: true, server: true, refreshMs: 5000, tabs: ['Network'] }];
+  const calls = [];
+  const w = await page({ ...RESULTS, '/api/layout': layout }, calls);
+  const asked = () => calls.filter((c) => /widgets\/(s-1|w-1|h-1)$/.test(c)).sort();
+  assert.deepEqual(asked(), [], 'nothing asked for the Network tab while Home shows');
+
+  w.location.hash = '#network';
+  w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+  assert.deepEqual(asked(), ['api/widgets/h-1', 'api/widgets/s-1', 'api/widgets/w-1']);
+  const router = w.document.querySelector('[data-service="svc-1"]');
+  await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual([...router.querySelectorAll('.tag')].map((t) => t.textContent), ['78 ms', 'healthy']);
+
+  // back on Home: the Network widgets are not asked again until they show
+  w.location.hash = '#home';
+  w.dispatchEvent(new w.HashChangeEvent('hashchange'));
+  const before = calls.length;
+  w.document.dispatchEvent(new w.Event('visibilitychange'));
+  assert.equal(calls.slice(before).filter((c) => /widgets\/(s-1|w-1|h-1)$/.test(c)).length, 0);
 });
 
 test('nested groups render inside their parent with an h3, and search finds their services', async () => {

@@ -20,6 +20,9 @@ type as the key and its options below it. Every type is listed under [Widgets](.
     showSearchSuggestions: true   # suggestions while typing (google, duckduckgo, bing, baidu, brave; custom needs suggestionUrl)
 ```
 
+With [tabs](tabs.md), `tab:` puts a widget on one tab (`tab: Lab`) or several (`tab: [Home, Lab]`);
+without it, the widget is on every tab.
+
 ## Widgets without a service
 
 These widgets of the [widgets collection](https://github.com/stefanrenne/dashboard-widgets)

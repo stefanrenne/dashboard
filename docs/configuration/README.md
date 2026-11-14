@@ -10,7 +10,7 @@ skipped and the rest keeps working. Coming from homepage? Its configuration work
 
 | File | What |
 |---|---|
-| [`settings.yaml`](settings.md) | Title, language, theme, layout per group, discovery interval, plugins, [providers](providers.md) (keys and logins for widgets) |
+| [`settings.yaml`](settings.md) | Title, language, theme, layout per group, [tabs](tabs.md), discovery interval, plugins, [providers](providers.md) (keys and logins for widgets) |
 | [`bookmarks.yaml`](bookmarks.md) | Groups of links |
 | [`widgets.yaml`](header-widgets.md) | Widgets in the header |
 | [`services.yaml`](services.md) | Groups of services; [filters](filters.md) hide a card or widget while all is well |

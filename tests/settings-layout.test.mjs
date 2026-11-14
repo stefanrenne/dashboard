@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readLayout, checkLayout, writeLayout } from '../src/settings/layout.js';
+import { readLayout, checkLayout, checkTabs, tabChanges, writeLayout } from '../src/settings/layout.js';
+import { renameHeaderTabs } from '../src/settings/widgets.js';
 import { loadConfig } from '../src/config/load.js';
 import { tmpDir } from './helpers.mjs';
 
@@ -108,4 +109,101 @@ test('checkLayout: refuses what the file cannot hold', () => {
   for (const bad of [[{ name: '' }], [{ name: 'A', columns: '13' }], [{ name: 'A', style: 'grid' }], [{ name: 'A', header: 'no' }], [{ name: 'A', iconsOnly: 'yes' }], [{ name: 'A', nested: [{ name: 'B', columns: 'x' }] }], 'nope']) {
     assert.ok(checkLayout(bad).error, JSON.stringify(bad));
   }
+});
+
+// ---------------------------------------------------------------- tabs
+const TABBED = `layout:
+  Media:
+    tab: Watch
+  Infra:
+    tab: Lab
+`;
+function tabbed(settings, widgets) {
+  const dir = setup(settings);
+  if (widgets !== undefined) fs.writeFileSync(path.join(dir, 'widgets.yaml'), widgets);
+  return dir;
+}
+const widgetsFile = (dir) => fs.readFileSync(path.join(dir, 'widgets.yaml'), 'utf8');
+const saveTabs = (dir, edit, groupInfo = GROUPS) => {
+  const known = readLayout(dir, groupInfo);
+  const page = structuredClone(known);
+  edit(page);
+  const groups = checkLayout(page.groups);
+  const tabs = checkTabs(page.tabs);
+  assert.equal(groups.error, undefined);
+  assert.equal(tabs.error, undefined);
+  writeLayout(dir, groups.groups, known, undefined, tabs.tabs);
+  const changes = tabChanges(tabs.tabs, known.tabs);
+  if (Object.keys(changes).length) renameHeaderTabs(dir, changes);
+};
+const asPage = (t) => ({ ...t, was: t.name });
+
+test('readLayout: the tabs of tabs:, then those groups, the dashboard and header widgets name', () => {
+  const dir = tabbed(`tabs:\n  - name: Home\n    icon: mdi-home\n    default: true\n  - Watch\n${TABBED}`, '- datetime:\n    tab: [Clock, Home]\n- search: {}\n');
+  const { tabs } = readLayout(dir, { ...GROUPS, tabs: ['Found'] });
+  assert.deepEqual(tabs, [
+    { name: 'Home', icon: 'mdi-home', default: true, listed: true },
+    { name: 'Watch', icon: '', default: false, listed: true },
+    { name: 'Lab', icon: '', default: false, listed: false },
+    { name: 'Found', icon: '', default: false, listed: false },
+    { name: 'Clock', icon: '', default: false, listed: false },
+  ]);
+});
+
+test('writeLayout: the same tabs back write nothing; tabs: only when the tabs need it', () => {
+  const dir = tabbed(TABBED);
+  saveTabs(dir, (p) => { p.tabs = p.tabs.map(asPage); });
+  assert.equal(file(dir), TABBED, 'no tabs: for tabs the groups give in that order');
+
+  saveTabs(dir, (p) => { p.tabs = p.tabs.map(asPage); p.tabs[1].icon = 'mdi-flask'; p.tabs[1].default = true; });
+  assert.equal(file(dir), `${TABBED}tabs:\n  - Watch\n  - name: Lab\n    icon: mdi-flask\n    default: true\n`);
+
+  // the order, a new tab no group names yet; the list keeps its comments
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), file(dir).replace('  - Watch\n', '  - Watch # films\n'));
+  saveTabs(dir, (p) => { p.tabs = [asPage(p.tabs[1]), { name: 'Extra', icon: '', default: false, was: null }, asPage(p.tabs[0])]; });
+  assert.equal(file(dir), `${TABBED}tabs:\n  - name: Lab\n    icon: mdi-flask\n    default: true\n  - Extra\n  - Watch # films\n`);
+
+  saveTabs(dir, (p) => { p.tabs = []; p.groups.forEach((g) => { g.tab = ''; }); });
+  assert.equal(file(dir), 'layout:\n  Media: {}\n  Infra: {}\n');
+});
+
+test('tabs: a rename follows into the groups (the page) and the header widgets; a removed tab leaves them', () => {
+  const dir = tabbed(TABBED, '# header\n- datetime:\n    tab: Watch # here\n- search:\n    tab: [Lab, Watch]\n- greeting:\n    text: hi\n    tab: Lab\n');
+  saveTabs(dir, (p) => {
+    p.tabs = p.tabs.map(asPage);
+    p.tabs[0].name = 'Films';
+    p.groups.find((g) => g.name === 'Media').tab = 'Films';
+    p.tabs = p.tabs.filter((t) => t.name !== 'Lab');
+    p.groups.find((g) => g.name === 'Infra').tab = '';
+  });
+  assert.equal(file(dir), 'layout:\n  Media:\n    tab: Films\n  Infra: {}\n');
+  assert.equal(widgetsFile(dir), '# header\n- datetime:\n    tab: Films # here\n- search:\n    tab: Films\n- greeting:\n    text: hi\n');
+});
+
+test('checkTabs: names, one default, icons as text', () => {
+  assert.match(checkTabs([{ name: ' ' }]).error, /tabs\[0\]\.name/);
+  assert.match(checkTabs([{ name: 'A' }, { name: 'A ' }]).error, /twice/);
+  assert.match(checkTabs([{ name: 'A', default: true }, { name: 'B', default: true }]).error, /tabs\[1\]\.default/);
+  assert.match(checkTabs([{ name: 'A', icon: 3 }]).error, /tabs\[0\]\.icon/);
+  assert.match(checkTabs('A').error, /list of tabs/);
+  assert.deepEqual(checkTabs([{ name: ' A ', was: 'B' }]).tabs, [{ name: 'A', icon: '', default: false, was: 'B' }]);
+});
+
+test('header widgets: their tabs on the form, saved as a name or a list, every tab without', async () => {
+  const { readHeader, writeHeader } = await import('../src/settings/widgets.js');
+  const dir = tabbed('title: x\n', '- datetime:\n    tab: [A, B]\n- search:\n');
+  const read = readHeader(dir);
+  assert.deepEqual(read.widgets.map((w) => [w.tabs, w.rest]), [[['A', 'B'], []], [[], []]]);
+  assert.equal(writeHeader(dir, read.widgets, read.hash).changed, false);
+  read.widgets[0].tabs = [];
+  read.widgets[1].tabs = ['B'];
+  writeHeader(dir, read.widgets, read.hash);
+  assert.equal(widgetsFile(dir), '- datetime: {}\n- search:\n    tab: B\n');
+  const again = readHeader(dir);
+  again.widgets[0].tabs = ['A', 'C'];
+  writeHeader(dir, again.widgets, again.hash);
+  assert.equal(widgetsFile(dir), '- datetime:\n    tab: [ A, C ]\n- search:\n    tab: B\n');
+  // a widget that declares tab: its own option, not the dashboard's
+  const own = (type) => (type === 'search' ? { tab: { type: 'string' } } : {});
+  assert.deepEqual(readHeader(dir, own).widgets[1].tabs, []);
 });

@@ -79,6 +79,7 @@ Then label containers:
 labels:
   dashboard.name: Grafana              # required
   dashboard.group: Monitoring          # default "Docker"
+  dashboard.tab: Lab                   # the group's tab, unless settings.yaml layout gives it one (see Tabs)
   dashboard.icon: grafana.svg
   dashboard.href: http://grafana.lan
   dashboard.description: Dashboards

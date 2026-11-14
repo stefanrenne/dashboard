@@ -379,3 +379,11 @@ test('discovery.interval: 30s by default, a duration, at least 5s; a bad one kee
   assert.equal(bad.settings.discoveryMs, 30_000);
   assert.match(bad.warnings[0].message, /invalid duration "soon".*using 30s/);
 });
+
+test('settings.yaml tabs: names or maps with name, icon and default; mistakes are warnings', () => {
+  const cfg = loadConfig(configDir({ 'settings.yaml': 'tabs:\n  - Home\n  - name: Media\n    icon: mdi-play\n    default: true\n  - Home\n  - name: Lab\n    default: true\n    colour: red\n  - icon: x\n  - 42\n' }));
+  assert.deepEqual(cfg.settings.tabs, [{ name: 'Home' }, { name: 'Media', icon: 'mdi-play', default: true }, { name: 'Lab' }, { name: '42' }]);
+  assert.deepEqual(cfg.warnings.map((w) => w.path), ['tabs[2]', 'tabs[3].colour', 'tabs[3].default', 'tabs[4]']);
+  assert.deepEqual(cfg.errors, []);
+  assert.deepEqual(loadConfig(configDir({ 'settings.yaml': 'tabs: Home\n' })).settings.tabs, []);
+});

@@ -86,7 +86,8 @@ export class Discovery {
  * Merges discovered services into the YAML groups. YAML wins: a discovered service with
  * the same group and name as a YAML service is skipped. Within a group services are ordered
  * by weight, as in homepage: a YAML service weighs its `weight` or (its position + 1) × 100,
- * a discovered one its `weight` label or 0; ties go by name. Returns { groups, warnings }.
+ * a discovered one its `weight` label or 0; ties go by name. A `tab` label sets the group's
+ * `discoveredTab`. Returns { groups, warnings }.
  */
 export function mergeDiscovered(yamlGroups, found) {
   const weigh = (g) => ({
@@ -105,7 +106,11 @@ export function mergeDiscovered(yamlGroups, found) {
     }
     if (group.services.some((s) => s.name === svc.name)) continue;
     const service = normalizeService(svc.name, svc.def, svc.origin, svc.name, ctx);
-    if (service) group.services.push({ ...service, weight: svc.weight ?? 0, discovered: svc.origin });
+    if (!service) continue;
+    group.services.push({ ...service, weight: svc.weight ?? 0, discovered: svc.origin });
+    // the tab label is the group's (settings.yaml layout wins, layout.js); the first one counts
+    if (svc.tab && !group.discoveredTab) group.discoveredTab = svc.tab;
+    else if (svc.tab && svc.tab !== group.discoveredTab) warnings.push({ file: svc.origin, path: `${svc.name}.tab`, message: `group "${group.name}" is on tab "${group.discoveredTab}" already (another service's label); ignored` });
   }
   const order = (g) => {
     g.services.sort((a, b) => a.weight - b.weight || a.name.localeCompare(b.name));

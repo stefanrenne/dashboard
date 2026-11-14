@@ -265,6 +265,28 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
     }
   }
 
+  /**
+   * A header widget's `tab:` (a tab name, or a list of them): the tabs it shows on. Taken out of its
+   * options unless the widget declares an option of that name. Without it, or naming no tab the
+   * page has, the widget is on every tab. Returns { options, tabs? }.
+   */
+  function headerTabs(w, where) {
+    if (registry.get(w.type)?.manifest.options?.tab !== undefined || w.options?.tab === undefined) return { options: w.options };
+    const { tab, ...options } = w.options;
+    if (tab === null) return { options };
+    const at = { ...where, path: `${where.path}.tab` };
+    const names = (Array.isArray(tab) ? tab : [tab]).map((t) => (typeof t === 'string' || typeof t === 'number' ? String(t).trim() : '')).filter(Boolean);
+    if (!names.length || names.length !== (Array.isArray(tab) ? tab.length : 1)) {
+      warnings.push({ ...at, message: 'expected a tab name or a list of them; the widget is on every tab' });
+      return { options };
+    }
+    const on = [...new Set(names.filter((n) => tabs.some((t) => t.name === n)))];
+    for (const n of names.filter((x) => !on.includes(x))) {
+      warnings.push({ ...at, message: `no tab "${n}" in settings.yaml tabs or a group's tab${on.length ? '' : '; the widget is on every tab'}` });
+    }
+    return on.length ? { options, tabs: on } : { options };
+  }
+
   // Every check that is set gets its own status label, like homepage: HTTP, ping, container.
   const statusesFor = (group, service, where) => {
     const out = [];
@@ -305,9 +327,11 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   // `key` is the group's path ("Parent/Nested") for ids; top-level ids stay as they were.
   // A nested group's layout sits inside its parent's (homepage's format) and inherits its tab.
+  // A top-level group without a tab in the layout block takes the one its discovered services' labels name.
   const layoutGroup = (group, configured, key, parentTab) => {
     const own = isPlainObject(configured) ? configured : {};
     const layout = groupLayout(own);
+    if (!parentTab && !layout.tab && group.discoveredTab) layout.tab = group.discoveredTab;
     if (parentTab && !layout.tab) layout.tab = parentTab;
     return {
       name: group.name,
@@ -421,9 +445,22 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
       .map(({ item, order }) => ({ ...item, order }));
   const layoutGroups = byLayout(groups.map((group) => layoutGroup(group, config.settings.layout[group.name], group.name)));
 
-  const header = config.widgets.map((w, i) =>
-    addInstance(stableId('h', String(i), w.type), w.type, w.options, { file: 'widgets.yaml', path: w.path }),
-  );
+  // the tab bar: settings.yaml `tabs:` first, then the tabs layout groups name (in the order of the
+  // layout block, as homepage), then those of discovered groups
+  const listed = config.settings.tabs ?? [];
+  const named = [
+    ...Object.values(config.settings.layout).map((l) => l?.tab),
+    ...layoutGroups.map((g) => g.layout.tab),
+  ].filter((t) => typeof t === 'string' && t);
+  const tabs = [...listed, ...[...new Set(named)].filter((name) => !listed.some((t) => t.name === name)).map((name) => ({ name }))]
+    .map((t) => ({ name: t.name, icon: t.icon ? resolveIcon(t.icon) : null, ...(t.default ? { default: true } : {}) }));
+
+  const header = config.widgets.map((w, i) => {
+    const where = { file: 'widgets.yaml', path: w.path };
+    const { options, tabs: on } = headerTabs(w, where);
+    const instance = addInstance(stableId('h', String(i), w.type), w.type, options, where);
+    return on ? { ...instance, tabs: on } : instance;
+  });
 
   const widgetTypes = {};
   for (const type of usedTypes) {
@@ -443,9 +480,6 @@ export function buildState({ config, registry, groups, extraErrors = [], extraWa
 
   const scrubbed = (list) =>
     list.map(({ discovered, ...m }) => ({ ...m, message: scrub(m.message, secrets) }));
-
-  // homepage's tabs: on when a layout group has `tab`, in the order of the layout block
-  const tabs = [...new Set(Object.values(config.settings.layout).map((l) => l?.tab).filter((t) => typeof t === 'string' && t))];
 
   const layout = {
     tabs,
