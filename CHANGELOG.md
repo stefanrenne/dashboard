@@ -12,6 +12,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   step by step with screenshots, and what to do without an admin password or when a step fails.
 
 ### Fixed
+- On a phone, the settings page could be zoomed out and the password forms scrolled sideways: the
+  pages are never wider than the window, and fields on touch screens use 16 px text, so iOS no
+  longer zooms in when one is tapped.
 - A config file saved by the settings page (or by an editor that replaces the file as a whole) was
   no longer watched: later changes to it were not picked up until a restart. Each folder has a
   watcher of its own now.

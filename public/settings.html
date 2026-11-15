@@ -10,7 +10,9 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="forms.css">
 <style>
-  body { overflow-x: clip; }
+  /* the header's and the save bar's backgrounds run to the window's edges (and beyond): clipped there,
+     so the page is never wider than the window (on html too, or body's clip goes to the window instead) */
+  html, body { overflow-x: clip; }
   main { max-width: 66rem; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
   main:has(.saved) { padding-bottom: 0; } /* the save bar ends the page, with nothing below it */
   /* the page fills the window, so a short section still has its save bar at the bottom */
