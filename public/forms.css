@@ -2,7 +2,7 @@
    shapes are theme.css's. One container level: a panel; inside it lists are divided by hairlines. */
 * { box-sizing: border-box; }
 html { background: var(--dash-bg); }
-body { margin: 0; min-height: 100vh; background: var(--dash-bg); color: var(--dash-text);
+body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--dash-bg); color: var(--dash-text);
   font: 15px/1.55 Manrope, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01";
   transition: background .2s, color .2s; }
 h1 { margin: 0 0 4px; font-size: 1.5rem; line-height: 1.25; font-weight: 700; letter-spacing: -.015em; color: var(--dash-heading); }

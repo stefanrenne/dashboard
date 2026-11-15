@@ -13,6 +13,7 @@
   /* the header's and the save bar's backgrounds run to the window's edges (and beyond): clipped there,
      so the page is never wider than the window (on html too, or body's clip goes to the window instead) */
   html, body { overflow-x: clip; }
+  body { overflow-y: clip; } /* and the save bar's background below it (below) ends with the page */
   main { max-width: 66rem; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
   main:has(.saved) { padding-bottom: 0; } /* the save bar ends the page, with nothing below it */
   /* the page fills the window, so a short section still has its save bar at the bottom */
@@ -73,8 +74,9 @@
 
   /* the save bar sticks to the bottom; the page shows through it, blurred, over the full page width
      (a layer behind it), while its buttons stay on the column of the page */
-  .saved { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding-block: 12px; isolation: isolate; }
-  .saved::before { content: ""; position: absolute; z-index: -1; inset-block: 0; inset-inline: -100vw;
+  .saved { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding-block: 12px max(12px, env(safe-area-inset-bottom)); isolation: isolate; }
+  /* runs on below the bar: Safari on iOS keeps a bar off its own toolbar, and the page would show between them */
+  .saved::before { content: ""; position: absolute; z-index: -1; inset-block: 0 -100vh; inset-inline: -100vw;
     background: color-mix(in srgb, var(--dash-bg) 30%, transparent);
     -webkit-backdrop-filter: blur(12px) saturate(1.5); backdrop-filter: blur(12px) saturate(1.5); }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .top, .saved::before { background: var(--dash-bg); } }

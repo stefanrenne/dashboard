@@ -15,6 +15,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 - On a phone, the settings page could be zoomed out and the password forms scrolled sideways: the
   pages are never wider than the window, and fields on touch screens use 16 px text, so iOS no
   longer zooms in when one is tapped.
+- On an iPhone, the login page scrolled although it fits, and the page showed between the settings
+  page's save bar and Safari's toolbar: the save bar's background now runs on below it.
 - A config file saved by the settings page (or by an editor that replaces the file as a whole) was
   no longer watched: later changes to it were not picked up until a restart. Each folder has a
   watcher of its own now.
