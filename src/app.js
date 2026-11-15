@@ -232,12 +232,6 @@ export async function createApp({
   const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, gate, passkeys, sessions, state, reload, runtime, onboarding });
 
   async function handler(req, res) {
-    const hosts = hostsNow();
-    if (!hostAllowed(req.headers.host, hosts)) {
-      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts)`);
-      if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
-      return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to allowedHosts in settings.yaml`, 'text/plain; charset=utf-8');
-    }
     // A request target that is no URL, or a path with a broken escape (/%E0%A4%A), is the
     // client's mistake: 400, never an exception outside the try below (it would end the process).
     let url;
@@ -247,6 +241,16 @@ export async function createApp({
       p = decodeURIComponent(url.pathname);
     } catch {
       return send(res, 400, { error: 'bad request' });
+    }
+    // The setup wizard of a first install answers any host name: there are no allowed hosts yet,
+    // and the name it is opened by becomes the first one (its security step). DNS rebinding gains
+    // nothing there: everything but its page needs the setup code from the log.
+    const wizard = onboarding.active && (p === '/' || p === '/index.html' || p === '/setup' || p === '/setup.js' || p.startsWith('/api/onboarding/') || isSharedFile(p.slice(1)));
+    const hosts = hostsNow();
+    if (!wizard && !hostAllowed(req.headers.host, hosts)) {
+      log.warn(`refused a request for host "${String(req.headers.host ?? '').slice(0, 100)}" (not in allowedHosts)`);
+      if (/text\/html/.test(req.headers.accept ?? '')) return send(res, 403, hostRefusedPage(req.headers.host, hosts), 'text/html; charset=utf-8');
+      return send(res, 403, `Host not allowed; add "${hostName(req.headers.host).slice(0, 100)}" to allowedHosts in settings.yaml`, 'text/plain; charset=utf-8');
     }
     // HEAD is answered like GET (status checks of this dashboard use it); Node drops the body.
     const method = req.method === 'HEAD' ? 'GET' : req.method;

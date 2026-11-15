@@ -20,7 +20,9 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - **Host names are checked** (`allowedHosts` in settings.yaml, see
   [Allowed hosts](../configuration/README.md#allowed-hosts)): a web page that points a name of its
   own at your network (DNS rebinding) gets a refusal instead of the dashboard, so it cannot read
-  it or press its buttons through your browser. `*` turns this off.
+  it or press its buttons through your browser. `*` turns this off. The setup wizard of a first install answers
+  any name (there are no allowed hosts yet, and the name it is opened by becomes the first one);
+  everything in it but its page needs the setup code from the log, which such a page does not have.
 - **Actions run for anyone who can open the page, unless they ask for a password.** Without a
   login: a widget with an `action` (the collection's `button` running a script) does its thing
   for every visitor who presses it. With an admin password (settings.yaml `adminPassword`, a scrypt

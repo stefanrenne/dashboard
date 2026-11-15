@@ -9,6 +9,9 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
   step by step with screenshots, and what to do without an admin password or when a step fails.
 
 ### Fixed
+- Setup wizard: it opens by any host name (it was refused, as no allowed hosts were set yet), and
+  the security step fills in that name as the first allowed host. The setup code field shows its
+  form, XXXX-XXXX.
 - Setup wizard, security step: leaving the password field for the other one no longer swallows the
   click and what is typed next (the step drew itself again under the pointer).
 

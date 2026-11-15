@@ -1976,3 +1976,38 @@ test('the fonts come from the dashboard itself, also before a login', async () =
     await t.close();
   }
 });
+
+test('onboarding: the wizard answers any host name (it becomes the first allowed host); the rest keeps the host check', async () => {
+  const t = await startApp({ '.onboarding': '' });
+  const ask = (p, host, headers = {}) => new Promise((resolve, reject) => {
+    const r = http.request(`${t.base}${p}`, { headers: { host, ...headers } }, (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    });
+    r.on('error', reject);
+    r.end();
+  });
+  try {
+    t.app.onboarding.announce('http://x');
+    assert.equal((await ask('/setup', 'dash.example.com')).status, 200, 'the page');
+    assert.equal((await ask('/common.js', 'dash.example.com')).status, 200, 'its scripts');
+    assert.equal(JSON.parse((await ask('/api/onboarding/state', 'dash.example.com')).body).allowed, false, 'the code is still needed');
+    assert.equal((await ask('/api/onboarding/status', 'dash.example.com')).status, 401);
+    assert.equal((await ask('/api/layout', 'dash.example.com')).status, 403, 'the dashboard itself keeps the host check');
+    // with the code: the name it was opened by, for the security step
+    const coded = await fetch(`${t.base}/api/onboarding/code`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ code: t.app.onboarding.code }) });
+    const cookie = coded.headers.get('set-cookie').split(';')[0];
+    assert.deepEqual(JSON.parse((await ask('/api/onboarding/status', 'dash.example.com:3000', { cookie })).body), { host: 'dash.example.com', isAddress: false, minPassword: 8 });
+  } finally {
+    await t.close();
+  }
+  // without the wizard, the host check is back for its addresses too
+  const done = await startApp({});
+  try {
+    const status = await new Promise((resolve) => http.get(`${done.base}/setup`, { headers: { host: 'dash.example.com' } }, (res) => { res.resume(); resolve(res.statusCode); }));
+    assert.equal(status, 403);
+  } finally {
+    await done.close();
+  }
+});

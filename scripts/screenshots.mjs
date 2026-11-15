@@ -117,7 +117,7 @@ async function setupShots() {
 
   // the setup wizard of an empty config folder
   const wizard = await emptyDashboard({ '.onboarding': '' });
-  await page.goto(`${wizard.url}setup`);
+  await page.goto(`${wizard.url.replace('127.0.0.1', 'dash.lan')}setup`);
   await page.waitForSelector('#setup-code');
   await shot(page, 'setup-code');
   await page.fill('#setup-code', wizard.app.onboarding.code);
@@ -160,7 +160,8 @@ async function setupShots() {
   await ctx.close();
 }
 
-const browser = await chromium.launch();
+// dash.lan is this machine: the setup wizard is opened by a name, which it fills in as an allowed host
+const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP dash.lan 127.0.0.1'] });
 for (const scheme of !only || only === 'dashboard' ? ['dark', 'light'] : []) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: scheme, locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
   await ctx.addInitScript(() => {

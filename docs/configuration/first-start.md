@@ -106,8 +106,10 @@ A key you type is written into `services.yaml` as it is. To keep it out of the f
   settings and for presses that need it; *Dashboard access* shows a
   [login page](README.md#login-page) first. Choose the second when the dashboard can be reached
   from outside your home.
-- **Allowed hosts**: the names you open the dashboard by (the one you opened the wizard by is filled
-  in). IP addresses and `localhost` always work. See [Allowed hosts](README.md#allowed-hosts).
+- **Allowed hosts**: the names you open the dashboard by. Opened by a name (`dash.lan`, or the
+  address of your reverse proxy), the wizard fills that name in; opened by an IP address, the field
+  stays empty. IP addresses and `localhost` always work; any other name gets a refusal once the
+  wizard is done, until it is added here or on the settings page. See [Allowed hosts](README.md#allowed-hosts).
 
 ## 5. Done
 

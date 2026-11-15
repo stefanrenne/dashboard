@@ -114,7 +114,7 @@ function actions(...extra) {
 // ---------------------------------------------------------------- the code
 function showCode(message = '') {
   document.getElementById('steps').hidden = true;
-  const input = el('input', { type: 'text', id: 'setup-code', autocomplete: 'one-time-code', autocapitalize: 'characters', spellcheck: 'false', required: true });
+  const input = el('input', { type: 'text', id: 'setup-code', autocomplete: 'one-time-code', autocapitalize: 'characters', spellcheck: 'false', required: true, placeholder: 'XXXX-XXXX' });
   const status = el('p', { class: 'error', role: 'alert', text: message });
   const form = el('form', {
     onsubmit: async (e) => {
