@@ -424,7 +424,14 @@ function renderSecurity() {
   const sec = state.security;
   const problem = state.securityShown ? securityProblem() : '';
   // checked when a password field is left (and on Next), not at every key
-  const checked = { onchange: () => { state.securityShown = Boolean(sec.password || sec.repeat); render(); }, ...(problem ? { 'aria-invalid': 'true', 'aria-describedby': 'admin-problem' } : {}) };
+  // drawn again once the focus has moved on (to the other field, say), and kept there: drawn at once,
+  // the field just clicked would be replaced and lose the focus and what is typed next
+  const redraw = () => setTimeout(() => {
+    const at = document.activeElement?.id;
+    render();
+    if (at) document.getElementById(at)?.focus();
+  }, 0);
+  const checked = { onchange: () => { state.securityShown = Boolean(sec.password || sec.repeat); redraw(); }, ...(problem ? { 'aria-invalid': 'true', 'aria-describedby': 'admin-problem' } : {}) };
   const field = (id, value, oninput, attrs = {}) => el('input', { id, value, oninput: (e) => { oninput(e.target.value); }, ...attrs });
   const choice = (value, title, text, badge = null) => el('label', { class: 'choice', for: `login-${value}` },
     el('input', { type: 'radio', name: 'login', id: `login-${value}`, value, checked: sec.login === (value === 'page'), onchange: () => { sec.login = value === 'page'; } }),

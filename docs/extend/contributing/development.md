@@ -30,6 +30,11 @@ npm install --no-save playwright && npx playwright install chromium
 node scripts/screenshots.mjs
 ```
 
+`--only dashboard`, `--only settings` or `--only setup` takes one set. The setup set walks the setup
+wizard of an empty config folder (with a made-up Docker: a socket and a few containers, and made-up
+test answers) and the settings page of a dashboard without an admin password, for
+[First start](../../configuration/first-start.md).
+
 The example image on each widget's page is made the same way, from the example in the widget's
 README, by `scripts/widget-images.mjs` while the site is built. To look at them locally:
 

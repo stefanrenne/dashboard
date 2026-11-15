@@ -159,8 +159,10 @@ Usage limits are shared with the owner: keep a task's context small.
 - **README screenshots must match the current dashboard.** A visible UI change refreshes
   `docs/images/` and the alt texts in the README and `docs/README.md` in the same commit
   (`node scripts/screenshots.mjs`); a change to the settings page refreshes `settings-*.png` and
-  their alt texts in `docs/configuration/README.md` (`--only settings`; the script's header says
-  how to run it in Docker when the host lacks the browser's libraries).
+  their alt texts in `docs/configuration/README.md` (`--only settings`), and a change to the setup
+  wizard or the first admin password refreshes `setup-*.png` and `settings-setup-code.png` in
+  `docs/configuration/first-start.md` (`--only setup`); the script's header says how to run it in
+  Docker when the host lacks the browser's libraries.
 - **The README stays short**, as homepage's: the screenshot, features, one way to start, a link to
   the site. Everything else goes in `docs/`.
 - New widget API features are shown in `examples/widget-template` when they are useful to authors.

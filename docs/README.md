@@ -50,10 +50,10 @@ docker run -d -p 3000:3000 -v ./config:/config ghcr.io/stefanrenne/dashboard:lat
 ```
 
 Open `http://localhost:3000`. On a first start, with an empty `config` folder, a setup wizard
-opens: pick a title, language and colour, tick the running containers you want on the page (it
+opens (it asks for the code from `docker logs`): pick a title, language and colour, tick the running containers you want on the page (it
 recognises them and fills in their widget and address), bring your homepage files along if you
 have them, and check the security settings. It writes the YAML files and steps aside (see
-[First start](configuration/README.md#first-start)). From then on, edit `services.yaml` and watch
+[First start](configuration/first-start.md)). From then on, edit `services.yaml` and watch
 the page follow:
 
 ```yaml

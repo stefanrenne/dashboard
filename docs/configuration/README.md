@@ -24,46 +24,9 @@ skipped and the rest keeps working. Coming from homepage? Its configuration work
 
 ## First start
 
-The image starts the setup wizard when `/config` is empty: it writes the file `.onboarding`, and
-while that is there the page opens at `/setup`. The wizard has five steps:
-
-1. **Basics**: title, language, theme and colour (`settings.yaml`).
-2. **Docker**: the Docker servers it can reach (a mounted socket, or `docker.yaml` once there is
-   one), each with its version and number of containers, or the error it got; a socket it may not
-   use gets a hint (start the container as root, the default, or use a socket proxy). Add a socket
-   path or the `host:port` of a docker-socket-proxy or Docker API, and it is checked at once;
-   what you add is written to `docker.yaml`, with the mounted socket.
-3. **Services**: the running containers of those servers, each with the widget that fits its
-   image (`linuxserver/radarr` gets `radarr`) and its address: the container's name when it
-   shares a network with the dashboard, its own address on a macvlan or ipvlan network (Unraid's
-   `br0`), or the published port. Tick the ones you want, fill in what the widget needs (a key),
-   and **Test** shows whether it answers. **Next** checks every ticked service first: a name, a
-   link (the published address, else the widget's URL, editable), the widget's required options,
-   and a test of the widget; one that fails is marked in red with its error, and the wizard stays
-   until it is fixed or unticked. Containers with `dashboard.*` labels are on the page already and
-   left out. **Add a service by hand** adds one without a container; **Migrate from
-   homepage** takes homepage's `services.yaml`, `settings.yaml`, `bookmarks.yaml`,
-   `widgets.yaml` and `docker.yaml`, shows what carries over (and which widgets have no match),
-   and writes them as they are in place of what the wizard would write (`services.yaml`).
-4. **Security**: the [admin password](#admin-password) (required, at least 8 characters; only its
-   hash is written), whether the dashboard shows a [login page](#login-page) or asks only for some
-   presses, and the [allowed hosts](#allowed-hosts) (the name you opened the wizard by, when it is
-   one). All three go into `settings.yaml`. **Skip the setup** on the first step leads here too.
-5. **Done**: it writes `settings.yaml`, `services.yaml`, `widgets.yaml` (the time, the system's
-   resources and a search box), `bookmarks.yaml`, `docker.yaml` and `kubernetes.yaml`, removes
-   `.onboarding` and opens the dashboard. It writes nothing when one of those files is there
-   already.
-
-A key or password you enter is written into `services.yaml` as it is; to keep it out of the file,
-put `{{DASHBOARD_VAR_NAME}}` in its place and set the variable on the container (see
-[Variables](#variables)). **Skip the setup** writes the same files with no services.
-
-The wizard asks for the code the dashboard writes in its log at the start (`docker logs dashboard`),
-also on the local network: an address alone does not prove who you are, since a reverse proxy, a
-tunnel or Docker's own port forwarding can make a visitor from the internet look local. Wrong
-codes are slowed down. Once the wizard is
-done, `/setup` is gone; it never shows for a config folder that has files. To see it again, empty
-the folder and restart the container.
+With an empty config folder, the dashboard starts a setup wizard at `/setup`: the setup code from
+its log, then five steps (basics, Docker, services, security, done), and it writes the YAML files
+below. Every step, with screenshots: [First start](first-start.md).
 
 ## YAML in short
 

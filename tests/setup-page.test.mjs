@@ -157,6 +157,16 @@ test('the steps: basics, containers with a generated form, test, security lines,
   await tick();
   assert.equal(doc.querySelector('[role=alert]').textContent, 'Het admin wachtwoord moet minstens 8 tekens hebben.', 'said when the field is left, before Next');
   assert.equal(doc.getElementById('admin-password').getAttribute('aria-invalid'), 'true');
+  // leaving it for the other field: drawn again after the focus moved, which stays there with what was typed
+  const clicked = doc.getElementById('admin-repeat'); // what the click lands on, before the first field's change
+  doc.getElementById('admin-password').dispatchEvent(new w.Event('change'));
+  clicked.focus();
+  clicked.value = 'k';
+  clicked.dispatchEvent(new w.Event('input'));
+  await tick();
+  assert.equal(doc.activeElement.id, 'admin-repeat');
+  assert.equal(doc.getElementById('admin-repeat').value, 'k');
+  type('admin-repeat', '');
   type('admin-password', '');
   next(doc);
   await tick();

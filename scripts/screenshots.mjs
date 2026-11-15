@@ -10,9 +10,12 @@
 //   docker run --rm --ipc=host -v "$PWD:/work" -v "$PWD/../dashboard-widgets:/dashboard-widgets:ro" -w /work \
 //     mcr.microsoft.com/playwright:v1.52.0-noble node scripts/screenshots.mjs
 //   node scripts/screenshots.mjs                       (all)
-//   node scripts/screenshots.mjs --only settings       (or: --only dashboard)
+//   node scripts/screenshots.mjs --only settings       (or: --only dashboard, --only setup)
 // The settings page's pictures (docs/configuration/README.md) are of its General, Services and
 // Groups sections, in the dark appearance; the showcase gets an admin password for them.
+// The setup pictures (docs/configuration/first-start.md) walk the setup wizard of an empty config
+// folder, step by step, and the settings page of a dashboard without an admin password. Docker is
+// made up there (a socket with a few containers of the fake homelab), and so are the tests' answers.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -64,8 +67,101 @@ const fake = {
   }),
 };
 
+/** A dashboard of its own on an empty config folder (`files`), for the setup pictures; { app, url, close }. */
+async function emptyDashboard(files) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hd-setup-'));
+  for (const [name, text] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), text);
+  const own = await createApp({ configDir: dir, log: quiet, defaultPlugins: [{ path: collection, label: 'widgets' }], dockerSocket: null, releasesUrl: null });
+  own.onboarding.announce('http://dash.lan:3000', { noPassword: !own.hasPassword });
+  const srv = http.createServer(own.handler).listen(0, '127.0.0.1');
+  await new Promise((r) => srv.once('listening', r));
+  return { app: own, url: `http://127.0.0.1:${srv.address().port}/`, close: () => { own.close(); srv.close(); fs.rmSync(dir, { recursive: true, force: true }); } };
+}
+
+// the made-up Docker of the setup pictures: one socket, the containers the wizard would find
+const SETUP_DOCKER = { socketMounted: true, servers: [{ name: 'local', target: '/var/run/docker.sock', ok: true, version: '27.3.1', containers: 9 }], errors: [] };
+const SETUP_CONTAINERS = [
+  { name: 'radarr', image: 'lscr.io/linuxserver/radarr', widget: 'radarr', url: 'http://radarr:7878', href: 'http://nas.lan:7878', group: 'Media', server: 'local' },
+  { name: 'sonarr', image: 'lscr.io/linuxserver/sonarr', widget: 'sonarr', url: 'http://sonarr:8989', href: 'http://nas.lan:8989', group: 'Media', server: 'local' },
+  { name: 'plex', image: 'plexinc/pms-docker', widget: 'plex', url: 'http://plex:32400', href: 'http://nas.lan:32400', group: 'Media', server: 'local' },
+  { name: 'pihole', image: 'pihole/pihole', widget: 'pihole', url: 'http://pihole', href: 'http://nas.lan:8053', group: 'Network', server: 'local' },
+  { name: 'mariadb', image: 'mariadb', widget: null, url: null, href: null, group: 'Other', server: 'local' },
+];
+const SETUP_TESTS = {
+  radarr: [{ label: 'Wanted', value: 8 }, { label: 'Queued', value: 2 }, { label: 'Movies', value: 412 }],
+  sonarr: [{ label: 'Wanted', value: 14 }, { label: 'Queued', value: 1 }, { label: 'Series', value: 96 }],
+  plex: [{ label: 'Streams', value: 1 }, { label: 'Movies', value: 412 }, { label: 'Shows', value: 96 }],
+  pihole: [{ label: 'Queries', value: 18342 }, { label: 'Blocked', value: 2471 }],
+};
+
+/** The page from its top, cut to its content (`content`, with a margin) and to at most `maxHeight`. */
+async function shot(page, name, maxHeight = 1000, content = 'main') {
+  await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); return document.fonts.ready; });
+  await page.waitForTimeout(600);
+  const box = await page.locator(content).boundingBox();
+  const x = Math.max(0, Math.floor(box.x - 40));
+  const width = Math.min(page.viewportSize().width - x, Math.ceil(box.width + 80));
+  const height = Math.min(maxHeight, Math.ceil(box.y + box.height + 40));
+  await page.screenshot({ path: `${out}${name}.png`, fullPage: true, clip: { x, y: 0, width, height } });
+}
+
+async function setupShots() {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
+  const page = await ctx.newPage();
+  await page.route('**/api/onboarding/docker', (route) => route.fulfill({ json: SETUP_DOCKER }));
+  await page.route('**/api/onboarding/containers', (route) => route.fulfill({ json: { containers: SETUP_CONTAINERS, problems: [] } }));
+  await page.route('**/api/onboarding/test', async (route) => {
+    const { type } = route.request().postDataJSON();
+    route.fulfill({ json: { ok: true, blocks: SETUP_TESTS[type] ?? [] } });
+  });
+
+  // the setup wizard of an empty config folder
+  const wizard = await emptyDashboard({ '.onboarding': '' });
+  await page.goto(`${wizard.url}setup`);
+  await page.waitForSelector('#setup-code');
+  await shot(page, 'setup-code');
+  await page.fill('#setup-code', wizard.app.onboarding.code);
+  await page.click('button[type=submit]');
+  await page.waitForSelector('#title');
+  await page.fill('#title', 'Homelab');
+  await shot(page, 'setup-basics');
+  const next = () => page.click('.actions .right button.primary');
+  await next();
+  await page.waitForSelector('#docker-address');
+  await page.waitForSelector('li.ok');
+  await shot(page, 'setup-docker');
+  await next();
+  await page.waitForSelector('#card-0');
+  // the keys the widgets need, then a test of the first one
+  for (const input of await page.$$('.card.on input[type=password]')) if (await input.isVisible()) await input.fill('{{DASHBOARD_VAR_KEY}}');
+  await page.click('#card-0 .row button');
+  await page.waitForSelector('#card-0 .result.ok');
+  await shot(page, 'setup-services', 1100);
+  await next();
+  await page.waitForSelector('#admin-password');
+  // the step draws itself again while typing: one field, then the other once it has
+  await page.fill('#admin-password', 'showcase-only-1');
+  await page.waitForTimeout(300);
+  await page.fill('#admin-repeat', 'showcase-only-1');
+  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.getElementById('admin-repeat')?.value === 'showcase-only-1' && !document.getElementById('admin-problem'));
+  await shot(page, 'setup-security', 1400);
+  await next();
+  await page.waitForSelector('ul.files');
+  await shot(page, 'setup-done');
+  wizard.close();
+
+  // a dashboard without an admin password: the settings page asks for the setup code first
+  const bare = await emptyDashboard({ 'settings.yaml': 'title: Homelab\n' });
+  await page.goto(`${bare.url}settings`);
+  await page.waitForSelector('#setup-code');
+  await shot(page, 'settings-setup-code', 1000, '#panel form');
+  bare.close();
+  await ctx.close();
+}
+
 const browser = await chromium.launch();
-for (const scheme of only === 'settings' ? [] : ['dark', 'light']) {
+for (const scheme of !only || only === 'dashboard' ? ['dark', 'light'] : []) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: scheme, locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
   await ctx.addInitScript(() => {
     const fixed = new Date('2026-10-23T09:41:00+02:00').getTime();
@@ -89,7 +185,7 @@ for (const scheme of only === 'settings' ? [] : ['dark', 'light']) {
   await page.screenshot({ path: `${out}screenshot-${scheme}.png`, fullPage: true });
   await ctx.close();
 }
-if (only !== 'dashboard') {
+if (!only || only === 'settings') {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 }, deviceScaleFactor: 2, colorScheme: 'dark', locale: 'en-US', timezoneId: 'Europe/Amsterdam' });
   const page = await ctx.newPage();
   // the forms show the config as written: the showcase's example address, not the mock's
@@ -108,9 +204,11 @@ if (only !== 'dashboard') {
   }
   await ctx.close();
 }
+if (!only || only === 'setup') await setupShots();
 await browser.close();
 app.close();
 server.close();
 await mock.close();
 fs.rmSync(configDir, { recursive: true, force: true });
 console.log('written to', out);
+

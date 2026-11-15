@@ -4,6 +4,14 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- Docs: [First start](https://getdashboard.dev/configuration/first-start.html), the setup wizard
+  step by step with screenshots, and what to do without an admin password or when a step fails.
+
+### Fixed
+- Setup wizard, security step: leaving the password field for the other one no longer swallows the
+  click and what is typed next (the step drew itself again under the pointer).
+
 ### Security
 - Without an admin password yet, the settings page and the setup wizard ask for the setup code
   from the dashboard's log, also on the local network. Before, a private address was enough, and

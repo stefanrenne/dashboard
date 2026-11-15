@@ -134,3 +134,4 @@ Finished work, newest first.
 - 2026-11-14: Tabs: `tabs:` (order, icon, default tab), header widgets per tab, a `tab` discovery
   label, polling only the shown tab, a Tabs section on the settings page, and docs/configuration/tabs.md.
 - 2026-11-15: Security: the first admin password and the setup wizard need the setup code from the log, also on the local network (an address alone opened them, and a proxy or NAT can make anyone look local).
+- 2026-11-15: Docs: First start, the setup wizard step by step with screenshots (`scripts/screenshots.mjs --only setup`).
