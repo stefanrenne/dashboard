@@ -160,3 +160,7 @@ h2:focus { outline: none; }
   .swatches { gap: 10px; }
   .swatch { width: 44px; height: 44px; }
 }
+
+/* forgot the admin password (common.js passwordResetForm): its fields one under the other, at a readable width */
+#reset .fields { display: grid; gap: 14px; max-width: 24rem; margin-bottom: 14px; }
+#reset .note { color: var(--dash-muted); }

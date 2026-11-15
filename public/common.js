@@ -264,10 +264,14 @@ function passwordResetForm(t, { done, back, minPassword = 8, className = null })
   el('p', { class: 'note', text: t('resetText') }),
   ask, asked,
   el('input', { type: 'text', name: 'username', autocomplete: 'username', value: 'dashboard', class: 'sr-only', tabindex: '-1', 'aria-hidden': 'true' }),
-  el('label', { for: 'reset-code', text: t('resetCode') }), code,
-  el('label', { for: 'reset-next', text: t('resetNew') }), next,
-  el('label', { for: 'reset-repeat', text: t('resetRepeat') }), repeat,
+  // each field in its label, the buttons in an actions bar (Back first, the primary one on the
+  // right): the settings page lays them out as its own forms; the login page stacks them
+  el('div', { class: 'fields' },
+    el('label', { for: 'reset-code' }, t('resetCode'), code),
+    el('label', { for: 'reset-next' }, t('resetNew'), next),
+    el('label', { for: 'reset-repeat' }, t('resetRepeat'), repeat)),
   status,
-  el('button', { type: 'submit', text: t('resetSubmit') }),
-  el('button', { type: 'button', class: 'secondary', text: t('resetBack'), onclick: back }));
+  el('div', { class: 'actions' },
+    el('button', { type: 'button', class: 'secondary', text: t('resetBack'), onclick: back }),
+    el('div', { class: 'right' }, el('button', { type: 'submit', class: 'primary', text: t('resetSubmit') }))));
 }
