@@ -4,6 +4,8 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-15
+
 ### Added
 - Forgot the admin password: **Forgot the password?** on the login page and in the settings page's
   unlock form has the dashboard write a one-time code into its log (15 minutes, once), which sets a
