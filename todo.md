@@ -23,13 +23,12 @@ scrypt with constant-time comparison, HttpOnly/SameSite cookies, secrets kept ou
   only); sign release tags and verify them on install (`git verify-tag` with a public key shipped in
   the image); consider a delay (install a tag only once it is a day old) or make automatic updates
   of the collection opt-in. Document the choice in `docs/extend/security.md`.
-- [ ] **MEDIUM: GitHub Actions run third-party actions by tag, and Dependabot merges their updates
-  by itself.** `docker/*` actions in `.github/workflows/ci.yml` are pinned to a moving major tag; a
-  compromised or re-pointed tag runs with `packages: write` and pushes the image (`:develop` on
-  every push to develop). `dependabot-automerge.yml` merges github-actions updates, with
-  `AUTOMERGE_TOKEN` also those that change workflows. Fix: pin third-party actions to a full
-  commit SHA (Dependabot keeps SHA pins up to date, with the tag as a comment); auto-merge only
-  patch and minor updates, and leave workflow changes for a review.
+- [ ] **MEDIUM: GitHub Actions run third-party actions by tag.** `docker/*` actions in
+  `.github/workflows/ci.yml` are pinned to a moving major tag; a compromised or re-pointed tag runs
+  with `packages: write` and pushes the image (`:develop` on every push to develop). Fix: pin
+  third-party actions to a full commit SHA (Dependabot keeps SHA pins up to date, with the tag as a
+  comment). Done already: Dependabot's auto-merge takes only patch and minor updates; action
+  updates and major updates wait for a review (both repositories).
 - [ ] **LOW-MEDIUM: behind a reverse proxy every visitor shares one address for the password
   limiter.** `clientAddress` is the socket address (`src/http.js`), so `FailureLimiter`
   (`src/actionauth.js`) counts the proxy: one person guessing locks out everyone for up to 15
