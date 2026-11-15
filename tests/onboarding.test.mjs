@@ -140,19 +140,23 @@ test('readJson: JSON only, at most the limit, broken JSON is a 400', async () =>
   await assert.rejects(readJson(body('{broken')), (e) => e.status === 400);
 });
 
-test('Onboarding: active with the marker, the code once per start, sessions, wrong codes slowed down, finish writes all or nothing', async () => {
+test('Onboarding: active with the marker, the code once per start (also for a first admin password), sessions, wrong codes slowed down, finish writes all or nothing', async () => {
   const dir = tmpDir('dash-onb-');
   const logged = [];
   const o = new Onboarding({ configDir: dir, log: { ...silentLog, info: (m) => logged.push(m), warn: (m) => logged.push(m) } });
   assert.equal(o.active, false);
   o.announce('http://x:3000');
-  assert.equal(o.code, null, 'no code without the marker');
+  assert.equal(o.code, null, 'no code without the marker, nor without the need for a first password');
+  const first = new Onboarding({ configDir: dir, log: { ...silentLog, info: (m) => logged.push(m) } });
+  first.announce('http://x:3000', { noPassword: true });
+  assert.match(logged.at(-1), /^no admin password yet: http:\/\/x:3000\/settings asks for this code to set one: [A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.equal(first.setupCode(), first.code, 'one code per start');
   fs.writeFileSync(path.join(dir, MARKER), '');
   o.announce('http://x:3000');
   assert.match(logged.at(-1), /open http:\/\/x:3000\/setup .* code: [A-Z0-9]{4}-[A-Z0-9]{4}$/);
   const outside = req({}, '203.0.113.9');
   assert.equal(o.allowed(outside), false);
-  assert.equal(o.allowed(req()), true, 'local');
+  assert.equal(o.allowed(req()), false, 'a local address alone opens nothing: a proxy or NAT can make anyone look local');
   assert.equal((await o.verify(outside, 'WRONG-CODE')).status, 401);
   const ok = await o.verify(outside, o.code.toLowerCase());
   assert.equal(ok.ok, true, 'case does not matter');

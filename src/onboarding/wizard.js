@@ -1,7 +1,9 @@
 // The onboarding wizard of a first install. docker/start.sh writes the marker `.onboarding` into
 // an empty config folder; while it is there, `/` leads to `/setup`, a wizard that writes
 // settings.yaml, services.yaml and the other files and then removes the marker. It works for a
-// visitor on the local network, and for anyone else after the one-time code from the log.
+// visitor after the one-time code from the log (Onboarding below; the settings page takes the same
+// code to set the first admin password). An address alone opens nothing: behind a proxy or NAT
+// that does not pass the client's address on, an internet visitor comes from a private one.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -9,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import YAML from 'yaml';
 import { FailureLimiter } from '../actionauth.js';
-import { isLocal, cookie, cookieValue, randomToken } from '../http.js';
+import { cookie, cookieValue, randomToken } from '../http.js';
 import { LANGUAGES, COLORS, THEMES, DEFAULTS, DOCKER_PORT } from '../config/schema.js';
 import { discoveredBy, LOCAL_NAME } from '../discovery/docker.js';
 import { writeAtomic } from '../util.js';
@@ -246,7 +248,11 @@ export const WIDGETS_YAML = [
 
 export const BOOKMARKS_YAML = '# Bookmarks. See https://getdashboard.dev/configuration/bookmarks.html\n[]\n';
 
-/** Whether a config folder is in onboarding mode, and its code; the code is made once per start. */
+/**
+ * Whether a config folder is in onboarding mode, and the setup code: one code per start, in the log,
+ * for the setup wizard and for setting the first admin password on the settings page. A correct code
+ * gives the browser a session cookie for both.
+ */
 export class Onboarding {
   constructor({ configDir, log = console, now = Date.now }) {
     this.configDir = configDir;
@@ -265,14 +271,24 @@ export class Onboarding {
     return fs.existsSync(this.marker);
   }
 
-  announce(url) {
-    if (!this.active) return;
-    this.code = newCode();
-    this.log.info(`first start: open ${url}/setup to set up the dashboard. From outside your local network it asks for this code: ${this.code}`);
+  /** At the start: the code in the log, for the setup wizard, or for the first admin password (`noPassword`). */
+  announce(url, { noPassword = false } = {}) {
+    if (this.active) {
+      this.code ??= newCode();
+      this.log.info(`first start: open ${url}/setup to set up the dashboard; it asks for this code: ${this.code}`);
+    } else if (noPassword) this.setupCode(`${url}/settings`);
+  }
+
+  /** The code for setting the first admin password, made (and logged) once. */
+  setupCode(where = 'the settings page') {
+    if (!this.code) {
+      this.code = newCode();
+      this.log.info(`no admin password yet: ${where} asks for this code to set one: ${this.code}`);
+    }
+    return this.code;
   }
 
   allowed(req) {
-    if (isLocal(req)) return true;
     const token = cookieValue(req, COOKIE);
     return Boolean(token && this.sessions.has(token));
   }

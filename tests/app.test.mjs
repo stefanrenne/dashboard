@@ -1265,30 +1265,33 @@ test('action password: without one everything runs as before, with warnings for 
   }
 });
 
-test('onboarding: / leads to the wizard; local or with the code; it writes the config, then it is gone', async () => {
+test('onboarding: / leads to the wizard; only with the code from the log, also locally; it writes the config, then it is gone', async () => {
   const t = await startApp({ '.onboarding': '' });
   const outside = { 'x-forwarded-for': '203.0.113.9' };
-  const post = (p, body, headers = {}) => fetch(`${t.base}/api/onboarding/${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body) });
+  let auth = {};
+  const post = (p, body, headers = {}) => fetch(`${t.base}/api/onboarding/${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...auth, ...headers }, body: JSON.stringify(body) });
+  const json = (p) => fetch(t.base + p, { headers: auth }).then((r) => r.json());
   try {
     t.app.onboarding.announce('http://x');
     const root = await t.get('/', { redirect: 'manual' });
     assert.deepEqual([root.status, root.headers.get('location')], [302, 'setup']);
     assert.match(await (await t.get('/setup')).text(), /<script src="setup.js"><\/script>/);
     assert.equal((await t.get('/setup.js')).status, 200);
-    assert.deepEqual(await t.json('/api/onboarding/state'), { active: true, allowed: true, version: (await t.json('/api/health')).version, homepageFiles: ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'], themes: ['auto', 'dark', 'light'], defaults: { title: 'Homelab', language: 'en', theme: 'auto', color: 'slate' } }, 'a test request is local');
-    // from outside: the code
+    assert.deepEqual(await t.json('/api/onboarding/state'), { active: true, allowed: false, version: (await t.json('/api/health')).version, homepageFiles: ['services.yaml', 'settings.yaml', 'bookmarks.yaml', 'widgets.yaml', 'docker.yaml'], themes: ['auto', 'dark', 'light'], defaults: { title: 'Homelab', language: 'en', theme: 'auto', color: 'slate' } }, 'a local request needs the code too');
+    assert.equal((await t.get('/api/onboarding/widgets')).status, 401, 'locally');
     assert.equal((await t.get('/api/onboarding/widgets', { headers: outside })).status, 401);
     assert.equal((await post('code', { code: 'NOPE-NOPE' }, outside)).status, 401);
     assert.equal((await fetch(`${t.base}/api/onboarding/code`, { method: 'POST', headers: { 'content-type': 'application/json', ...outside }, body: '{}' })).status, 403, 'the header keeps other sites out');
     const coded = await post('code', { code: t.app.onboarding.code }, outside);
     const cookie = coded.headers.get('set-cookie').split(';')[0];
+    auth = { cookie };
     const widgets = await (await t.get('/api/onboarding/widgets', { headers: { ...outside, cookie } })).json();
     assert.ok(widgets.widgets.some((w) => w.id === 'radarr' && w.options.key.secret), 'the widgets with their options');
     assert.ok(!widgets.widgets.some((w) => w.id === 'datetime'), 'only service widgets');
-    assert.deepEqual(await t.json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
+    assert.deepEqual(await json('/api/onboarding/containers'), { containers: [], problems: [] }, 'no Docker here');
     const docker = await (await post('docker', { docker: [{ address: '127.0.0.1:1' }, { address: 'not valid!' }] })).json();
     assert.deepEqual([docker.servers.length, docker.servers[0].ok, docker.errors.length], [1, false, 1], 'an added server is checked, a bad address said');
-    assert.deepEqual(await t.json('/api/onboarding/status'), { host: '127.0.0.1', isAddress: true, minPassword: 8 });
+    assert.deepEqual(await json('/api/onboarding/status'), { host: '127.0.0.1', isAddress: true, minPassword: 8 });
     assert.match((await (await post('test', { type: 'nope', options: {} })).json()).error, /unknown widget/);
     assert.match((await (await post('test', { type: 'radarr', options: {} })).json()).error, /url/, 'the options are checked first');
     const dry = await (await post('homepage', { files: { 'services.yaml': '- Media:\n    - Plex:\n        href: http://plex.lan\n        widget: { type: plex, url: http://plex.lan, key: "{{HOMEPAGE_VAR_PLEX}}" }\n    - Odd:\n        widget: { type: oddity }\n' } })).json();
@@ -1334,7 +1337,10 @@ test('onboarding: nothing without the marker, and a file that appeared meanwhile
   }
   const t = await startApp({ '.onboarding': '', 'services.yaml': '[]\n' });
   try {
-    const res = await fetch(`${t.base}/api/onboarding/finish`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ security: { adminPassword: 'Geheim-Admin-1' } }) });
+    t.app.onboarding.announce('http://x');
+    const coded = await fetch(`${t.base}/api/onboarding/code`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard' }, body: JSON.stringify({ code: t.app.onboarding.code }) });
+    const cookie = coded.headers.get('set-cookie').split(';')[0];
+    const res = await fetch(`${t.base}/api/onboarding/finish`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', cookie }, body: JSON.stringify({ security: { adminPassword: 'Geheim-Admin-1' } }) });
     assert.equal(res.status, 409);
     assert.deepEqual((await res.json()).exists, ['services.yaml']);
     assert.equal(fs.existsSync(path.join(t.configDir, 'settings.yaml')), false, 'nothing written');
@@ -1397,22 +1403,30 @@ test('login: the admin password opens the page; a session on the server; logged 
   }
 });
 
-test('settings page: without an admin password the local network sets one first; then the password opens it, and changing it needs the current one', async () => {
+test('settings page: without an admin password the setup code from the log sets one first (an address alone does not); then the password opens it, and changing it needs the current one', async () => {
   const t = await startApp({ 'settings.yaml': '# mine\ntitle: Lab\nlayout:\n  Media: { columns: 2 }\n' });
   const outside = { 'x-forwarded-for': '203.0.113.7' };
   const local = { 'x-forwarded-for': '192.168.1.30' };
   const req = (p, { body, headers = {} } = {}) => fetch(`${t.base}/api/settings${p}`, body === undefined && !headers['x-dashboard-password'] ? { headers } : { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...headers }, body: JSON.stringify(body ?? {}) });
   try {
     assert.match(await (await t.get('/settings')).text(), /<script src="settings.js"><\/script>/);
-    // no admin password yet: from outside nothing; from the local network, only setting one
-    assert.equal((await req('', { headers: outside })).status, 403);
+    // no admin password yet: nothing without the setup code from the log, from outside or not
+    const refused = await req('', { headers: outside });
+    assert.deepEqual([refused.status, (await refused.json()).needsCode], [403, true]);
+    assert.equal((await req('', { headers: local })).status, 403, 'a local address alone opens nothing');
+    assert.equal((await fetch(`${t.base}/api/settings`)).status, 403, 'nor does a request from inside the container');
+    assert.match(t.app.onboarding.code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/, 'made (and logged) when first needed');
+    assert.equal((await req('/code', { body: { code: 'NOPE-NOPE' }, headers: local })).status, 401);
+    const coded = await req('/code', { body: { code: t.app.onboarding.code }, headers: outside });
+    assert.equal(coded.status, 200);
+    Object.assign(local, { cookie: coded.headers.get('set-cookie').split(';')[0] });
     const first = await (await req('', { headers: local })).json();
     assert.deepEqual([first.noPassword, first.values.title, first.other], [true, 'Lab', ['layout']]);
     assert.equal((await req('', { body: { values: { title: 'X' } }, headers: local })).status, 403, 'nothing else before a password');
     assert.equal((await req('/password', { body: { next: 'short' }, headers: local })).status, 400);
     assert.equal((await req('/password', { body: { next: 'Geheim-Admin-1' }, headers: local })).status, 200);
     assert.match(fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8'), /^adminPassword: scrypt:/m);
-    // now the password opens it, for everyone
+    // now the password opens it, for everyone (the setup cookie no longer counts)
     const asked = await req('', { headers: local });
     assert.deepEqual([asked.status, (await asked.json()).needsPassword], [401, true]);
     assert.equal((await req('/unlock', { headers: { ...outside, 'x-dashboard-password': 'nope' } })).status, 401);
@@ -1441,7 +1455,7 @@ test('settings page: without an admin password the local network sets one first;
   const env = await startApp({}, { DASHBOARD_ADMIN_PASSWORD: 'Geheim-Admin-1' });
   try {
     const r = await fetch(`${env.base}/api/settings`, { headers: { 'x-dashboard-password': 'Geheim-Admin-1' } });
-    assert.equal((await r.json()).noPassword, true);
+    assert.equal((await r.json()).needsSetup, true);
   } finally {
     await env.close();
   }

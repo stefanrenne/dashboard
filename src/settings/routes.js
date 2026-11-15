@@ -1,11 +1,11 @@
 // The settings page's routes: /settings, /settings.js and /api/settings/*. The admin password opens
-// them (a login counts, and the browser stays unlocked as for a press); without one yet, only the
-// local network, which must set one first. Every route is a row of ROUTES; one wrapper does what
+// them (a login counts, and the browser stays unlocked as for a press); without one yet, the setup
+// code from the log, to set one first. Every route is a row of ROUTES; one wrapper does what
 // they all need: the access check, reading the JSON body (up to the row's limit) and answering a
 // ConfigEditError with its status. X-Requested-With on writes is checked in app.js.
 
 import path from 'node:path';
-import { send, sendFile, readJson, isLocal, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
+import { send, sendFile, readJson, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
 import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, lineOfPath, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
 import { checkPassword, hashPassword, passwordFingerprint } from '../actionauth.js';
@@ -36,7 +36,7 @@ const SMALL = 64 * 1024;
  * pluginResult) and reload().
  */
 export function settingsRoutes(app) {
-  const { configDir, env, log, gate, passkeys, sessions, state } = app;
+  const { configDir, env, log, gate, passkeys, sessions, state, onboarding } = app;
   const schemaFor = (type) => state.registry?.get(type)?.manifest?.options ?? null;
   const knownSecrets = () => [...(state.config?.secrets ?? [])];
   const catalog = () => formCatalog(widgetCatalog(state.registry));
@@ -264,8 +264,22 @@ export function settingsRoutes(app) {
     if (method === 'GET' && p === '/settings.js') return sendFile(res, path.join(app.publicDir, 'settings.js'));
     const route = p.slice('/api/settings'.length);
     const noPassword = !gate.password;
+    // Without an admin password yet, the setup code from the log opens the settings, to set one: an
+    // address alone does not (a proxy or NAT can make an internet visitor look local).
+    if (noPassword && method === 'POST' && route === '/code') {
+      onboarding.setupCode();
+      let body;
+      try {
+        body = await readJson(req, SMALL);
+      } catch (err) {
+        return send(res, err.status ?? 400, { ok: false, error: err.message });
+      }
+      const out = await onboarding.verify(req, body?.code);
+      return out.ok ? send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...out.headers }) : send(res, out.status, out.body);
+    }
+    if (noPassword && !onboarding.allowed(req)) onboarding.setupCode();
     const allowed = noPassword
-      ? isLocal(req) ? { ok: true, headers: {} } : { ok: false, status: 403, body: { ok: false, needsSetup: true, error: 'no admin password yet: set one from the local network first' } }
+      ? onboarding.allowed(req) ? { ok: true, headers: {} } : { ok: false, status: 403, body: { ok: false, needsSetup: true, needsCode: true, error: 'no admin password yet: enter the setup code from the dashboard\'s log to set one' } }
       : await gate.check(req, 'password', { what: 'the settings', loggedIn });
     if (!allowed.ok) return send(res, allowed.status, allowed.body);
     // without an admin password, setting one comes first: nothing else is saved

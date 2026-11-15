@@ -799,3 +799,28 @@ test('settings page: a YAML file in colour, checked as it is typed, with the lin
   css.dispatchEvent(new w.KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true }));
   assert.equal(css.value, 'a { color: red; }');
 });
+
+test('settings page: without an admin password, the setup code from the log first, then the form to set one', async () => {
+  let opened = false;
+  const { doc, w, calls } = await page({
+    'GET /api/settings': () => (opened ? data({ noPassword: true }) : { ok: false, needsSetup: true, needsCode: true, error: 'no admin password yet' }),
+    'POST /api/settings/code': (init) => {
+      if (JSON.parse(init.body).code !== 'ABCD-EFGH') return { ok: false, wrongCode: true, error: 'wrong code' };
+      opened = true;
+      return { ok: true };
+    },
+  });
+  assert.match(doc.getElementById('panel').textContent, /setup code from the dashboard's log/, 'in English: the settings, with the language, are not read yet');
+  const enter = async (code) => {
+    const input = doc.getElementById('setup-code');
+    input.value = code;
+    input.closest('form').dispatchEvent(new w.Event('submit', { cancelable: true }));
+    await tick();
+  };
+  await enter('NOPE-NOPE');
+  assert.equal(doc.querySelector('[role=alert]').textContent, 'Wrong code');
+  await enter('ABCD-EFGH');
+  assert.deepEqual(calls.filter((c) => c.p === '/api/settings/code').map((c) => c.body), [{ code: 'NOPE-NOPE' }, { code: 'ABCD-EFGH' }]);
+  assert.ok(doc.getElementById('pw-next'), 'then the form for the first admin password');
+  assert.equal(doc.getElementById('pw-current'), null);
+});

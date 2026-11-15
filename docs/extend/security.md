@@ -33,7 +33,9 @@ choosing a Docker image. The dashboard limits the damage where it can:
   verification, its challenge used once and a one-time token for the request that follows.
 - **The settings page writes settings.yaml.** It opens only with the admin password (or a
   login); a new admin password needs the current one, and only its hash is written. Without an
-  admin password yet, it answers only the local network, and only to set one. Its endpoints read a
+  admin password yet, it opens only with the setup code from the log, and only to set one: an
+  address alone opens nothing, since a proxy, a tunnel or Docker's port forwarding can make an
+  internet visitor look local. Its endpoints read a
   JSON body (at most 64 KB) and need `X-Requested-With: dashboard`.
 - **`login: true` closes the page itself** (see [Login page](../configuration/README.md#login-page)):
   every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
@@ -52,9 +54,8 @@ choosing a Docker image. The dashboard limits the damage where it can:
   root only to give `node` a mounted Docker socket's group, before the dashboard starts.
 - **The setup wizard of a first install** writes the config folder, lists the containers and
   runs a widget once to test it. It exists only while `/config/.onboarding` is there (an empty
-  folder at the first start); every other request to it is a 404. It answers a visitor whose
-  address, and every address a proxy passed on, is private; anyone else needs the code from the
-  log (wrong ones are slowed down per address), and what it changes needs
+  folder at the first start); every other request to it is a 404. It needs the code from the log,
+  also on the local network (wrong ones are slowed down per address), and what it changes needs
   `X-Requested-With: dashboard`. Its endpoints are the only ones that read a request body: JSON
   only, at most 1 MB. It never overwrites a file that is there.
 - A mounted Docker socket gives every widget the whole Docker API (`:ro` does not limit it).

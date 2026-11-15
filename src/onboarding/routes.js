@@ -1,7 +1,7 @@
 // The setup wizard's routes: /setup, /setup.js and /api/onboarding/*, while the config folder is
 // new (wizard.js: the marker, the one-time code). It shows the Docker servers and running
 // containers, tries widgets, reads homepage's files, and at the end writes the config files.
-// Everything but the page and its state needs the local network or the code from the log.
+// Everything but the page and its state needs the code from the log (a session cookie after it).
 
 import fs from 'node:fs';
 import path from 'node:path';

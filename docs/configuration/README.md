@@ -58,9 +58,10 @@ A key or password you enter is written into `services.yaml` as it is; to keep it
 put `{{DASHBOARD_VAR_NAME}}` in its place and set the variable on the container (see
 [Variables](#variables)). **Skip the setup** writes the same files with no services.
 
-On the local network (a private address, also through a reverse proxy whose visitors are on it)
-the wizard opens straight away. From anywhere else it asks for the code the dashboard writes in
-its log at the start (`docker logs dashboard`). Wrong codes are slowed down. Once the wizard is
+The wizard asks for the code the dashboard writes in its log at the start (`docker logs dashboard`),
+also on the local network: an address alone does not prove who you are, since a reverse proxy, a
+tunnel or Docker's own port forwarding can make a visitor from the internet look local. Wrong
+codes are slowed down. Once the wizard is
 done, `/setup` is gone; it never shows for a config folder that has files. To see it again, empty
 the folder and restart the container.
 
@@ -208,7 +209,9 @@ files in `config/icons` and the icons already in use.
 - A new admin password needs the current one, every time; then every other login ends. Set in
   the container's environment, it is changed there.
 - **Without an admin password yet** (a dashboard set up before the setup wizard), the page asks
-  to set one first, and only on the local network; nothing else is saved before it.
+  to set one first, after the setup code from the dashboard's log (`docker logs dashboard`: the
+  line "no admin password yet: ... asks for this code"); nothing else is saved before it. Or put
+  `adminPassword` in settings.yaml.
 
 ### Allowed hosts
 

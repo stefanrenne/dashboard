@@ -4,6 +4,12 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Security
+- Without an admin password yet, the settings page and the setup wizard ask for the setup code
+  from the dashboard's log, also on the local network. Before, a private address was enough, and
+  a reverse proxy, tunnel or Docker port forwarding that does not pass the visitor's address on
+  made a visitor from the internet look local: such a visitor could set the first admin password.
+
 ### Changed
 - The documentation site has two parts with their own releases and version menus: the
   dashboard's docs (getdashboard.dev, develop at /develop/) and the widgets (getdashboard.dev/widgets/,

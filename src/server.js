@@ -37,7 +37,7 @@ server.maxConnections = 2000;
 server.listen(Number(values.port), values.host, () => {
   log.info(`dashboard ${VERSION} on http://${values.host}:${values.port} (config: ${configDir})`);
   const shown = ['0.0.0.0', '::'].includes(values.host) ? '<this server>' : values.host;
-  app.onboarding.announce(`http://${shown}:${values.port}`);
+  app.onboarding.announce(`http://${shown}:${values.port}`, { noPassword: !app.hasPassword });
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

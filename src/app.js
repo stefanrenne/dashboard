@@ -229,7 +229,7 @@ export async function createApp({
 
 
   const onboardingRoute = onboardingRoutes({ configDir, env, log, publicDir, exampleDir: path.join(ROOT, 'config.example'), version: VERSION, dockerSocket, onboarding, state, reload, runtime });
-  const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, gate, passkeys, sessions, state, reload, runtime });
+  const settingsRoute = settingsRoutes({ configDir, env, log, publicDir, gate, passkeys, sessions, state, reload, runtime, onboarding });
 
   async function handler(req, res) {
     const hosts = hostsNow();
@@ -440,6 +440,10 @@ export async function createApp({
     handler,
     reload,
     onboarding,
+    // whether an admin password is set (without one, the settings page asks for the setup code)
+    get hasPassword() {
+      return Boolean(gate.password);
+    },
     get layout() {
       return state.layout;
     },

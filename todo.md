@@ -14,19 +14,6 @@ scrypt with constant-time comparison, HttpOnly/SameSite cookies, secrets kept ou
 `/api/layout`, config paths confined (`configPath`, `safeJoin`), labels unable to set
 `discoverable: false` options, `git`/`npm`/`ping` without a shell, `npm audit` clean.
 
-- [ ] **HIGH: "local network" decides who may set the first admin password, and a proxy can make
-  everyone local.** `isLocal` (`src/http.js`) trusts a private socket address unless a forwarding
-  header says otherwise. Behind something that forwards without `X-Forwarded-For` (Docker's
-  userland-proxy, e.g. IPv6 to an IPv4 container; a TCP/SNI passthrough; some tunnels) every
-  internet visitor arrives from a private address. While no admin password is set, which can be
-  forever since the dashboard works without one, such a visitor may set it
-  (`src/settings/routes.js`, the `noPassword` branch) and then do anything the settings page can:
-  add a plugin source, which is code execution in the container (and the Docker socket, when
-  mounted). The setup wizard of a first install (`src/onboarding/wizard.js`) trusts `isLocal` the
-  same way. Fix: never let an address alone open this. Ask the one-time code from the log for the
-  first password too (as the wizard does for a remote visitor), or accept `isLocal` only for
-  loopback; add `trustedProxies` (below). Test: a request from 172.17.0.1 without forwarding
-  headers cannot set a password without the code.
 - [ ] **MEDIUM: the widgets collection updates itself every hour, without a signature.**
   `DEFAULT_PLUGINS` is `#latest` and `pluginUpdateInterval` defaults to 1h (`src/app.js`
   `checkPluginUpdates`, `src/plugins/installer.js`): a new release tag on
