@@ -135,3 +135,4 @@ Finished work, newest first.
   label, polling only the shown tab, a Tabs section on the settings page, and docs/configuration/tabs.md.
 - 2026-11-15: Security: the first admin password and the setup wizard need the setup code from the log, also on the local network (an address alone opened them, and a proxy or NAT can make anyone look local).
 - 2026-11-15: Docs: First start, the setup wizard step by step with screenshots (`scripts/screenshots.mjs --only setup`).
+- 2026-11-15: Forgot the admin password: a one-time code in the log, on request, sets a new one (login page, settings unlock). The config watcher watches each folder, so replaced files stay watched.

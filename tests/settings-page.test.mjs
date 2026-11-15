@@ -824,3 +824,24 @@ test('settings page: without an admin password, the setup code from the log firs
   assert.ok(doc.getElementById('pw-next'), 'then the form for the first admin password');
   assert.equal(doc.getElementById('pw-current'), null);
 });
+
+test('settings page: forgot the admin password, from the unlock form, with a code from the log', async () => {
+  const { doc, w, calls } = await page({
+    'GET /api/settings': { ok: false, needsPassword: true },
+    'POST /api/password-reset/request': { ok: true, until: 0 },
+    'POST /api/password-reset': (init) => (JSON.parse(init.body).code === 'ABCD-EFGH' ? { ok: true } : { ok: false, wrongCode: true }),
+  });
+  doc.getElementById('forgot').click();
+  assert.ok(doc.getElementById('reset').classList.contains('panel'));
+  doc.getElementById('reset-ask').click();
+  await tick();
+  assert.ok(calls.some((c) => c.p === '/api/password-reset/request'));
+  for (const [id, value] of [['reset-code', 'ABCD-EFGH'], ['reset-next', 'Nieuw-Wachtwoord-1'], ['reset-repeat', 'Nieuw-Wachtwoord-1']]) doc.getElementById(id).value = value;
+  doc.getElementById('reset').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  await tick();
+  assert.ok(doc.getElementById('admin-password'), 'the unlock form again');
+  assert.match(doc.querySelector('p.ok[role=status]').textContent, /^The admin password is changed/);
+  [...doc.querySelectorAll('button')].find((b) => b.id === 'forgot').click();
+  [...doc.querySelectorAll('#reset button')].find((b) => b.textContent === 'Back').click();
+  assert.ok(doc.getElementById('admin-password'), 'Back leads to the unlock form');
+});

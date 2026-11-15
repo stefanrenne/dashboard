@@ -92,3 +92,58 @@ test('the login page: over https with a passkey for this host, a passkey logs in
   const plain = await page({ login: true, loggedIn: false, language: 'nl' });
   assert.equal(plain.w.document.getElementById('passkey').hidden, true);
 });
+
+test('the login page: forgot the password, a code from the log sets a new one, then the login again', async () => {
+  const answers = {
+    'api/password-reset/request': { ok: true, until: 0 },
+    'api/password-reset': (body) => (body.code === 'ABCD-EFGH' ? { ok: true } : { ok: false, wrongCode: true, error: 'wrong or expired code' }),
+  };
+  const calls = [];
+  const dom = new JSDOM(HTML, {
+    runScripts: 'dangerously',
+    url: 'http://dash.lan/login',
+    beforeParse(window) {
+      window.fetch = async (url, init = {}) => {
+        const body = init.body ? JSON.parse(init.body) : undefined;
+        calls.push({ url: String(url), body });
+        const a = answers[String(url)];
+        return { json: async () => (typeof a === 'function' ? a(body) : a ?? { login: true, loggedIn: false, language: 'nl' }) };
+      };
+    },
+  });
+  opened.add(dom.window);
+  dom.window.eval(SCRIPT);
+  await new Promise((r) => setTimeout(r, 20));
+  const w = dom.window;
+  const doc = w.document;
+  const tick = () => new Promise((r) => setTimeout(r, 20));
+  assert.equal(doc.getElementById('forgot').textContent, 'Wachtwoord vergeten?');
+  doc.getElementById('forgot').click();
+  assert.equal(doc.getElementById('login').hidden, true);
+  assert.equal(doc.activeElement.id, 'reset-ask');
+  doc.getElementById('reset-ask').click();
+  await tick();
+  assert.match(doc.querySelector('#reset [role=status]').textContent, /docker logs dashboard/);
+  assert.equal(doc.activeElement.id, 'reset-code');
+  assert.equal(doc.getElementById('reset-code').placeholder, 'XXXX-XXXX');
+  const fill = (code, next, repeat = next) => {
+    doc.getElementById('reset-code').value = code;
+    doc.getElementById('reset-next').value = next;
+    doc.getElementById('reset-repeat').value = repeat;
+    doc.getElementById('reset').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  };
+  fill('ABCD-EFGH', 'kort');
+  assert.equal(doc.querySelector('#reset [role=alert]').textContent, 'Minstens 8 tekens.', 'checked here first');
+  fill('ABCD-EFGH', 'Nieuw-Wachtwoord-1', 'Anders-1234');
+  assert.equal(doc.querySelector('#reset [role=alert]').textContent, 'De twee wachtwoorden zijn niet gelijk.');
+  fill('NOPE-NOPE', 'Nieuw-Wachtwoord-1');
+  await tick();
+  assert.match(doc.querySelector('#reset [role=alert]').textContent, /^Onjuiste of verlopen code/);
+  fill('ABCD-EFGH', 'Nieuw-Wachtwoord-1');
+  await tick();
+  assert.deepEqual(calls.filter((c) => c.url === 'api/password-reset').at(-1).body, { code: 'ABCD-EFGH', next: 'Nieuw-Wachtwoord-1' });
+  assert.equal(doc.getElementById('reset'), null, 'back to the login');
+  assert.equal(doc.getElementById('login').hidden, false);
+  assert.match(doc.getElementById('error').textContent, /^Het admin-wachtwoord is gewijzigd/);
+  assert.equal(doc.activeElement.id, 'password');
+});

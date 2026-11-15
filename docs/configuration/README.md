@@ -224,6 +224,25 @@ There is no environment variable for it (`DASHBOARD_ADMIN_PASSWORD` and
 `DASHBOARD_ADMIN_PASSWORD_FILE` are no longer read). Next to the password, a
 [passkey](#passkeys) works too.
 
+**Forgot it?** The link **Forgot the password?** on the login page, or in the settings page's unlock form,
+asks the dashboard to write a one-time code into its log. With that code you set a new password:
+
+```sh
+docker logs dashboard 2>&1 | grep "password reset"
+# admin password reset asked for from 192.168.1.20: this code sets a new admin password until 2026-11-15T13:38:53.495Z: K7QM-3XWD
+```
+
+![Forgot the password: a code from the log and a new password](../images/login-reset.png)
+
+- The code is made only when asked for, works for 15 minutes and once; asking again while it works
+  writes no new one. After ten wrong codes it no longer counts, and wrong ones are slowed down per
+  address, as passwords are. The log says who asked for it, and when a password was reset.
+- Whoever can read the container's log can do this: it has the host already. Keep the log as
+  private as the host, and do not ship it somewhere others can read it.
+- The new password ends every login session and unlocked browser; passkeys stay.
+- Without the page: `docker exec -it dashboard node src/hash-password.mjs` prints a hash for
+  `adminPassword` (above).
+
 These presses ask for it:
 
 - **Buttons that run as root** (`user: root`) ask by default; `confirm: none` on the entry turns

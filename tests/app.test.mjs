@@ -677,6 +677,45 @@ test('watchConfig reacts to YAML changes only', async () => {
   assert.ok(calls >= 1);
 });
 
+test('watchConfig keeps seeing a file replaced as a whole (the settings page, editors), and new folders', async () => {
+  const dir = tmpDir();
+  fs.writeFileSync(path.join(dir, 'settings.yaml'), 'a: 1\n');
+  let calls = 0;
+  const w = watchConfig(dir, () => calls++, { debounceMs: 30, log: silentLog });
+  const wait = () => new Promise((r) => setTimeout(r, 250));
+  const replace = (file, text) => {
+    fs.writeFileSync(path.join(dir, `.${path.basename(file)}.tmp`), text);
+    fs.renameSync(path.join(dir, `.${path.basename(file)}.tmp`), path.join(dir, file));
+  };
+  try {
+    for (const text of ['a: 2\n', 'a: 3\n', 'a: 4\n']) {
+      const before = calls;
+      replace('settings.yaml', text);
+      await wait();
+      assert.ok(calls > before, `replaced: ${text.trim()}`);
+    }
+    const before = calls;
+    fs.writeFileSync(path.join(dir, 'settings.yaml'), 'a: 5\n');
+    await wait();
+    assert.ok(calls > before, 'written in place after that');
+    // a folder made later (an !include), and a file in it
+    fs.mkdirSync(path.join(dir, 'groups'));
+    await wait();
+    const inside = calls;
+    fs.writeFileSync(path.join(dir, 'groups', 'media.yaml'), '[]\n');
+    await wait();
+    assert.ok(calls > inside, 'a file in a new folder');
+    // the settings page's history is not config
+    const history = calls;
+    fs.mkdirSync(path.join(dir, '.history'));
+    fs.writeFileSync(path.join(dir, '.history', 'settings.yaml'), 'a: 1\n');
+    await wait();
+    assert.equal(calls, history);
+  } finally {
+    w.close();
+  }
+});
+
 test('checkPluginUpdates installs a newer #latest and reloads; without news nothing happens', async () => {
   const repo = path.join(tmpDir('hd-repo-'), 'widget');
   fs.cpSync(path.resolve('examples/widget-template'), repo, { recursive: true });
@@ -2009,5 +2048,40 @@ test('onboarding: the wizard answers any host name (it becomes the first allowed
     assert.equal(status, 403);
   } finally {
     await done.close();
+  }
+});
+
+test('forgot the admin password: a one-time code in the log, on request, sets a new one; the old one ends', async () => {
+  const hash = hashPassword('Oud-Wachtwoord-1', { N: 1024 });
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hash}"\nlogin: true\n` });
+  const outside = { 'x-forwarded-for': '203.0.113.7' };
+  const post = (p, body, headers = {}) => fetch(`${t.base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', ...outside, ...headers }, body: JSON.stringify(body ?? {}) });
+  try {
+    assert.equal(t.app.reset.code, null, 'no code until one is asked for');
+    const asked = await post('/api/password-reset/request');
+    assert.equal(asked.status, 200, 'open, also with the login page on');
+    const code = t.app.reset.code;
+    assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    await post('/api/password-reset/request');
+    assert.equal(t.app.reset.code, code, 'asked again while it is valid: the same code, no new line in the log');
+    assert.equal((await fetch(`${t.base}/api/password-reset`, { method: 'POST', headers: { 'content-type': 'application/json', ...outside }, body: '{}' })).status, 403, 'the header keeps other sites out');
+    assert.equal((await post('/api/password-reset', { code: 'NOPE-NOPE', next: 'Nieuw-Wachtwoord-1' })).status, 401);
+    assert.equal((await post('/api/password-reset', { code, next: 'kort' })).status, 400);
+    assert.equal(t.app.reset.code, code, 'a refused password does not use the code up');
+    assert.equal((await post('/api/password-reset', { code: code.toLowerCase(), next: 'Nieuw-Wachtwoord-1' })).status, 200);
+    assert.ok(!fs.readFileSync(path.join(t.configDir, 'settings.yaml'), 'utf8').includes(hash), 'a new hash in settings.yaml');
+    assert.equal((await post('/api/password-reset', { code, next: 'Ander-Wachtwoord-2' })).status, 401, 'used once');
+    assert.equal((await post('/api/login', { password: 'Oud-Wachtwoord-1' })).status, 401, 'the old one ends');
+    assert.equal((await post('/api/login', { password: 'Nieuw-Wachtwoord-1' })).status, 200);
+  } finally {
+    await t.close();
+  }
+  // no admin password yet: the setup code is for that
+  const none = await startApp({});
+  try {
+    const r = await fetch(`${none.base}/api/password-reset/request`, { method: 'POST', headers: { 'x-requested-with': 'dashboard' } });
+    assert.deepEqual([r.status, (await r.json()).needsSetup], [404, true]);
+  } finally {
+    await none.close();
   }
 });

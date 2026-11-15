@@ -17,11 +17,13 @@ import { buildState } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
-import { ActionGate, checkPassword, passwordFingerprint } from './actionauth.js';
+import { ActionGate, checkPassword, passwordFingerprint, hashPassword } from './actionauth.js';
+import { PasswordReset } from './reset.js';
+import { writeAdminPassword } from './settings/form.js';
 import { SessionStore, isOpenPath, isSharedFile } from './login.js';
 import { Passkeys } from './passkeys.js';
 import { Onboarding } from './onboarding/wizard.js';
-import { CUSTOM_FILES } from './config/schema.js';
+import { CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
 import { send, sendFile, readJson, fromThisPage, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
 import { settingsRoutes } from './settings/routes.js';
 import { onboardingRoutes } from './onboarding/routes.js';
@@ -88,6 +90,7 @@ export async function createApp({
   const passkeys = new Passkeys({ configDir, log });
   const gate = new ActionGate({ password: null, log, passkeys });
   const onboarding = new Onboarding({ configDir, log });
+  const reset = new PasswordReset({ log });
   const sessions = new SessionStore({ configDir, log });
   // the allowed hosts: settings.yaml allowedHosts (the settings page writes it); `*` allows every host
   const hostsNow = () => allowedHosts(state.config?.settings.allowedHosts);
@@ -283,6 +286,7 @@ export async function createApp({
         return send(res, 401, { ok: false, needsLogin: true, error: 'log in first' });
       }
       if (p === '/api/passkey' || p.startsWith('/api/passkey/')) return await passkeyRoute(req, res, method, p);
+      if (p === '/api/password-reset' || p === '/api/password-reset/request') return await resetRoute(req, res, method, p);
       if (p === '/settings' || p === '/settings.js' || p === '/api/settings' || p.startsWith('/api/settings/')) return await settingsRoute(req, res, { method, path: p, query: url.searchParams, loggedIn });
       if (method === 'GET' && (p === '/' || p === '/index.html')) {
         const html = await fs.promises.readFile(path.join(publicDir, 'index.html'), 'utf8');
@@ -396,6 +400,32 @@ export async function createApp({
    * The login page and its API: the page and its script, `GET /api/login` (how the page looks,
    * never what is behind it), `POST /api/login` with { password } and `POST /api/logout`.
    */
+  /**
+   * "Forgot the admin password" (src/reset.js), open as the login page is: POST
+   * /api/password-reset/request writes a one-time code into the log, POST /api/password-reset with
+   * { code, next } sets the new password. Every login session and unlocked browser ends with the old
+   * one; passkeys stay.
+   */
+  async function resetRoute(req, res, method, p) {
+    if (method !== 'POST') return send(res, 404, { error: 'not found' });
+    if (!gate.password) return send(res, 404, { ok: false, needsSetup: true, error: 'no admin password yet: the setup code from the log sets one' });
+    if (p === '/api/password-reset/request') return send(res, 200, { ok: true, ...reset.request(req) });
+    let body;
+    try {
+      body = await readJson(req, 4096);
+    } catch (err) {
+      return send(res, err.status ?? 400, { ok: false, error: err.message });
+    }
+    // the new password first: a code is not used up on a password that is refused
+    if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) return send(res, 400, { ok: false, tooShort: true, error: `at least ${MIN_PASSWORD} characters` });
+    const out = await reset.consume(req, body.code);
+    if (!out.ok) return send(res, out.status, out.body);
+    writeAdminPassword(configDir, hashPassword(body.next));
+    log.warn(`admin password reset with the code from the log, from ${clientAddress(req)}; every login session ends`);
+    await reload();
+    return send(res, 200, { ok: true });
+  }
+
   async function loginRoute(req, res, method, p, { loginOn, loggedIn, login }) {
     if (method === 'GET' && p === '/login') {
       if (!loginOn || loggedIn) {
@@ -444,6 +474,7 @@ export async function createApp({
     handler,
     reload,
     onboarding,
+    reset,
     // whether an admin password is set (without one, the settings page asks for the setup code)
     get hasPassword() {
       return Boolean(gate.password);

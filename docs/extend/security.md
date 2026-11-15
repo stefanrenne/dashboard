@@ -39,6 +39,10 @@ choosing a Docker image. The dashboard limits the damage where it can:
   address alone opens nothing, since a proxy, a tunnel or Docker's port forwarding can make an
   internet visitor look local. Its endpoints read a
   JSON body (at most 64 KB) and need `X-Requested-With: dashboard`.
+- **A forgotten admin password** is reset with a one-time code the dashboard writes into its log
+  on request (`POST /api/password-reset/request`, open as the login page is): 15 minutes, once,
+  void after ten wrong tries, wrong ones slowed down per address; the log says who asked. Reading
+  the log means having the host already. A new password ends every session and unlock.
 - **`login: true` closes the page itself** (see [Login page](../configuration/README.md#login-page)):
   every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
   mode 600) and checks each time; a logout or a new admin password ends it for good. Only

@@ -147,3 +147,4 @@ Or put the password's hash in `settings.yaml` yourself (`adminPassword`, see
 | A container has no widget | Not every image is recognised: pick the widget yourself, or leave it without one (a plain link). |
 | A test fails | The error says why: a wrong key, an address the dashboard cannot reach from its container (try the container's name on a shared network, or the server's address and published port). |
 | You want the wizard again | Stop the container, empty the config folder, and start it again. |
+| Later: you forgot the admin password | **Forgot the password?** on the login page or in the settings page's unlock form writes a one-time code into the log: see [Admin password](README.md#admin-password). |

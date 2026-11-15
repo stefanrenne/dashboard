@@ -5,10 +5,16 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Added
+- Forgot the admin password: **Forgot the password?** on the login page and in the settings page's
+  unlock form has the dashboard write a one-time code into its log (15 minutes, once), which sets a
+  new password. Every login session and unlocked browser ends; passkeys stay.
 - Docs: [First start](https://getdashboard.dev/configuration/first-start.html), the setup wizard
   step by step with screenshots, and what to do without an admin password or when a step fails.
 
 ### Fixed
+- A config file saved by the settings page (or by an editor that replaces the file as a whole) was
+  no longer watched: later changes to it were not picked up until a restart. Each folder has a
+  watcher of its own now.
 - Setup wizard: it opens by any host name (it was refused, as no allowed hosts were set yet), and
   the security step fills in that name as the first allowed host. The setup code field shows its
   form, XXXX-XXXX.

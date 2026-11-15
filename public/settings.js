@@ -50,7 +50,7 @@ function show(...nodes) {
   replacePanel(document.getElementById('panel'), nodes);
 }
 
-function askPassword(message = '') {
+function askPassword(message = '', note = '') {
   const input = el('input', { type: 'password', id: 'admin-password', autocomplete: 'current-password', required: true });
   const passkey = el('button', { type: 'button', id: 'unlock-passkey', text: t('usePasskey'), hidden: true, onclick: async () => {
     passkey.disabled = true;
@@ -75,9 +75,17 @@ function askPassword(message = '') {
   el('h2', { text: t('unlockTitle') }),
   el('p', { class: 'muted', text: t('unlockText') }),
   message ? el('p', { class: 'error', role: 'alert', text: message }) : null,
+  note ? el('p', { class: 'ok', role: 'status', text: note }) : null,
   el('input', { type: 'text', name: 'username', autocomplete: 'username', value: 'dashboard', class: 'sr-only', tabindex: '-1', 'aria-hidden': 'true' }),
   el('label', { for: 'admin-password', text: t('secAdmin') }), input,
-  el('div', { class: 'actions' }, el('div', { class: 'right' }, passkey, el('button', { type: 'submit', class: 'primary', text: t('unlock') }))));
+  el('div', { class: 'actions' },
+    // forgot the password: a code from the log sets a new one (common.js passwordResetForm)
+    el('button', { type: 'button', class: 'link', id: 'forgot', text: t('forgotPassword'), onclick: () => {
+      const form = passwordResetForm(t, { className: 'panel reset', done: (m) => askPassword('', m), back: () => askPassword() });
+      show(form);
+      form.querySelector('#reset-ask').focus();
+    } }),
+    el('div', { class: 'right' }, passkey, el('button', { type: 'submit', class: 'primary', text: t('unlock') }))));
   show(form);
   input.focus();
   passkeyAvailable().then((ok) => {

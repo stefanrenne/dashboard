@@ -3,8 +3,14 @@
 // writes plugins.lock.yaml there itself. On network file systems (NFS, SMB) fs.watch sees no
 // changes made elsewhere; `pollMs` (DASHBOARD_WATCH_POLL) compares the files' size and time instead.
 // When fs.watch cannot start at all, polling every 5 seconds takes over.
+//
+// Each folder gets a watcher of its own, not one recursive watcher: Node's recursive watching on
+// Linux follows the files themselves, and a file replaced as a whole (written next to it, then
+// renamed over it, as the settings page and most editors save) was not seen any more after its
+// first change. A folder's watcher sees every change in it, whatever happens to its files.
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { PLUGINS_DIR } from './schema.js';
 
 export function isConfigChange(filename) {
@@ -51,25 +57,71 @@ function poll(dir, onChange, ms) {
   return { close: () => clearInterval(timer) };
 }
 
+/** The folders under `dir` to watch, relative (plugins/ and hidden ones such as .history/ left out). */
+function folders(dir, rel = '') {
+  let entries;
+  try {
+    entries = fs.readdirSync(rel ? path.join(dir, rel) : dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !(!rel && e.name === PLUGINS_DIR))
+    .flatMap((e) => {
+      const name = rel ? `${rel}/${e.name}` : e.name;
+      return [name, ...folders(dir, name)];
+    });
+}
+
 export function watchConfig(dir, onChange, { debounceMs = 300, pollMs = 0, log = console } = {}) {
   if (pollMs > 0) return poll(dir, onChange, pollMs);
   let timer = null;
-  let watcher;
+  const watchers = new Map(); // relative folder ('' is dir) -> FSWatcher
+  const changed = (rel) => {
+    if (!isConfigChange(rel)) return;
+    clearTimeout(timer);
+    timer = setTimeout(onChange, debounceMs);
+  };
+  // a watcher per folder there is now: new folders get one, removed ones lose theirs
+  const sync = () => {
+    const want = new Set(['', ...folders(dir)]);
+    for (const [rel, w] of watchers) {
+      if (!want.has(rel)) {
+        w.close();
+        watchers.delete(rel);
+      }
+    }
+    for (const rel of want) {
+      if (watchers.has(rel)) continue;
+      let w;
+      try {
+        w = fs.watch(rel ? path.join(dir, rel) : dir, (event, filename) => {
+          if (event === 'rename') sync();
+          changed(filename ? (rel ? `${rel}/${filename}` : String(filename)) : null);
+        });
+      } catch (err) {
+        if (!rel) throw err;
+        continue; // a folder removed meanwhile
+      }
+      w.on('error', () => {
+        w.close();
+        watchers.delete(rel);
+      });
+      watchers.set(rel, w);
+    }
+  };
   try {
-    watcher = fs.watch(dir, { recursive: true }, (event, filename) => {
-      if (!isConfigChange(filename)) return;
-      clearTimeout(timer);
-      timer = setTimeout(onChange, debounceMs);
-    });
+    sync();
   } catch (err) {
+    for (const w of watchers.values()) w.close();
     log.warn(`config: cannot watch ${dir} (${err.code || err.message}); checking for changes every ${FALLBACK_POLL_MS / 1000} s instead`);
     return poll(dir, onChange, FALLBACK_POLL_MS);
   }
-  watcher.on('error', (err) => log.warn(`config: watcher stopped (${err.message})`));
   return {
     close() {
       clearTimeout(timer);
-      watcher.close();
+      for (const w of watchers.values()) w.close();
+      watchers.clear();
     },
   };
 }

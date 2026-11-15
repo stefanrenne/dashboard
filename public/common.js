@@ -38,8 +38,8 @@ const RTL_LANGUAGES = ['he'];
 
 // the texts the setup wizard and the settings page both use; a page's own I18N goes first
 const SHARED_I18N = {
-  en: {"wait":"Too many tries; wait {seconds} s","titleLabel":"Title","languageLabel":"Language","themeLabel":"Theme","themeAuto":"Follow the system","themeDark":"Dark","themeLight":"Light","colorLabel":"Colour","secHosts":"Allowed hosts","secAdmin":"Admin password","passwordRepeat":"Repeat the password","passwordShort":"The admin password needs at least {count} characters.","passwordMismatch":"The two passwords are not the same.","safer":"safer"},
-  nl: {"wait":"Te veel pogingen; wacht {seconds} s","titleLabel":"Titel","languageLabel":"Taal","themeLabel":"Thema","themeAuto":"Systeem volgen","themeDark":"Donker","themeLight":"Licht","colorLabel":"Kleur","secHosts":"Toegestane hosts","secAdmin":"Admin wachtwoord","passwordRepeat":"Herhaal het wachtwoord","passwordShort":"Het admin wachtwoord moet minstens {count} tekens hebben.","passwordMismatch":"De twee wachtwoorden zijn niet gelijk.","safer":"veiliger"},
+  en: {"forgotPassword":"Forgot the password?","resetTitle":"A new admin password","resetText":"The dashboard writes a one-time code into its log, valid for 15 minutes. Whoever can read the log sets a new password with it.","resetAsk":"Write a code to the log","resetAsked":"The code is in the log now: docker logs dashboard 2>&1 | grep \"password reset\"","resetCode":"Code from the log","resetNew":"New password","resetRepeat":"Repeat the password","resetSubmit":"Set the password","resetDone":"The admin password is changed; every other login has ended. Use the new one.","resetWrong":"Wrong or expired code. Ask for a new one if it is older than 15 minutes.","resetShort":"At least {count} characters.","resetMismatch":"The two passwords are not the same.","resetBack":"Back","wait":"Too many tries; wait {seconds} s","titleLabel":"Title","languageLabel":"Language","themeLabel":"Theme","themeAuto":"Follow the system","themeDark":"Dark","themeLight":"Light","colorLabel":"Colour","secHosts":"Allowed hosts","secAdmin":"Admin password","passwordRepeat":"Repeat the password","passwordShort":"The admin password needs at least {count} characters.","passwordMismatch":"The two passwords are not the same.","safer":"safer"},
+  nl: {"forgotPassword":"Wachtwoord vergeten?","resetTitle":"Een nieuw admin-wachtwoord","resetText":"Het dashboard zet een eenmalige code in zijn log, 15 minuten geldig. Wie de log kan lezen, stelt er een nieuw wachtwoord mee in.","resetAsk":"Zet een code in de log","resetAsked":"De code staat nu in de log: docker logs dashboard 2>&1 | grep \"password reset\"","resetCode":"Code uit de log","resetNew":"Nieuw wachtwoord","resetRepeat":"Herhaal het wachtwoord","resetSubmit":"Wachtwoord instellen","resetDone":"Het admin-wachtwoord is gewijzigd; elke andere login is beëindigd. Gebruik het nieuwe.","resetWrong":"Onjuiste of verlopen code. Vraag een nieuwe aan als hij ouder is dan 15 minuten.","resetShort":"Minstens {count} tekens.","resetMismatch":"De twee wachtwoorden zijn niet gelijk.","resetBack":"Terug","wait":"Te veel pogingen; wacht {seconds} s","titleLabel":"Titel","languageLabel":"Taal","themeLabel":"Thema","themeAuto":"Systeem volgen","themeDark":"Donker","themeLight":"Licht","colorLabel":"Kleur","secHosts":"Toegestane hosts","secAdmin":"Admin wachtwoord","passwordRepeat":"Herhaal het wachtwoord","passwordShort":"Het admin wachtwoord moet minstens {count} tekens hebben.","passwordMismatch":"De twee wachtwoorden zijn niet gelijk.","safer":"veiliger"},
   fr: {"wait":"Trop d’essais ; attendez {seconds} s","titleLabel":"Titre","languageLabel":"Langue","themeLabel":"Thème","themeAuto":"Suivre le système","themeDark":"Sombre","themeLight":"Clair","colorLabel":"Couleur","secHosts":"Hôtes autorisés","secAdmin":"Mot de passe administrateur","passwordRepeat":"Répétez le mot de passe","passwordShort":"Le mot de passe administrateur doit compter au moins {count} caractères.","passwordMismatch":"Les deux mots de passe ne sont pas identiques.","safer":"plus sûr"},
   de: {"wait":"Zu viele Versuche; warte {seconds} s","titleLabel":"Titel","languageLabel":"Sprache","themeLabel":"Design","themeAuto":"System folgen","themeDark":"Dunkel","themeLight":"Hell","colorLabel":"Farbe","secHosts":"Erlaubte Hosts","secAdmin":"Admin-Passwort","passwordRepeat":"Passwort wiederholen","passwordShort":"Das Admin-Passwort braucht mindestens {count} Zeichen.","passwordMismatch":"Die beiden Passwörter sind nicht gleich.","safer":"sicherer"},
   es: {"wait":"Demasiados intentos; espera {seconds} s","titleLabel":"Título","languageLabel":"Idioma","themeLabel":"Tema","themeAuto":"Seguir al sistema","themeDark":"Oscuro","themeLight":"Claro","colorLabel":"Color","secHosts":"Hosts permitidos","secAdmin":"Contraseña de administrador","passwordRepeat":"Repite la contraseña","passwordShort":"La contraseña de administrador necesita al menos {count} caracteres.","passwordMismatch":"Las dos contraseñas no coinciden.","safer":"más seguro"},
@@ -227,4 +227,47 @@ async function passkeyToken() {
   const out = await postJson('api/passkey/verify', { id: cred.id, clientDataJSON: toB64u(cred.response.clientDataJSON), authenticatorData: toB64u(cred.response.authenticatorData), signature: toB64u(cred.response.signature) });
   if (!out.ok) throw Object.assign(new Error(out.error), { retryAfter: out.retryAfter });
   return out.token;
+}
+
+/**
+ * "Forgot the admin password" (src/reset.js): a form that has the dashboard write a one-time code
+ * into its log, then takes that code and a new password. `t` translates (SHARED_I18N has the
+ * texts); `done(message)` follows a new password, `back()` the Back button. The page styles it.
+ */
+function passwordResetForm(t, { done, back, minPassword = 8, className = null }) {
+  const status = el('p', { class: 'error', role: 'alert' });
+  const asked = el('p', { class: 'note', role: 'status' });
+  const input = (id, type, autocomplete, attrs = {}) => el('input', { type, id, name: id, autocomplete, required: true, spellcheck: 'false', ...attrs });
+  const code = input('reset-code', 'text', 'one-time-code', { autocapitalize: 'characters', placeholder: 'XXXX-XXXX' });
+  const next = input('reset-next', 'password', 'new-password', { minlength: String(minPassword) });
+  const repeat = input('reset-repeat', 'password', 'new-password', { minlength: String(minPassword) });
+  const ask = el('button', { type: 'button', class: 'secondary', id: 'reset-ask', text: t('resetAsk'), onclick: async () => {
+    ask.disabled = true;
+    const out = await postJson('api/password-reset/request', {}).catch((err) => ({ ok: false, error: err.message }));
+    ask.disabled = false;
+    asked.textContent = out.ok ? t('resetAsked') : out.error;
+    if (out.ok) code.focus();
+  } });
+  return el('form', { id: 'reset', class: className, novalidate: true, onsubmit: async (e) => {
+    e.preventDefault();
+    status.textContent = '';
+    if (next.value.length < minPassword) status.textContent = t('resetShort', { count: minPassword });
+    else if (next.value !== repeat.value) status.textContent = t('resetMismatch');
+    else {
+      const out = await postJson('api/password-reset', { code: code.value, next: next.value }).catch((err) => ({ ok: false, error: err.message }));
+      if (out.ok) return done(t('resetDone'));
+      status.textContent = out.retryAfter ? t('wait', { seconds: out.retryAfter }) : out.wrongCode ? t('resetWrong') : out.error;
+    }
+    return undefined;
+  } },
+  el('h2', { text: t('resetTitle') }),
+  el('p', { class: 'note', text: t('resetText') }),
+  ask, asked,
+  el('input', { type: 'text', name: 'username', autocomplete: 'username', value: 'dashboard', class: 'sr-only', tabindex: '-1', 'aria-hidden': 'true' }),
+  el('label', { for: 'reset-code', text: t('resetCode') }), code,
+  el('label', { for: 'reset-next', text: t('resetNew') }), next,
+  el('label', { for: 'reset-repeat', text: t('resetRepeat') }), repeat,
+  status,
+  el('button', { type: 'submit', text: t('resetSubmit') }),
+  el('button', { type: 'button', class: 'secondary', text: t('resetBack'), onclick: back }));
 }

@@ -101,5 +101,5 @@ export const isSharedFile = (rel) => SHARED_FILES.includes(rel) || /^fonts\/[\w-
 // what a visitor who is not logged in may still reach: the login page, its script and API, the
 // shared files, the passkey check of the login page, and what tools ask without a browser (the
 // image's health check, robots.txt)
-const OPEN_PATHS = new Set(['/login', '/login.js', '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify']);
+const OPEN_PATHS = new Set(['/login', '/login.js', '/api/login', '/api/health', '/robots.txt', '/api/passkey', '/api/passkey/options', '/api/passkey/verify', '/api/password-reset', '/api/password-reset/request']);
 export const isOpenPath = (p) => OPEN_PATHS.has(p) || isSharedFile(p.slice(1));

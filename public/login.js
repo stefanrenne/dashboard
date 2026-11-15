@@ -36,6 +36,7 @@ function look(info) {
   $('label').textContent = t('label');
   $('submit').textContent = t('submit');
   $('passkey').textContent = t('passkey');
+  $('forgot').textContent = t('forgotPassword');
 }
 
 async function init() {
@@ -71,6 +72,27 @@ async function init() {
     $('passkey').disabled = false;
   });
   if (!$('passkey').hidden && !info.broken) $('passkey').click();
+  // forgot the password: a code from the log sets a new one, then the login again
+  $('forgot').addEventListener('click', () => {
+    const form = passwordResetForm(t, {
+      minPassword: info.minPassword ?? 8,
+      done: (message) => {
+        form.remove();
+        $('login').hidden = false;
+        $('error').textContent = message;
+        $('error').classList.add('done');
+        $('password').focus();
+      },
+      back: () => {
+        form.remove();
+        $('login').hidden = false;
+        $('password').focus();
+      },
+    });
+    $('login').hidden = true;
+    $('login').after(form);
+    form.querySelector('#reset-ask').focus();
+  });
   $('login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const password = $('password').value;
@@ -87,6 +109,7 @@ async function init() {
       window.location.href = './';
       return;
     }
+    $('error').classList.remove('done');
     $('error').textContent = out.retryAfter ? t('wait', { seconds: out.retryAfter }) : t('wrong');
     $('password').select();
   });

@@ -14,7 +14,8 @@
 // The settings page's pictures (docs/configuration/README.md) are of its General, Services and
 // Groups sections, in the dark appearance; the showcase gets an admin password for them.
 // The setup pictures (docs/configuration/first-start.md) walk the setup wizard of an empty config
-// folder, step by step, and the settings page of a dashboard without an admin password. Docker is
+// folder, step by step, the settings page of a dashboard without an admin password, and the login
+// page's "forgot the password". Docker is
 // made up there (a socket with a few containers of the fake homelab), and so are the tests' answers.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -94,15 +95,19 @@ const SETUP_TESTS = {
   pihole: [{ label: 'Queries', value: 18342 }, { label: 'Blocked', value: 2471 }],
 };
 
-/** The page from its top, cut to its content (`content`, with a margin) and to at most `maxHeight`. */
-async function shot(page, name, maxHeight = 1000, content = 'main') {
+/**
+ * The page from its top (or from its content, `fromContent`), cut to its content (`content`, with a
+ * margin) and to at most `maxHeight`.
+ */
+async function shot(page, name, maxHeight = 1000, content = 'main', fromContent = false) {
   await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); return document.fonts.ready; });
   await page.waitForTimeout(600);
   const box = await page.locator(content).boundingBox();
   const x = Math.max(0, Math.floor(box.x - 40));
   const width = Math.min(page.viewportSize().width - x, Math.ceil(box.width + 80));
-  const height = Math.min(maxHeight, Math.ceil(box.y + box.height + 40));
-  await page.screenshot({ path: `${out}${name}.png`, fullPage: true, clip: { x, y: 0, width, height } });
+  const y = fromContent ? Math.max(0, Math.floor(box.y - 40)) : 0;
+  const height = Math.min(maxHeight, Math.ceil(box.y + box.height + 40) - y);
+  await page.screenshot({ path: `${out}${name}.png`, fullPage: true, clip: { x, y, width, height } });
 }
 
 async function setupShots() {
@@ -150,6 +155,15 @@ async function setupShots() {
   await page.waitForSelector('ul.files');
   await shot(page, 'setup-done');
   wizard.close();
+
+  // forgot the admin password: the login page asks the dashboard for a code in its log
+  const locked = await emptyDashboard({ 'settings.yaml': `title: Homelab\nlogin: true\nadminPassword: "${hashPassword('showcase-only-1', { N: 1024 })}"\n` });
+  await page.goto(`${locked.url}login`);
+  await page.click('#forgot');
+  await page.click('#reset-ask');
+  await page.waitForSelector('#reset [role=status]:not(:empty)');
+  await shot(page, 'login-reset', 1000, 'form#reset', true);
+  locked.close();
 
   // a dashboard without an admin password: the settings page asks for the setup code first
   const bare = await emptyDashboard({ 'settings.yaml': 'title: Homelab\n' });
