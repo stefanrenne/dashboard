@@ -6,7 +6,7 @@ CI (`.github/workflows/ci.yml`) does the work. Changes go to `develop`; `main` o
 | Event | What CI does |
 |---|---|
 | Pull request | Tests, an amd64 image build and a smoke test. Nothing is pushed. Into `develop`, the tests use the widgets collection's `develop` branch, otherwise its newest release. |
-| Push to `develop` | Tests (with the collection's `develop` branch), then the image for amd64 and arm64, pushed as `develop` only (version `develop-<sha>`). A push that changes only `docs/`, `scripts/`, `tests/`, `examples/` or Markdown runs the tests only. |
+| Push to `develop` | Tests (with the collection's `develop` branch), then the image for amd64 and arm64, pushed as `develop` only (version `develop-<sha>`). A push that, since the last published image of the branch, changes only `docs/`, `scripts/`, `tests/`, `examples/` or Markdown runs the tests only. |
 | Push to `main` | Tests and the image for amd64 and arm64: nothing is pushed. |
 | Tag `vX.Y.Z` | The same, pushed as `latest`, `X.Y.Z` and `X.Y`, and a GitHub release with that version's CHANGELOG section. The tagged commit must be on `main`, or nothing is published. |
 | Run by hand on `main` | As a tag, for `package.json`'s version when it is not released yet: CI creates the tag `vX.Y.Z` with the release. For when a tag cannot be pushed. |
@@ -14,7 +14,9 @@ CI (`.github/workflows/ci.yml`) does the work. Changes go to `develop`; `main` o
 | Monday 04:23 UTC | Rebuild of the newest release (`latest`, `X.Y.Z`, `X.Y`), so base image security fixes arrive without a code change. |
 
 A new push to a branch or a pull request cancels the older CI run of that branch or PR, which is
-still running. Runs for a tag, by hand and on the schedule are never cancelled.
+still running. Runs for a tag, by hand and on the schedule are never cancelled. A cancelled run published
+nothing, so the next push compares with the last commit whose image was published, not with the
+commit before it: a change to the image in the cancelled push still gets its image.
 
 ## Develop builds
 

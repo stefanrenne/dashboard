@@ -59,20 +59,35 @@ jobs:
   # Whether the image changes. A push to a branch that touches only docs, scripts, tests, examples
   # or Markdown (none of them matters in the image, see .dockerignore) skips the image build.
   # Tags, runs by hand, the weekly rebuild and pull requests always build.
+  # Whether a push to a branch changes the image: compared with the last commit whose image was
+  # published on that branch (the newest successful run whose image job succeeded), not with the
+  # commit before the push. A run cancelled by a newer push published nothing, so its changes
+  # still count; without such a run, or when GitHub cannot be asked, the image is built.
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       image: ${{ steps.files.outputs.image }}
     steps:
       - id: files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BEFORE: ${{ github.event.before }}
         run: |
           image=true
-          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/* && -n "$BEFORE" && "$BEFORE" != 0000000000000000000000000000000000000000 ]]; then
+          base=""
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/* ]]; then
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=$GITHUB_REF_NAME&event=push&status=success&per_page=30" --jq '.workflow_runs[] | "\(.id) \(.head_sha)"' || true)
+            while read -r id sha; do
+              [ -n "$id" ] || continue
+              if [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '.jobs[] | select(.name == "image") | .conclusion' || true)" = success ]; then base=$sha; break; fi
+            done <<<"$runs"
+            echo "the last published image on $GITHUB_REF_NAME: ${base:-none found}"
+          fi
+          if [ -n "$base" ]; then
             # the compare API lists at most 300 files; more counts as a change to the image
-            if files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq 'if (.files | length) >= 300 then "many files" else .files[].filename end'); then
+            if files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$GITHUB_SHA" --jq 'if (.files | length) >= 300 then "many files" else .files[].filename end'); then
               if [ -n "$files" ] && ! grep -qvE '^(docs|scripts|tests|examples)/|\.md$' <<<"$files"; then
                 image=false
                 echo "only docs, scripts, tests, examples or Markdown changed: no image"
