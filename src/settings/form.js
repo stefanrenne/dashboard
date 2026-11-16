@@ -113,7 +113,7 @@ export function readSettings(configDir) {
   const login = raw.login;
   values.login = login === true || (login !== null && typeof login === 'object');
   values.loginRemember = typeof login?.remember === 'string' || typeof login?.remember === 'number' ? String(login.remember) : DEFAULTS.loginRemember;
-  const known = new Set([...Object.keys(FIELDS), ...Object.values(FIELDS).map((d) => d.at?.[0]).filter(Boolean), 'adminPassword']);
+  const known = new Set([...Object.keys(FIELDS), ...Object.values(FIELDS).map((d) => d.at?.[0]).filter(Boolean), 'adminPassword', 'trustedProxies']);
   return { values, other: Object.keys(raw).filter((k) => !known.has(k)) };
 }
 

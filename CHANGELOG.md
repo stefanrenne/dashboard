@@ -4,6 +4,16 @@ All user-visible changes. The format follows [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Security
+- Wrong passwords behind a reverse proxy are counted per visitor, by the address in
+  `X-Forwarded-For` (read from the right, from a private address or settings.yaml
+  `trustedProxies`), instead of one count for everyone through the proxy; IPv6 by its /64.
+- A limit for all addresses together: after 30 wrong passwords (or codes) within an hour every
+  browser that is not known waits, so many addresses gain nothing.
+- Known browsers: one that once gave the right password gets a `dash_known` cookie and has a count
+  of its own, so someone guessing cannot lock the owner out.
+- Wrong tries are forgotten after a day without one.
+
 ## [0.28.0] - 2026-11-15
 
 ### Added

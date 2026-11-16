@@ -85,7 +85,7 @@ export const BOOKMARK_FIELDS = ['href', 'abbr', 'icon', 'description'];
 
 // settings.yaml's security: kept as it is when homepage's settings.yaml is imported, and the
 // admin password changes only with the current one (never through a file on the settings page)
-export const SECURITY_KEYS = ['adminPassword', 'login', 'allowedHosts', 'actions'];
+export const SECURITY_KEYS = ['adminPassword', 'login', 'allowedHosts', 'trustedProxies', 'actions'];
 
 export const MIN_PASSWORD = 8;
 // scrypt:N:r:p:salt:hash, as src/hash-password.mjs prints (no $, which Docker Compose would read)

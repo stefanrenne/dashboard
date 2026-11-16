@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ActionGate, COOKIE, checkPassword, hashPassword } from '../src/actionauth.js';
-import { cookieValue, isInternal } from '../src/http.js';
+import { ActionGate, COOKIE, FailureLimiter, checkPassword, hashPassword } from '../src/actionauth.js';
+import { KnownBrowsers } from '../src/known.js';
+import { cookieValue, isInternal, visitorAddress, proxyCheck, limitKey } from '../src/http.js';
 import { silentLog } from './helpers.mjs';
 
 /** A request as http gives it: headers and the socket's address. */
@@ -75,4 +76,56 @@ test('ActionGate: asks, unlocks for `remember` with an HttpOnly cookie, always a
   assert.equal((await forever.check(req({ 'x-dashboard-password': 'geheim' }), 'password')).headers['set-cookie'], undefined, 'remember: 0 asks every time');
   const open = new ActionGate({});
   assert.equal((await open.check(req(), 'always')).ok, true, 'no password: nothing is asked');
+});
+
+test('visitorAddress: X-Forwarded-For from a proxy on a private address, read from the right; trustedProxies; limitKey', () => {
+  const r = (headers, remoteAddress) => ({ headers, socket: { remoteAddress } });
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '203.0.113.9' }, '172.18.0.2')), '203.0.113.9', 'SWAG in the Docker network');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '198.51.100.1, 203.0.113.9' }, '172.18.0.2')), '203.0.113.9', 'what the visitor wrote in front counts for nothing');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '203.0.113.9, 10.0.0.3' }, '172.18.0.2')), '203.0.113.9', 'two proxies');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '192.168.1.30:51234' }, '::ffff:172.18.0.2')), '192.168.1.30', 'from the LAN, with a port');
+  assert.equal(visitorAddress(r({ forwarded: 'for="[2001:db8::1]:4711"' }, '10.0.0.2')), '2001:db8::1', 'Forwarded');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': 'unknown' }, '10.0.0.2')), '10.0.0.2', 'no address: the proxy');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '198.51.100.1' }, '203.0.113.9')), '203.0.113.9', 'from the internet directly: its own address');
+  const only = proxyCheck(['172.18.0.0/16']);
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '203.0.113.9' }, '172.18.0.2'), only), '203.0.113.9');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '203.0.113.9' }, '192.168.1.5'), only), '192.168.1.5', 'not listed: not trusted');
+  assert.equal(visitorAddress(r({ 'x-forwarded-for': '203.0.113.9' }, '172.18.0.2'), proxyCheck([])), '172.18.0.2', 'an empty list trusts none');
+  assert.equal(limitKey('2001:db8:a:b:c:d:e:f'), '2001:db8:a:b::/64');
+  assert.equal(limitKey('2001:db8::1'), '2001:db8:0:0::/64');
+  assert.equal(limitKey('203.0.113.9'), '203.0.113.9');
+});
+
+test('FailureLimiter: per visitor, forgets after a day, a limit for all addresses together that known browsers pass', async () => {
+  let clock = 1_000_000;
+  const warned = [];
+  const log = { ...silentLog, warn: (m) => warned.push(m) };
+  const known = new KnownBrowsers({ now: () => clock });
+  const limiter = new FailureLimiter(() => clock, { known, log });
+  const from = (address, cookie) => ({ headers: cookie ? { cookie } : {}, socket: { remoteAddress: address } });
+  const wrong = (req) => limiter.attempt(req, () => false, { log, wrong: 'wrong' });
+  const right = (req) => limiter.attempt(req, () => true, { log, wrong: 'wrong' });
+
+  for (let i = 0; i < 4; i++) await wrong(from('203.0.113.1'));
+  clock += 25 * 60 * 60 * 1000;
+  for (let i = 0; i < 4; i++) await wrong(from('203.0.113.1'));
+  assert.equal(limiter.waiting(from('203.0.113.1')), 0, 'four of a day ago are forgotten');
+  await wrong(from('203.0.113.1'));
+  assert.equal(limiter.waiting(from('203.0.113.1')), 30, 'the fifth within the day starts a wait');
+  for (let i = 0; i < 5; i++) await wrong(from(`2001:db8:1:2::${i + 1}`));
+  assert.equal(limiter.waiting(from('2001:db8:1:2::99')), 30, 'IPv6: the /64 together');
+
+  const ok = await right(from('198.51.100.7'));
+  assert.match(ok.headers['set-cookie'], /^dash_known=[\w-]{43}; Path=\/; Max-Age=31536000; HttpOnly; SameSite=Strict$/);
+  const cookie = ok.headers['set-cookie'].split(';')[0];
+  assert.deepEqual((await right(from('198.51.100.7', cookie))).headers, {}, 'known already: no new cookie');
+
+  // many addresses: 30 wrong tries within the hour hold up every browser that is not known
+  for (let i = 10; i < 50 && !warned.some((m) => m.includes('all addresses together')); i++) await wrong(from(`198.51.100.${i}`));
+  assert.ok(limiter.waiting(from('192.0.2.1')) > 0, 'a new address waits too');
+  assert.equal((await right(from('192.0.2.1'))).retryAfter > 0, true, 'even with the right password');
+  assert.equal(limiter.waiting(from('198.51.100.7', cookie)), 0, 'a known browser does not');
+  assert.equal((await right(from('203.0.113.1', cookie))).ok, true, 'not even from an address that waits');
+  clock += 61 * 60 * 1000;
+  assert.equal(limiter.waiting(from('192.0.2.1')), 0, 'an hour later it is over');
 });

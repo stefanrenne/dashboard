@@ -1265,8 +1265,9 @@ test('action password: root asks by default, others when they say so; a header o
     const ran = await act('Root', { 'x-dashboard-password': 'Sesam-123' });
     assert.equal(ran.status, 200);
     assert.equal((await ran.json()).data.output, 'ran as root');
-    const cookie = ran.headers.get('set-cookie');
+    const [cookie, knownCookie] = ran.headers.getSetCookie();
     assert.match(cookie, /^dash_unlock=[\w-]+; Path=\/; Max-Age=600; HttpOnly; SameSite=Strict$/);
+    assert.match(knownCookie, /^dash_known=[\w-]{43}; Path=\/; Max-Age=31536000; HttpOnly; SameSite=Strict$/, 'and the browser is known from now on');
     const unlock = { cookie: cookie.split(';')[0] };
     assert.equal((await act('Asked', unlock)).status, 200, 'the cookie unlocks the next press');
     assert.equal((await act('Always', unlock)).status, 401, 'but not confirm: always');
@@ -1388,6 +1389,26 @@ test('onboarding: nothing without the marker, and a file that appeared meanwhile
   }
 });
 
+test('wrong passwords behind a reverse proxy: counted per visitor, a known browser is not held up, kept in the config folder', async () => {
+  const hash = hashPassword('Geheim-Admin-1', { N: 1024 });
+  const t = await startApp({ 'settings.yaml': `adminPassword: "${hash}"\nlogin: true\n` });
+  const login = (from, password, headers = {}) => fetch(`${t.base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'dashboard', 'x-forwarded-for': from, ...headers }, body: JSON.stringify({ password }) });
+  try {
+    const ok = await login('198.51.100.7', 'Geheim-Admin-1');
+    const known = ok.headers.getSetCookie().find((c) => c.startsWith('dash_known=')).split(';')[0];
+    for (let i = 0; i < 5; i++) assert.equal((await login('203.0.113.66', 'nope')).status, 401);
+    assert.equal((await login('203.0.113.66', 'nope')).status, 429, 'the guesser waits');
+    assert.equal((await login('198.51.100.8', 'Geheim-Admin-1')).status, 200, 'another visitor through the same proxy does not');
+    for (let i = 0; i < 5; i++) await login('203.0.113.66', 'nope', { cookie: known });
+    assert.equal((await login('203.0.113.66', 'nope', { cookie: known })).status, 429, 'a known browser has a count of its own');
+    assert.equal((await login('203.0.113.66', 'Geheim-Admin-1')).status, 429, 'the address still waits');
+    assert.ok(JSON.parse(fs.readFileSync(path.join(t.configDir, '.known-browsers.json'), 'utf8')).browsers, 'kept in the config folder');
+    assert.ok(!fs.readFileSync(path.join(t.configDir, '.known-browsers.json'), 'utf8').includes(known.split('=')[1]), 'only a hash');
+  } finally {
+    await t.close();
+  }
+});
+
 test('login: the admin password opens the page; a session on the server; logged in counts as unlocked except for confirm: always', async () => {
   const hash = hashPassword('Geheim-Admin-1', { N: 1024 });
   const t = await startApp({ 'settings.yaml': `adminPassword: "${hash}"\nlogin: { remember: 7d }\nplugins:\n  - path: ${actionWidget()}\n`, 'services.yaml': ACTION_SERVICES });
@@ -1407,7 +1428,8 @@ test('login: the admin password opens the page; a session on the server; logged 
     const ok = await post('/api/login', { password: 'Geheim-Admin-1' });
     assert.equal(ok.status, 200);
     const cookie = ok.headers.get('set-cookie').split(';')[0];
-    assert.match(ok.headers.get('set-cookie'), /^dash_session=[\w-]+; Path=\/; Max-Age=604800; HttpOnly; SameSite=Lax$/);
+    assert.match(ok.headers.getSetCookie()[0], /^dash_session=[\w-]+; Path=\/; Max-Age=604800; HttpOnly; SameSite=Lax$/);
+    assert.match(ok.headers.getSetCookie()[1], /^dash_known=/);
     const layout = await (await get('/api/layout', { cookie })).json();
     assert.equal(layout.settings.login, true, 'the page shows a logout');
     assert.ok(!JSON.stringify(layout).includes(hash), 'the hash stays on the server');

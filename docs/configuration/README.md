@@ -236,7 +236,7 @@ docker logs dashboard 2>&1 | grep "password reset"
 
 - The code is made only when asked for, works for 15 minutes and once; asking again while it works
   writes no new one. After ten wrong codes it no longer counts, and wrong ones are slowed down per
-  address, as passwords are. The log says who asked for it, and when a password was reset.
+  visitor, as passwords are. The log says who asked for it, and when a password was reset.
 - Whoever can read the container's log can do this: it has the host already. Keep the log as
   private as the host, and do not ship it somewhere others can read it.
 - The new password ends every login session and unlocked browser; passkeys stay.
@@ -279,11 +279,44 @@ browser's own keychain (with Face ID or Touch ID) fills it in.
   asked: a request from 127.0.0.1 without a proxy header comes from the container itself. A
   reverse proxy on the same machine with host networking must send `X-Forwarded-For` (they all
   do by default), or its visitors count as the container too.
-- **Guessing is slowed down:** after five wrong passwords from one address it waits 30 seconds,
-  doubled each time (up to 15 minutes). Each wrong one is in the log.
+- **Guessing is slowed down:** after five wrong passwords from one visitor it waits 30 seconds,
+  doubled each time (up to 15 minutes); after a day without a wrong one the count starts over.
+  Each wrong one is in the log. See [Wrong passwords](#wrong-passwords).
 - **Open the dashboard over HTTPS** when it asks for a password: over plain HTTP the password
   crosses the network as it is.
 - Labels of a discovered container cannot set `confirm: none`.
+
+### Wrong passwords
+
+Wrong admin passwords (and passkeys, the setup code and the reset code) are slowed down, so that
+nobody can try one password after another:
+
+| | |
+|---|---|
+| **Per visitor** | Five wrong ones are free; then a wait of 30 seconds, doubled with each wrong one, up to 15 minutes. Even the right password waits meanwhile. A day without a wrong one and the count starts over. |
+| **All addresses together** | After 30 wrong ones within an hour, from whatever addresses, every browser that is not known waits until the hour is over, so many addresses gain nothing. |
+| **Known browsers** | A browser that once gave the right password gets a cookie (`dash_known`, a year) and counts on its own: someone guessing cannot lock you out. The cookie opens nothing; the config folder's `.known-browsers.json` keeps only hashes of them. |
+
+Each wrong one is in the log, with the visitor's address; so is the start of the limit for all
+addresses.
+
+**Behind a reverse proxy** (SWAG, Nginx Proxy Manager, Traefik, Caddy) every request comes from
+the proxy. The dashboard then takes the visitor's address from `X-Forwarded-For` (or `Forwarded`),
+which every proxy sends: from a request of a private address (a proxy in the same Docker network
+or on your LAN), read from the right, so an address a visitor writes in front of their own
+counts for nothing. An IPv6 address counts by its /64, as one connection has billions of them.
+
+To trust that header from your proxy only, list it:
+
+```yaml
+# settings.yaml
+trustedProxies: [172.18.0.0/16]   # SWAG's address, or its Docker network; [] trusts no proxy
+```
+
+Without it, someone who reaches the dashboard's port directly from a private address (your LAN,
+or a published Docker port, which can show the internet as Docker's own address) can write any
+address in that header. That gains them a count of their own per address written, but not
+more than the limit for all addresses together.
 
 ### Login page
 
@@ -369,9 +402,9 @@ host name and let the tunnel point at `http://dashboard:3000`.
   inside the container, not through the proxy.
 - `/api/events` is a stream that stays open: a proxy that buffers responses (nginx: `proxy_buffering
   off;` for it) delays the page's reloads otherwise.
-- Behind a proxy every request comes from the proxy's address, so wrong admin passwords are
-  slowed down for everyone at once. Keep the [admin password](#admin-password) for the buttons
-  anyway: the proxy decides who sees the page, the password who presses `user: root`.
+- Keep the [admin password](#admin-password) for the buttons anyway: the proxy decides who sees
+  the page, the password who presses `user: root`. Wrong passwords are counted per visitor
+  behind the proxy too: see [Wrong passwords](#wrong-passwords).
 
 ### Widget worker
 

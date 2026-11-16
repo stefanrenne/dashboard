@@ -45,6 +45,7 @@ hideVersion: true   # hide the versions in the footer (shown by default, as in h
                     # `core v0.7.3 | widgets v0.4.1`, each linking to its release or commit
 pluginUpdateInterval: 1h   # how often #latest and branch plugins are checked for a newer version (false: never)
 allowedHosts: [dash.lan]   # the names you open the dashboard by (IP addresses always work); see Allowed hosts
+trustedProxies: [172.18.0.0/16]   # the reverse proxies whose X-Forwarded-For counts (not set: any private address); see Wrong passwords
 adminPassword: "scrypt:16384:8:1:..."   # the admin password's hash (node src/hash-password.mjs); see Admin password
 login: true                # a login page with the admin password ({ remember: 7d }); see Login page
 actions:

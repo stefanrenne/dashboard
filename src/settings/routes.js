@@ -8,7 +8,7 @@ import path from 'node:path';
 import { send, sendFile, readJson, SECURITY_HEADERS, BODY_LIMIT } from '../http.js';
 import { ConfigEditError, editableFiles, editableFile, configPath, readConfigFile, writeConfigFile, sameVersion, checkConfigText, lineOfPath, listHistory, readHistory } from '../config/edit.js';
 import { MIN_PASSWORD, SECURITY_KEYS, schemaForPage } from '../config/schema.js';
-import { checkPassword, hashPassword, passwordFingerprint } from '../actionauth.js';
+import { checkPassword, hashPassword, passwordFingerprint, setCookies } from '../actionauth.js';
 import { rpContext } from '../passkeys.js';
 import { tryWidget } from '../plugins/runtime.js';
 import { checkDocker, dockerGet } from '../discovery/docker.js';
@@ -84,19 +84,21 @@ export function settingsRoutes(app) {
     }],
     ['POST', '/password', async ({ req, res, body }) => {
       if (typeof body?.next !== 'string' || body.next.length < MIN_PASSWORD) throw new ConfigEditError(`at least ${MIN_PASSWORD} characters`, 400);
+      let known = null;
       if (gate.password) {
         // the current password, every time: also when logged in or unlocked
         const tried = await gate.limiter.attempt(req, () => checkPassword(gate.password, typeof body.current === 'string' ? body.current : ''), { log, wrong: 'wrong current admin password on the settings page' });
         if (tried.retryAfter) return { status: 429, body: { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong passwords' } };
         if (!tried.ok) return { status: 401, body: { ok: false, wrongPassword: true, error: 'the current password is not right' } };
+        known = tried.headers['set-cookie'];
       }
       writeAdminPassword(configDir, hashPassword(body.next));
       log.info('settings: a new admin password; every login session ends');
       await app.reload();
       // the sessions of the old password end; this browser keeps going with one of the new
       const login = state.config.settings.login;
-      const renewed = login?.required && gate.password ? { 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) } : {};
-      return { body: answer(req), headers: { ...SECURITY_HEADERS, ...renewed } };
+      const renewed = login?.required && gate.password ? sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) : null;
+      return { body: answer(req), headers: { ...SECURITY_HEADERS, ...setCookies(renewed, known) } };
     }],
     ['POST', '/passkeys/options', ({ req }) => {
       const options = passkeys.registerOptions(req, state.config.settings.title);

@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import http from 'node:http';
 import https from 'node:https';
+import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import { realInside, escapeHtml } from './util.js';
@@ -116,8 +117,68 @@ export function cookieValue(req, name) {
 
 export const secureRequest = (req) => Boolean(req.socket?.encrypted) || String(req.headers['x-forwarded-proto'] ?? '').split(',')[0].trim() === 'https';
 
-/** The address the request came from, as the server sees it (a proxy is one address). */
-export const clientAddress = (req) => String(req.socket?.remoteAddress ?? 'unknown');
+/** The visitor's address (visitorAddress below, which app.js puts on the request), else the connection's. */
+export const clientAddress = (req) => String(req.visitor ?? req.socket?.remoteAddress ?? 'unknown');
+
+/** An address as a socket or a proxy writes it, without brackets, port or IPv4-in-IPv6 prefix; '' when it is none. */
+function plainAddress(text) {
+  let a = String(text ?? '').trim().toLowerCase();
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(a);
+  if (bracketed) a = bracketed[1];
+  else if (/^[\d.]+:\d+$/.test(a)) a = a.replace(/:\d+$/, '');
+  if (a.startsWith('::ffff:') && net.isIPv4(a.slice(7))) a = a.slice(7);
+  return net.isIP(a) ? a : '';
+}
+
+/**
+ * settings.yaml `trustedProxies` as a test of an address: not set, any private address (a reverse
+ * proxy in the same Docker network or on the LAN); else only the addresses and ranges listed (an
+ * empty list: none, the connection's address always counts).
+ */
+export function proxyCheck(list) {
+  if (!Array.isArray(list)) return isPrivateAddress;
+  const block = new net.BlockList();
+  for (const entry of list) {
+    const [ip, bits] = entry.split('/');
+    const type = net.isIPv6(ip) ? 'ipv6' : 'ipv4';
+    if (bits === undefined) block.addAddress(ip, type);
+    else block.addSubnet(ip, Number(bits), type);
+  }
+  return (address) => block.check(address, net.isIPv6(address) ? 'ipv6' : 'ipv4');
+}
+
+/**
+ * Who is asking: the connection's address, or, from a proxy `trusted` passes, the address it put in
+ * X-Forwarded-For (or Forwarded). Read from the right: each proxy appends the address it saw, so the
+ * first one that is no trusted proxy is the visitor's, and what a visitor wrote in front of it
+ * counts for nothing. Someone who reaches the dashboard directly from a trusted address can write
+ * any address there: what that address is for (slowing down wrong passwords) has a limit for all
+ * addresses together as well (src/actionauth.js).
+ */
+export function visitorAddress(req, trusted = isPrivateAddress) {
+  const socket = plainAddress(req.socket?.remoteAddress);
+  if (!socket) return String(req.socket?.remoteAddress ?? 'unknown');
+  if (!trusted(socket)) return socket;
+  const xff = String(req.headers['x-forwarded-for'] ?? '').split(',').map((a) => a.trim()).filter(Boolean);
+  const chain = xff.length ? xff : [...String(req.headers.forwarded ?? '').matchAll(/for="?([^";,]+)"?/gi)].map((m) => m[1]);
+  let found = socket;
+  for (let i = chain.length - 1; i >= 0; i--) {
+    const address = plainAddress(chain[i]);
+    if (!address) break;
+    found = address;
+    if (!trusted(address)) break;
+  }
+  return found;
+}
+
+/** What wrong tries are counted by: the address, an IPv6 one by its /64 (one connection has billions of those). */
+export function limitKey(address) {
+  if (!net.isIPv6(address)) return address;
+  const groups = (part) => (part ? part.split(':').flatMap((g) => (g.includes('.') ? ['0', '0'] : [g])) : []);
+  const [head, tail] = address.split('::');
+  const all = tail === undefined ? groups(head) : [...groups(head), ...Array(Math.max(0, 8 - groups(head).length - groups(tail).length)).fill('0'), ...groups(tail)];
+  return `${all.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(':')}::/64`;
+}
 
 export const randomToken = () => crypto.randomBytes(32).toString('base64url');
 

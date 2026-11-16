@@ -145,3 +145,19 @@ test('the form shows what the dashboard uses: its defaults for missing keys, hom
   const { settings } = loadConfig(dir);
   for (const key of ['title', 'language', 'theme', 'color']) assert.equal(values[key], settings[key], key);
 });
+
+test('settings.yaml trustedProxies: addresses and ranges; not set is null (any private address), a wrong entry is left out; the form keeps it', () => {
+  const dir = tmpDir('dash-settings-');
+  const file = path.join(dir, 'settings.yaml');
+  fs.writeFileSync(file, 'trustedProxies: [172.18.0.0/16, 10.0.0.5, "2001:db8::/48", swag, 10.0.0.0/40]\n');
+  const config = loadConfig(dir);
+  assert.deepEqual(config.settings.trustedProxies, ['172.18.0.0/16', '10.0.0.5', '2001:db8::/48']);
+  assert.deepEqual(config.warnings.filter((w) => w.path === 'trustedProxies').length, 2);
+  assert.deepEqual(readSettings(dir).other, [], 'not an unknown key on the settings page');
+  writeSettings(dir, checkSettings({ title: 'Thuis' }).values);
+  assert.match(fs.readFileSync(file, 'utf8'), /^trustedProxies: /m, 'a save keeps it');
+  fs.writeFileSync(file, 'title: x\n');
+  assert.equal(loadConfig(dir).settings.trustedProxies, null);
+  fs.writeFileSync(file, 'trustedProxies: []\n');
+  assert.deepEqual(loadConfig(dir).settings.trustedProxies, []);
+});

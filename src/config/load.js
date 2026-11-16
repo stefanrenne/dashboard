@@ -7,6 +7,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import net from 'node:net';
 import { substitute, VARIABLE_NAME } from './vars.js';
 import { parseConfigYaml, resolveIncludes } from './include.js';
 import { isPlainObject, parseDuration } from '../util.js';
@@ -77,6 +78,28 @@ function allowedHostsSetting(value, file, ctx) {
     return null;
   }
   return list.map((h) => h.trim().toLowerCase()).filter(Boolean);
+}
+
+/**
+ * settings.yaml `trustedProxies`: the reverse proxies whose X-Forwarded-For counts, as addresses
+ * and ranges (172.18.0.0/16); null when not set (any private address), [] for none.
+ */
+function trustedProxiesSetting(value, file, ctx) {
+  if (value === undefined || value === null) return null;
+  const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : null;
+  if (!list) {
+    ctx.warn(file, 'trustedProxies', 'expected a list of addresses or ranges, such as [172.18.0.0/16]; ignored');
+    return null;
+  }
+  const out = [];
+  for (const entry of list.map((e) => String(e).trim()).filter(Boolean)) {
+    const [ip, bits, extra] = entry.split('/');
+    const v = net.isIP(ip);
+    if (!v || extra !== undefined || (bits !== undefined && !(/^\d+$/.test(bits) && Number(bits) <= (v === 4 ? 32 : 128)))) {
+      ctx.warn(file, 'trustedProxies', `"${entry.slice(0, 60)}" is no address or range (such as 172.18.0.0/16); left out`);
+    } else out.push(entry);
+  }
+  return out;
 }
 
 /**
@@ -227,6 +250,7 @@ function normalizeSettings(raw, ctx) {
   settings.actionRememberMs = actionRememberMs(settings.actions, file, ctx);
   delete settings.actions;
   settings.allowedHosts = allowedHostsSetting(settings.allowedHosts, file, ctx);
+  settings.trustedProxies = trustedProxiesSetting(settings.trustedProxies, file, ctx);
   settings.adminPassword = adminPasswordSetting(settings.adminPassword, file, ctx);
   settings.login = loginSetting(settings.login, file, ctx);
   for (const key of ['fullWidth', 'useEqualHeights', 'disableCollapse', 'groupsInitiallyCollapsed', 'showStats', 'hideVersion', 'disableUpdateCheck', 'disableIndexing']) {

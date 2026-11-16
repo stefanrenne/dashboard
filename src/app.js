@@ -17,14 +17,15 @@ import { buildState } from './layout.js';
 import { renderIndex, renderManifest, renderRobots } from './page.js';
 import { UpdateCheck, RELEASES_URL, isNewer } from './update.js';
 import { suggestUrl, fetchSuggestions } from './suggest.js';
-import { ActionGate, checkPassword, passwordFingerprint, hashPassword } from './actionauth.js';
+import { ActionGate, checkPassword, passwordFingerprint, hashPassword, setCookies } from './actionauth.js';
+import { KnownBrowsers } from './known.js';
 import { PasswordReset } from './reset.js';
 import { writeAdminPassword } from './settings/form.js';
 import { SessionStore, isOpenPath, isSharedFile } from './login.js';
 import { Passkeys } from './passkeys.js';
 import { Onboarding } from './onboarding/wizard.js';
 import { CUSTOM_FILES, MIN_PASSWORD } from './config/schema.js';
-import { send, sendFile, readJson, fromThisPage, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
+import { send, sendFile, readJson, fromThisPage, isInternal, securityHeaders, SECURITY_HEADERS, clientAddress, visitorAddress, proxyCheck, isPrivateAddress, allowedHosts, hostName, hostAllowed, hostRefusedPage } from './http.js';
 import { settingsRoutes } from './settings/routes.js';
 import { onboardingRoutes } from './onboarding/routes.js';
 
@@ -88,9 +89,12 @@ export async function createApp({
     log.warn('DASHBOARD_ADMIN_PASSWORD (and _FILE, and the older DASHBOARD_ACTION_PASSWORD) are no longer read: the admin password is adminPassword in settings.yaml; set it on the settings page');
   }
   const passkeys = new Passkeys({ configDir, log });
-  const gate = new ActionGate({ password: null, log, passkeys });
+  const known = new KnownBrowsers({ configDir, log });
+  const gate = new ActionGate({ password: null, log, passkeys, known });
   const onboarding = new Onboarding({ configDir, log });
-  const reset = new PasswordReset({ log });
+  const reset = new PasswordReset({ log, known });
+  // who is asking: settings.yaml trustedProxies, any private address while it is not set
+  let trustedProxy = isPrivateAddress;
   const sessions = new SessionStore({ configDir, log });
   // the allowed hosts: settings.yaml allowedHosts (the settings page writes it); `*` allows every host
   const hostsNow = () => allowedHosts(state.config?.settings.allowedHosts);
@@ -100,6 +104,7 @@ export async function createApp({
 
   function rebuild() {
     gate.password = state.config.settings.adminPassword ?? null;
+    trustedProxy = proxyCheck(state.config.settings.trustedProxies);
     const merged = mergeDiscovered(state.config.services, discovery.found);
     const secrets = new Set([...state.config.secrets, ...discovery.secrets]);
     const pluginMessages = (list) =>
@@ -245,6 +250,7 @@ export async function createApp({
     } catch {
       return send(res, 400, { error: 'bad request' });
     }
+    req.visitor = visitorAddress(req, trustedProxy);
     // The setup wizard of a first install answers any host name: there are no allowed hosts yet,
     // and the name it is opened by becomes the first one (its security step). DNS rebinding gains
     // nothing there: everything but its page needs the setup code from the log.
@@ -393,7 +399,7 @@ export async function createApp({
     const tried = await gate.limiter.attempt(req, () => (out = passkeys.verify(req, body)).ok, { log, wrong: 'a passkey refused' });
     if (tried.retryAfter) return send(res, 429, { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong tries' });
     if (!tried.ok) return send(res, 401, { ok: false, error: out.error });
-    return send(res, 200, { ok: true, token: out.token });
+    return send(res, 200, { ok: true, token: out.token }, 'application/json', { ...SECURITY_HEADERS, ...tried.headers });
   }
 
   /**
@@ -423,7 +429,7 @@ export async function createApp({
     writeAdminPassword(configDir, hashPassword(body.next));
     log.warn(`admin password reset with the code from the log, from ${clientAddress(req)}; every login session ends`);
     await reload();
-    return send(res, 200, { ok: true });
+    return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...out.headers });
   }
 
   async function loginRoute(req, res, method, p, { loginOn, loggedIn, login }) {
@@ -452,7 +458,7 @@ export async function createApp({
       || checkPassword(gate.password, typeof body?.password === 'string' ? body.password : ''), { log, wrong: 'wrong admin password at the login' });
     if (tried.retryAfter) return send(res, 429, { ok: false, retryAfter: tried.retryAfter, error: 'too many wrong passwords' });
     if (!tried.ok) return send(res, 401, { ok: false, wrongPassword: true, error: 'wrong password' });
-    return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, 'set-cookie': sessions.create(req, passwordFingerprint(gate.password), login.rememberMs) });
+    return send(res, 200, { ok: true }, 'application/json', { ...SECURITY_HEADERS, ...setCookies(sessions.create(req, passwordFingerprint(gate.password), login.rememberMs), tried.headers['set-cookie']) });
   }
 
   /** Calls a `target: hidden-iframe` URL (configured, never from the request) and reports the outcome. */

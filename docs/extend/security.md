@@ -30,7 +30,9 @@ choosing a Docker image. The dashboard limits the damage where it can:
   with `confirm: password` or `always` ask for it first (see
   [Admin password](../configuration/README.md#admin-password)); a correct one unlocks that
   browser for a while through an HttpOnly cookie the server keeps in memory, and guessing is slowed
-  down per address. A passkey (see [Passkeys](../configuration/README.md#passkeys)) counts
+  down per visitor (behind a proxy by its X-Forwarded-For), with a limit for all addresses together
+  that browsers which once gave the right password pass (see
+  [Wrong passwords](../configuration/README.md#wrong-passwords)). A passkey (see [Passkeys](../configuration/README.md#passkeys)) counts
   as the password: over HTTPS only, bound to the host name it was made on, with user
   verification, its challenge used once and a one-time token for the request that follows.
 - **The settings page writes settings.yaml.** It opens only with the admin password (or a
@@ -41,7 +43,7 @@ choosing a Docker image. The dashboard limits the damage where it can:
   JSON body (at most 64 KB) and need `X-Requested-With: dashboard`.
 - **A forgotten admin password** is reset with a one-time code the dashboard writes into its log
   on request (`POST /api/password-reset/request`, open as the login page is): 15 minutes, once,
-  void after ten wrong tries, wrong ones slowed down per address; the log says who asked. Reading
+  void after ten wrong tries, wrong ones slowed down per visitor; the log says who asked. Reading
   the log means having the host already. A new password ends every session and unlock.
 - **`login: true` closes the page itself** (see [Login page](../configuration/README.md#login-page)):
   every request needs a session, which the server keeps in `.sessions.json` (hashes of the tokens,
@@ -61,7 +63,7 @@ choosing a Docker image. The dashboard limits the damage where it can:
 - **The setup wizard of a first install** writes the config folder, lists the containers and
   runs a widget once to test it. It exists only while `/config/.onboarding` is there (an empty
   folder at the first start); every other request to it is a 404. It needs the code from the log,
-  also on the local network (wrong ones are slowed down per address), and what it changes needs
+  also on the local network (wrong ones are slowed down per visitor), and what it changes needs
   `X-Requested-With: dashboard`. Its endpoints are the only ones that read a request body: JSON
   only, at most 1 MB. It never overwrites a file that is there.
 - A mounted Docker socket gives every widget the whole Docker API (`:ro` does not limit it).

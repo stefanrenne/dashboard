@@ -13,13 +13,13 @@ export const RESET_MS = 15 * 60 * 1000;
 const MAX_WRONG = 10;
 
 export class PasswordReset {
-  constructor({ log = console, now = Date.now } = {}) {
+  constructor({ log = console, now = Date.now, known = null } = {}) {
     this.log = log;
     this.now = now;
     this.code = null;
     this.until = 0;
     this.wrong = 0;
-    this.limiter = new FailureLimiter(now);
+    this.limiter = new FailureLimiter(now, { known, log });
   }
 
   get pending() {
@@ -37,7 +37,7 @@ export class PasswordReset {
     return { until: this.until };
   }
 
-  /** Checks a code and uses it up: { ok: true }, or { ok: false, status, body }. */
+  /** Checks a code and uses it up: { ok: true, headers } (they may make the browser known), or { ok: false, status, body }. */
   async consume(req, given) {
     const want = Buffer.from(String(this.code ?? ''));
     const got = Buffer.from(String(given ?? '').trim().toUpperCase());
@@ -51,6 +51,6 @@ export class PasswordReset {
       return { ok: false, status: 401, body: { ok: false, wrongCode: true, error: 'wrong or expired code' } };
     }
     this.code = null;
-    return { ok: true };
+    return { ok: true, headers: tried.headers };
   }
 }
